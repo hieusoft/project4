@@ -1,4 +1,7 @@
-# CI/CD & Deploy (GitHub Actions → Ubuntu VPS)
+# CI/CD & Deploy (GitHub Actions → VPS Linux)
+
+> Checklist từng bước (Bước 2 chi tiết): **[server-setup-step-by-step.md](./server-setup-step-by-step.md)**  
+> Server hỗ trợ: **Ubuntu/Debian** và **AlmaLinux/Rocky/CentOS/RHEL** (script `server-setup.sh`).
 
 ## Luồng
 
@@ -9,7 +12,7 @@ Push / merge → main
 GitHub Actions (CD)
   1. Build 5 service images
   2. Push → ghcr.io/<owner>/project4/<service>:<sha> + :latest
-  3. SSH vào Ubuntu VPS
+  3. SSH vào VPS
   4. git pull + docker compose -f docker-compose.prod.yml pull && up -d
 ```
 
