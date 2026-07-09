@@ -99,6 +99,31 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
+      - name: Check required secrets
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+        run: |
+          missing=0
+          for name in SSH_HOST SSH_USER SSH_PRIVATE_KEY GHCR_PULL_TOKEN; do
+            if [ -z "${!name}" ]; then
+              echo "ERROR: secret $name is empty or not set"
+              missing=1
+            else
+              echo "OK: $name is set"
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo ""
+            echo "Add secrets at: Settings → Secrets and variables → Actions"
+            echo "If this job uses Environment 'production', also add them under"
+            echo "Settings → Environments → production → Environment secrets"
+            echo "(or remove the environment gate so repo secrets are used)."
+            exit 1
+          fi
+
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.2.2
         env:
@@ -112,8 +137,8 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
+          command_timeout: 30m
           envs: IMAGE_TAG,IMAGE_REGISTRY,GHCR_USER,GHCR_TOKEN,DEPLOY_PATH
-          script_stop: true
           script: |
             set -euo pipefail
             APP_DIR="${DEPLOY_PATH:-/opt/charity-platform}"
