@@ -1,0 +1,2 @@
+import { HttpClientBase, ServiceClientOptions } from './http-client.base';
+export class DonationClient extends HttpClientBase { constructor(options: ServiceClientOptions) { super(options); } getInventoryItem(itemId: string): Promise<unknown> { return this.get(`/internal/inventory/${itemId}`); } updateItemStatus(itemId: string, status: string, ref?: { refType: string; refId: string }): Promise<unknown> { return this.put(`/internal/inventory/${itemId}/status`, { status, ...ref }); } }

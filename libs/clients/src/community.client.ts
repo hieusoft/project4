@@ -1,0 +1,2 @@
+import { HttpClientBase, ServiceClientOptions } from './http-client.base';
+export class CommunityClient extends HttpClientBase { constructor(options: ServiceClientOptions) { super(options); } verifyMembership(userId: string, groupId: string): Promise<{ approved: boolean }> { return this.get(`/internal/groups/${groupId}/members/${userId}/verify`); } verifyRole(userId: string, groupId: string, roles: string[]): Promise<{ allowed: boolean }> { return this.post(`/internal/groups/${groupId}/roles/verify`, { userId, roles }); } }

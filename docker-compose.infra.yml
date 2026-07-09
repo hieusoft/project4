@@ -1,0 +1,31 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: charity-postgres
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-charity}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-charity}
+      POSTGRES_DB: ${POSTGRES_DB:-charity_root}
+    ports: ["${POSTGRES_PORT:-5432}:5432"]
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-charity} -d $${POSTGRES_DB:-charity_root}"], interval: 10s, timeout: 5s, retries: 5 }
+  redis:
+    image: redis:7-alpine
+    container_name: charity-redis
+    ports: ["${REDIS_PORT:-6379}:6379"]
+    healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 10s, timeout: 5s, retries: 5 }
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: charity-rabbitmq
+    env_file: .env
+    environment:
+      RABBITMQ_LOAD_DEFINITIONS: /etc/rabbitmq/definitions.json
+    ports: ["${RABBITMQ_PORT:-5672}:5672", "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"]
+    volumes:
+      - ./infra/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+    healthcheck: { test: ["CMD", "rabbitmq-diagnostics", "ping"], interval: 10s, timeout: 5s, retries: 5 }
+volumes:
+  postgres_data:

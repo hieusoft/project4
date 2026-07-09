@@ -1,0 +1,17 @@
+node_modules
+dist
+.next
+.env
+.env.*
+!.env.example
+coverage
+.DS_Store
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+docker-data
+.venv
+venv
+__pycache__
+*.pyc

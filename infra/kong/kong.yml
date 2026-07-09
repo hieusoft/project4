@@ -1,0 +1,53 @@
+_format_version: "3.0"
+_transform: true
+
+services:
+  - name: identity-service
+    url: http://identity-service:3001
+    routes:
+      - name: identity-route
+        paths:
+          - /api/identity
+        strip_path: true
+  - name: community-service
+    url: http://community-service:3002
+    routes:
+      - name: community-route
+        paths:
+          - /api/community
+        strip_path: true
+  - name: donation-service
+    url: http://donation-service:3003
+    routes:
+      - name: donation-route
+        paths:
+          - /api/donation
+        strip_path: true
+  - name: marketplace-service
+    url: http://marketplace-service:3004
+    routes:
+      - name: marketplace-route
+        paths:
+          - /api/marketplace
+        strip_path: true
+  - name: communication-service
+    url: http://communication-service:3005
+    routes:
+      - name: communication-route
+        paths:
+          - /api/communication
+        strip_path: true
+  - name: media-service
+    url: http://media-service:3006
+    routes:
+      - name: media-route
+        paths:
+          - /api/media
+        strip_path: true
+  - name: ai-service
+    url: http://ai-service:3007
+    routes:
+      - name: ai-route
+        paths:
+          - /api/ai
+        strip_path: true

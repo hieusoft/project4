@@ -1,0 +1,13 @@
+{
+  "exchanges": [{ "name": "charity.events", "vhost": "/", "type": "topic", "durable": true, "auto_delete": false, "internal": false, "arguments": {} }],
+  "queues": [
+    { "name": "communication.events", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {} },
+    { "name": "analytics.events", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {} },
+    { "name": "ai.moderation", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {} }
+  ],
+  "bindings": [
+    { "source": "charity.events", "vhost": "/", "destination": "communication.events", "destination_type": "queue", "routing_key": "#", "arguments": {} },
+    { "source": "charity.events", "vhost": "/", "destination": "analytics.events", "destination_type": "queue", "routing_key": "*.completed", "arguments": {} },
+    { "source": "charity.events", "vhost": "/", "destination": "ai.moderation", "destination_type": "queue", "routing_key": "*.created", "arguments": {} }
+  ]
+}
