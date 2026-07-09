@@ -58,6 +58,10 @@ services:
       timeout: 5s
       retries: 5
 
+  docs-portal:
+    image: ${IMAGE_REGISTRY}/docs-portal:${IMAGE_TAG:-latest}
+    <<: *app-env
+
   kong:
     image: kong:3.8
     <<: *app-env
@@ -75,6 +79,7 @@ services:
     volumes:
       - ./infra/kong/kong.yml:/kong/declarative/kong.yml:ro
     depends_on:
+      - docs-portal
       - identity-service
       - community-service
       - communication-service

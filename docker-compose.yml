@@ -21,6 +21,10 @@ services:
     ports: ["${RABBITMQ_PORT:-5672}:5672", "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"]
     volumes:
       - ./infra/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+  docs-portal:
+    build:
+      context: ./infra/docs-portal
+    # Swagger UI multi-spec hub (proxied by Kong at /docs)
   kong:
     image: kong:3.8
     environment:
@@ -35,6 +39,7 @@ services:
     volumes:
       - ./infra/kong/kong.yml:/kong/declarative/kong.yml:ro
     depends_on:
+      - docs-portal
       - identity-service
       - community-service
       - communication-service

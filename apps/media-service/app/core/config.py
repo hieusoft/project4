@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     node_env: str = "development"
     port: int = 3006
     service_name: str = "media-service"
+    # Public URL prefix when behind Kong (Try it out + hub). Empty = relative to host.
+    openapi_server_url: str = "/api/media"
 
     # Auth (shared with identity-service — same secret/issuer signs the JWT)
     jwt_secret: str = "change-me"

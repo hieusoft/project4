@@ -34,6 +34,8 @@ class Settings(BaseSettings):
     node_env: str = "development"
     port: int = 3001
     service_name: str = "identity-service"
+    # Public URL prefix when behind Kong (Try it out + hub). Empty = relative to host.
+    openapi_server_url: str = "/api/identity"
 
     # Auth / tokens
     jwt_secret: str = "change-me"

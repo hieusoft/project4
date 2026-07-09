@@ -173,7 +173,7 @@ PostgreSQL · Redis · RabbitMQ
 ```text
 apps/          identity, media, community, communication, ai
 libs/          common, events, clients (TypeScript)
-infra/         kong, postgres init, rabbitmq
+infra/         kong, docs-portal, postgres init, rabbitmq
 scripts/       server-setup.sh, deploy.sh
 docs/
 docker-compose.yml
@@ -191,6 +191,7 @@ docker-compose.prod.yml
 | community-service | 3002 | NestJS | Scaffold |
 | communication-service | 3005 | NestJS | Một phần |
 | ai-service | 3007 | NestJS | Scaffold |
+| docs-portal | 8080 (internal) | nginx + Swagger UI | Hub multi-spec tại `/docs` |
 | donation / marketplace | 3003 / 3004 | — | Chưa có code |
 
 ---
@@ -211,9 +212,12 @@ curl http://localhost:8000/api/identity/health
 | URL | Mô tả |
 |---|---|
 | http://localhost:8000/api | Kong |
+| http://localhost:8000/docs | **Swagger hub** (tất cả service) |
+| http://localhost:8000/api/identity/openapi.json | OpenAPI Identity |
+| http://localhost:8000/api/media/openapi.json | OpenAPI Media |
 | http://localhost:15672 | RabbitMQ UI |
-| http://localhost:3001/docs | Swagger identity |
-| http://localhost:3006/docs | Swagger media |
+| http://localhost:3001/docs | Swagger identity (direct) |
+| http://localhost:3006/docs | Swagger media (direct) |
 
 Identity (Python) riêng:
 
@@ -231,7 +235,7 @@ uvicorn app.main:app --reload --port 3001
 
 ```text
 Push main
-  → Build 5 image
+  → Build 6 image (5 apps + docs-portal)
   → Push ghcr.io/hieusoft/project4/<service>:<sha>
   → SSH server → compose pull && up -d
 ```

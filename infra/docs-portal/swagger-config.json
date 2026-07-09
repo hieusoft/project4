@@ -1,0 +1,17 @@
+{
+  "urls": [
+    { "url": "/api/identity/openapi.json", "name": "Identity" },
+    { "url": "/api/community/openapi.json", "name": "Community" },
+    { "url": "/api/communication/openapi.json", "name": "Communication" },
+    { "url": "/api/media/openapi.json", "name": "Media" },
+    { "url": "/api/ai/openapi.json", "name": "AI" }
+  ],
+  "urls.primaryName": "Identity",
+  "dom_id": "#swagger-ui",
+  "deepLinking": true,
+  "persistAuthorization": true,
+  "displayRequestDuration": true,
+  "filter": true,
+  "tryItOutEnabled": true,
+  "validatorUrl": null
+}

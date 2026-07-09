@@ -30,19 +30,28 @@ jobs:
         include:
           - service: identity-service
             dockerfile: apps/identity-service/Dockerfile
+            context: .
             build_args: ""
           - service: media-service
             dockerfile: apps/media-service/Dockerfile
+            context: .
             build_args: ""
           - service: community-service
             dockerfile: Dockerfile
+            context: .
             build_args: SERVICE_PATH=apps/community-service
           - service: communication-service
             dockerfile: Dockerfile
+            context: .
             build_args: SERVICE_PATH=apps/communication-service
           - service: ai-service
             dockerfile: Dockerfile
+            context: .
             build_args: SERVICE_PATH=apps/ai-service
+          - service: docs-portal
+            dockerfile: infra/docs-portal/Dockerfile
+            context: infra/docs-portal
+            build_args: ""
 
     steps:
       - name: Checkout
@@ -54,7 +63,7 @@ jobs:
       - name: Build image (no push)
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
           push: false
           tags: ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:ci

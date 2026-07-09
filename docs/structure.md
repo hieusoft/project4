@@ -10,11 +10,17 @@ charity-platform/
 ├── infra/
 │   ├── kong/
 │   │   └── kong.yml                    # declarative config: routes, jwt, cors, rate-limit
+│   ├── docs-portal/                    # Swagger UI hub multi-spec → Kong /docs
+│   │   ├── Dockerfile
+│   │   ├── nginx.conf
+│   │   ├── index.html
+│   │   └── swagger-config.json         # danh sách openapi.json từng service
 │   ├── postgres/
 │   │   └── init/
 │   │       └── 01-create-databases.sql # tạo database cho các service
 │   └── rabbitmq/
 │       └── definitions.json            # khai báo sẵn exchanges, queues
+
 │
 ├── libs/
 │   ├── tsconfig.base.json              # cấu hình TypeScript dùng chung cho libs/apps JS/TS

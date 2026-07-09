@@ -2,6 +2,15 @@ _format_version: "3.0"
 _transform: true
 
 services:
+  # Swagger UI hub (multi-spec). UI loads openapi.json from each service via Kong.
+  - name: docs-portal
+    url: http://docs-portal:8080
+    routes:
+      - name: docs-route
+        paths:
+          - /docs
+        strip_path: true
+
   - name: identity-service
     url: http://identity-service:3001
     routes:

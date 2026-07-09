@@ -49,11 +49,18 @@ async def lifespan(_app: FastAPI):
     logger.info("%s stopped", settings.service_name)
 
 
+_openapi_servers = (
+    [{"url": settings.openapi_server_url, "description": "Kong gateway"}]
+    if settings.openapi_server_url
+    else None
+)
+
 app = FastAPI(
     title="media-service",
     version="0.1.0",
     docs_url="/docs",
     openapi_url="/openapi.json",
+    servers=_openapi_servers,
     lifespan=lifespan,
 )
 
