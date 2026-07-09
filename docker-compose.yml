@@ -64,9 +64,9 @@ services:
   communication-service:
     build:
       context: .
-      args: { SERVICE_PATH: apps/communication-service }
+      dockerfile: apps/communication-service/Dockerfile
     env_file: .env
-    environment: { NODE_ENV: production, PORT: "${COMMUNICATION_SERVICE_PORT:-3005}" }
+    environment: { PORT: "${COMMUNICATION_SERVICE_PORT:-3005}" }
     ports: ["${COMMUNICATION_SERVICE_PORT:-3005}:${COMMUNICATION_SERVICE_PORT:-3005}"]
     depends_on: [postgres, redis, rabbitmq]
   media-service:

@@ -162,8 +162,8 @@ PostgreSQL · Redis · RabbitMQ
 | Thành phần | Công nghệ |
 |---|---|
 | Gateway | Kong |
-| Identity, Media | Python / FastAPI |
-| Community, Communication, AI | Node.js / NestJS |
+| Identity, Media, Communication | Python / FastAPI |
+| Community, AI | Node.js / NestJS |
 | DB / Cache / MQ | PostgreSQL 16, Redis 7, RabbitMQ |
 | Storage | Cloudflare R2 |
 | CI/CD | GitHub Actions → GHCR → SSH + Compose |
@@ -189,7 +189,7 @@ docker-compose.prod.yml
 | identity-service | 3001 | FastAPI | Có nghiệp vụ |
 | media-service | 3006 | FastAPI | Có nghiệp vụ |
 | community-service | 3002 | NestJS | Scaffold |
-| communication-service | 3005 | NestJS | Một phần |
+| communication-service | 3005 | FastAPI (Python) | Brevo email, FCM, Socket.IO chat, notifications |
 | ai-service | 3007 | NestJS | Scaffold |
 | docs-portal | 8080 (internal) | nginx + Swagger UI | Hub multi-spec tại `/docs` |
 | donation / marketplace | 3003 / 3004 | — | Chưa có code |
@@ -217,6 +217,7 @@ curl http://localhost:8000/api/identity/health
 | http://localhost:8000/api/media/openapi.json | OpenAPI Media |
 | http://localhost:15672 | RabbitMQ UI |
 | http://localhost:3001/docs | Swagger identity (direct) |
+| http://localhost:3005/docs | Swagger communication (direct) |
 | http://localhost:3006/docs | Swagger media (direct) |
 
 Identity (Python) riêng:
@@ -256,6 +257,7 @@ Push main
 | [docs/flows.md](docs/flows.md) | Luồng nghiệp vụ |
 | [docs/database.md](docs/database.md) | Schema DB |
 | [docs/structure.md](docs/structure.md) | Cấu trúc thư mục |
+| [docs/communication.md](docs/communication.md) | Chat Socket.IO, FCM, Brevo email |
 
 ---
 

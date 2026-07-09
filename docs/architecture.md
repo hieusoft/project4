@@ -62,7 +62,7 @@ Web / Mobile App
 │ Donation      │ Quyên góp, kiểm tra, kho, hành trình │
 │ Marketplace   │ Gian hàng, yêu cầu nhận, trao tặng,  │
 │               │ thống kê                             │
-│ Communication │ Chat (WebSocket), notification       │
+│ Communication │ Chat (Socket.IO), FCM, email (Brevo) │
 │ Media         │ Upload ảnh lên Cloudflare R2         │
 │ AI            │ Tích hợp LLM                         │
 └──────────────────────────────────────────────────────┘
@@ -82,9 +82,11 @@ PostgreSQL (db-per-service) · Redis · RabbitMQ
 | Database | PostgreSQL 16 (mỗi service 1 database) |
 | Cache / Presence | Redis 7 |
 | Message Broker | RabbitMQ |
-| Realtime | Socket.IO (WebSocket) |
+| Realtime | Socket.IO (python-socketio, communication-service) |
 | Lưu trữ file | Cloudflare R2 (S3-compatible, presigned URL) |
-| Push notification | Firebase Cloud Messaging |
+| Email | Brevo transactional API (communication-service) |
+| Push notification | Firebase FCM (communication-service) |
+| Identity / Media / Communication | Python FastAPI |
 | AI | LLM API (vision + text) |
 | Triển khai | Docker Compose, GitLab CI/CD |
 

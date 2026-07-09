@@ -60,9 +60,9 @@ jobs:
             context: .
             build_args: SERVICE_PATH=apps/community-service
           - service: communication-service
-            dockerfile: Dockerfile
+            dockerfile: apps/communication-service/Dockerfile
             context: .
-            build_args: SERVICE_PATH=apps/communication-service
+            build_args: ""
           - service: ai-service
             dockerfile: Dockerfile
             context: .

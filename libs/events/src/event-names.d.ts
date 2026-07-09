@@ -1,0 +1,28 @@
+export declare const EventNames: {
+    readonly UserRegistered: "user.registered";
+    readonly UserVerified: "user.verified";
+    readonly EmailVerificationRequested: "email.verification_requested";
+    readonly EmailVerified: "email.verified";
+    readonly PasswordResetRequested: "password.reset_requested";
+    readonly PasswordResetCompleted: "password.reset_completed";
+    readonly GroupCreated: "group.created";
+    readonly GroupApproved: "group.approved";
+    readonly GroupJoinRequested: "group.join_requested";
+    readonly GroupMemberApproved: "group.member_approved";
+    readonly DonationCreated: "donation.created";
+    readonly DonationReviewed: "donation.reviewed";
+    readonly DonationScheduled: "donation.scheduled";
+    readonly DonationCompleted: "donation.completed";
+    readonly InventoryImported: "inventory.imported";
+    readonly ItemStatusChanged: "inventory.item_status_changed";
+    readonly ListingCreated: "listing.created";
+    readonly RequestCreated: "request.created";
+    readonly RequestApproved: "request.approved";
+    readonly RequestScheduled: "request.scheduled";
+    readonly RequestCompleted: "request.completed";
+    readonly PostCreated: "post.created";
+    readonly RatingCreated: "rating.created";
+    readonly ReportCreated: "report.created";
+    readonly MessageSent: "message.sent";
+};
+export type EventName = (typeof EventNames)[keyof typeof EventNames];
