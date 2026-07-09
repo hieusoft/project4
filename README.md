@@ -110,7 +110,7 @@ Repo → **Settings → Secrets and variables → Actions**:
 | `GHCR_PULL_TOKEN` | PAT classic, chỉ tick **`read:packages`** |
 | `SSH_PORT` | `22` (tuỳ chọn) |
 
-Tạo Environment tên: **`production`**.
+Tạo Environment tênn: **`production`**.
 
 ### Bước 7 — Deploy
 
