@@ -3,37 +3,80 @@
   <head>
     <meta charset="UTF-8" />
     <title>Charity Platform API Docs</title>
-    <!-- Absolute /docs/* paths so assets work with or without trailing slash after Kong strip_path -->
     <link rel="stylesheet" href="/docs/swagger-ui.css" />
     <link rel="icon" type="image/png" href="/docs/favicon-32x32.png" sizes="32x32" />
     <link rel="icon" type="image/png" href="/docs/favicon-16x16.png" sizes="16x16" />
     <style>
       html { box-sizing: border-box; overflow-y: scroll; }
       *, *:before, *:after { box-sizing: inherit; }
-      body { margin: 0; background: #fafafa; }
-      .topbar { display: none; }
+      body { margin: 0; background: #fafafa; font-family: system-ui, sans-serif; }
+
+      /* Keep Swagger topbar (has "Select a definition" dropdown) — only hide logo noise */
+      .topbar .download-url-wrapper .select-label { color: #fff; }
+      .topbar-wrapper img { display: none; }
+      .topbar .download-url-wrapper input[type="text"] { display: none; }
+
       .hub-banner {
-        background: #1b1b1b;
-        color: #f5f5f5;
-        padding: 12px 24px;
-        font-family: system-ui, sans-serif;
-        font-size: 14px;
+        background: #111827;
+        color: #f3f4f6;
+        padding: 16px 24px 12px;
       }
-      .hub-banner strong { color: #7dd3fc; }
+      .hub-banner h1 {
+        margin: 0 0 6px;
+        font-size: 18px;
+        font-weight: 700;
+        color: #7dd3fc;
+      }
+      .hub-banner p {
+        margin: 0 0 12px;
+        font-size: 13px;
+        color: #9ca3af;
+      }
       .hub-banner code {
-        background: #333;
+        background: #1f2937;
         padding: 2px 6px;
         border-radius: 4px;
         font-size: 12px;
+        color: #e5e7eb;
+      }
+      .service-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .service-tabs button {
+        border: 1px solid #374151;
+        background: #1f2937;
+        color: #e5e7eb;
+        padding: 8px 14px;
+        border-radius: 999px;
+        cursor: pointer;
+        font-size: 13px;
+      }
+      .service-tabs button:hover {
+        border-color: #7dd3fc;
+        color: #7dd3fc;
+      }
+      .service-tabs button.active {
+        background: #0ea5e9;
+        border-color: #0ea5e9;
+        color: #0f172a;
+        font-weight: 600;
+      }
+      .service-tabs button.error {
+        border-color: #f87171;
+        color: #fca5a5;
       }
     </style>
   </head>
   <body>
     <div class="hub-banner">
-      <strong>Charity Platform</strong>
-      — API docs hub via Kong.
-      Select a service in the dropdown.
-      Specs: <code>/api/&lt;service&gt;/openapi.json</code>
+      <h1>Charity Platform — API Docs Hub</h1>
+      <p>
+        Chọn service bên dưới (hoặc dropdown “Select a definition” trên thanh Swagger).
+        Specs: <code>/api/&lt;service&gt;/openapi.json</code>
+      </p>
+      <div id="service-tabs" class="service-tabs" aria-label="Services"></div>
     </div>
     <div id="swagger-ui"></div>
     <script src="/docs/swagger-ui-bundle.js"></script>
@@ -42,19 +85,63 @@
       window.onload = async function () {
         const res = await fetch("/docs/swagger-config.json", { cache: "no-store" });
         const cfg = await res.json();
-        window.ui = SwaggerUIBundle({
-          urls: cfg.urls,
-          "urls.primaryName": cfg["urls.primaryName"],
-          dom_id: cfg.dom_id,
-          deepLinking: cfg.deepLinking,
-          persistAuthorization: cfg.persistAuthorization,
-          displayRequestDuration: cfg.displayRequestDuration,
-          filter: cfg.filter,
-          tryItOutEnabled: cfg.tryItOutEnabled,
-          validatorUrl: cfg.validatorUrl,
-          presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
-          layout: "StandaloneLayout",
-        });
+        const urls = cfg.urls || [];
+        const tabs = document.getElementById("service-tabs");
+        let ui = null;
+        let activeName = cfg["urls.primaryName"] || (urls[0] && urls[0].name);
+
+        function renderTabs() {
+          tabs.innerHTML = "";
+          urls.forEach(function (item) {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.textContent = item.name;
+            btn.dataset.name = item.name;
+            btn.dataset.url = item.url;
+            if (item.name === activeName) btn.classList.add("active");
+            btn.addEventListener("click", function () {
+              activeName = item.name;
+              renderTabs();
+              if (ui && typeof ui.specActions !== "undefined") {
+                ui.specActions.updateUrl(item.url);
+                ui.specActions.download(item.url);
+              } else {
+                mountSwagger(item.name);
+              }
+            });
+            // Probe spec availability
+            fetch(item.url, { method: "GET", cache: "no-store" })
+              .then(function (r) {
+                if (!r.ok) btn.classList.add("error");
+              })
+              .catch(function () {
+                btn.classList.add("error");
+              });
+            tabs.appendChild(btn);
+          });
+        }
+
+        function mountSwagger(primaryName) {
+          const el = document.getElementById("swagger-ui");
+          el.innerHTML = "";
+          ui = SwaggerUIBundle({
+            urls: urls,
+            "urls.primaryName": primaryName || activeName,
+            dom_id: "#swagger-ui",
+            deepLinking: true,
+            persistAuthorization: true,
+            displayRequestDuration: true,
+            filter: true,
+            tryItOutEnabled: true,
+            validatorUrl: null,
+            presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+            layout: "StandaloneLayout",
+          });
+          window.ui = ui;
+        }
+
+        renderTabs();
+        mountSwagger(activeName);
       };
     </script>
   </body>

@@ -1,9 +1,9 @@
 {
   "urls": [
     { "url": "/api/identity/openapi.json", "name": "Identity" },
-    { "url": "/api/community/openapi.json", "name": "Community" },
-    { "url": "/api/communication/openapi.json", "name": "Communication" },
     { "url": "/api/media/openapi.json", "name": "Media" },
+    { "url": "/api/communication/openapi.json", "name": "Communication" },
+    { "url": "/api/community/openapi.json", "name": "Community" },
     { "url": "/api/ai/openapi.json", "name": "AI" }
   ],
   "urls.primaryName": "Identity",
@@ -13,5 +13,7 @@
   "displayRequestDuration": true,
   "filter": true,
   "tryItOutEnabled": true,
-  "validatorUrl": null
+  "validatorUrl": null,
+  "notes": "Donation + Marketplace chưa có code — thêm vào đây khi service sẵn sàng"
 }
+
