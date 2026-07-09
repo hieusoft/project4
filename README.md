@@ -38,4 +38,4 @@ curl http://localhost:8000/api/identity/health
 - `docs/flows.md`
 - `docs/database.md`
 - `docs/structure.md`
-# PRO
+- `docs/deploy.md` — CI/CD & deploy production

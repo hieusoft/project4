@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+      - "!.github/**"
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository }}
+
+jobs:
+  build:
+    name: Build ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: identity-service
+            dockerfile: apps/identity-service/Dockerfile
+            build_args: ""
+          - service: media-service
+            dockerfile: apps/media-service/Dockerfile
+            build_args: ""
+          - service: community-service
+            dockerfile: Dockerfile
+            build_args: SERVICE_PATH=apps/community-service
+          - service: communication-service
+            dockerfile: Dockerfile
+            build_args: SERVICE_PATH=apps/communication-service
+          - service: ai-service
+            dockerfile: Dockerfile
+            build_args: SERVICE_PATH=apps/ai-service
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: false
+          tags: ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:ci
+          build-args: ${{ matrix.build_args }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}

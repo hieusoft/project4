@@ -37,8 +37,6 @@ services:
     depends_on:
       - identity-service
       - community-service
-      - donation-service
-      - marketplace-service
       - communication-service
       - media-service
       - ai-service
@@ -57,22 +55,6 @@ services:
     env_file: .env
     environment: { NODE_ENV: production, PORT: "${COMMUNITY_SERVICE_PORT:-3002}" }
     ports: ["${COMMUNITY_SERVICE_PORT:-3002}:${COMMUNITY_SERVICE_PORT:-3002}"]
-    depends_on: [postgres, redis, rabbitmq]
-  donation-service:
-    build:
-      context: .
-      args: { SERVICE_PATH: apps/donation-service }
-    env_file: .env
-    environment: { NODE_ENV: production, PORT: "${DONATION_SERVICE_PORT:-3003}" }
-    ports: ["${DONATION_SERVICE_PORT:-3003}:${DONATION_SERVICE_PORT:-3003}"]
-    depends_on: [postgres, redis, rabbitmq]
-  marketplace-service:
-    build:
-      context: .
-      args: { SERVICE_PATH: apps/marketplace-service }
-    env_file: .env
-    environment: { NODE_ENV: production, PORT: "${MARKETPLACE_SERVICE_PORT:-3004}" }
-    ports: ["${MARKETPLACE_SERVICE_PORT:-3004}:${MARKETPLACE_SERVICE_PORT:-3004}"]
     depends_on: [postgres, redis, rabbitmq]
   communication-service:
     build:
