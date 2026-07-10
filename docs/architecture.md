@@ -50,6 +50,8 @@ các file Docker, README và env; không chứa cấu hình package/build của 
 Các app/service trong `apps/*` có thể dùng Node.js/TypeScript, Next.js, Python hoặc
 stack chuyên biệt khác khi cần.
 
+> **Chi tiết mục đích + luồng từng service:** [docs/services/README.md](./services/README.md)
+
 ```
 Web / Mobile App
        │

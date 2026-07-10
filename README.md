@@ -251,13 +251,14 @@ Push main
 
 | File | Nội dung |
 |---|---|
+| **[docs/services/README.md](docs/services/README.md)** | **Mục đích + luồng chi tiết từng service** |
+| [docs/README.md](docs/README.md) | Mục lục toàn bộ docs |
 | [docs/server-setup-step-by-step.md](docs/server-setup-step-by-step.md) | Checklist setup server từng bước |
 | [docs/deploy.md](docs/deploy.md) | CI/CD, GHCR, secrets |
 | [docs/architecture.md](docs/architecture.md) | Bài toán, vai trò |
-| [docs/flows.md](docs/flows.md) | Luồng nghiệp vụ |
+| [docs/flows.md](docs/flows.md) | Sequence diagram cross-service |
 | [docs/database.md](docs/database.md) | Schema DB |
 | [docs/structure.md](docs/structure.md) | Cấu trúc thư mục |
-| [docs/communication.md](docs/communication.md) | Chat Socket.IO, FCM, Brevo email |
 
 ---
 

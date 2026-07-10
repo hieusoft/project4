@@ -1,3 +1,8 @@
+# Luồng nghiệp vụ cross-service
+
+> **Mục đích từng service + API chi tiết:** xem [services/README.md](./services/README.md).  
+> File này tập trung **sequence diagram** xuyên nhiều service.
+
 #### Luồng 1: Tạo tài khoản pending, xác thực email, đăng nhập
 
 ```mermaid

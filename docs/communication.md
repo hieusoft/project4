@@ -1,5 +1,8 @@
 # Communication Service (Python / FastAPI)
 
+> Tài liệu đầy đủ (mục đích, API, luồng, events):  
+> **[services/communication.md](./services/communication.md)**
+
 Service chịu **email (Brevo)**, **push (Firebase FCM)** và **chat realtime (Socket.IO)**.
 
 | | |
