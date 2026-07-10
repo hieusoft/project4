@@ -7,6 +7,7 @@ import httpx
 
 from app.core.config import settings
 from app.services.email_templates import (
+    render_password_changed_email,
     render_password_reset_email,
     render_verification_email,
     render_verification_success_email,
@@ -79,6 +80,17 @@ async def send_password_reset_email(
     subject, html, text = render_password_reset_email(
         code=code,
         expires_at=expires_at,
+        recipient_email=email,
+        brand_name=settings.brevo_sender_name or "Charity Platform",
+    )
+    await send_email(to=email, subject=subject, html=html, text=text)
+
+
+async def send_password_changed_email(*, email: str) -> None:
+    """Security notice after password was reset/changed successfully."""
+    login_url = f"{settings.frontend_base}/login"
+    subject, html, text = render_password_changed_email(
+        login_url=login_url,
         recipient_email=email,
         brand_name=settings.brevo_sender_name or "Charity Platform",
     )

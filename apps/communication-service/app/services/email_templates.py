@@ -314,3 +314,45 @@ def render_verification_success_email(
         f"Đăng nhập: {login_url}\n"
     )
     return subject, html, text
+
+
+def render_password_changed_email(
+    *,
+    login_url: str,
+    recipient_email: str | None = None,
+    brand_name: str = "Charity Platform",
+) -> tuple[str, str, str]:
+    """Notify user that their password was changed successfully (security notice)."""
+    subject = "Mật khẩu đã được thay đổi"
+    who = escape(recipient_email) if recipient_email else "bạn"
+
+    body = f"""\
+{_h1("Mật khẩu đã cập nhật")}
+{_p(
+    f"Xin chào{(' ' + who) if recipient_email else ''}, "
+    "mật khẩu tài khoản của bạn vừa được thay đổi thành công."
+)}
+{_p(
+    "Nếu bạn đã thực hiện thao tác này, không cần làm gì thêm. "
+    "Hãy đăng nhập bằng mật khẩu mới khi cần."
+)}
+{_btn(href=login_url, label="Đăng nhập")}
+{_p(
+    "Nếu <strong style=\"color:" + _INK + ';">bạn không đổi mật khẩu</strong>, '
+    "hãy đặt lại mật khẩu ngay và liên hệ hỗ trợ — có thể ai đó đang cố truy cập tài khoản của bạn.",
+    last=True,
+)}
+"""
+    html = _base(
+        title=subject,
+        preheader="Mật khẩu của bạn vừa được thay đổi thành công.",
+        body_html=body,
+        brand_name=brand_name,
+    )
+    text = (
+        f"{subject}\n\n"
+        "Mật khẩu tài khoản của bạn vừa được thay đổi thành công.\n"
+        f"Đăng nhập: {login_url}\n\n"
+        "Nếu bạn không thực hiện thao tác này, hãy đặt lại mật khẩu ngay.\n"
+    )
+    return subject, html, text

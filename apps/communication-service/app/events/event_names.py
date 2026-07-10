@@ -3,6 +3,7 @@
 EMAIL_VERIFICATION_REQUESTED = "email.verification_requested"
 EMAIL_VERIFIED = "email.verified"
 PASSWORD_RESET_REQUESTED = "password.reset_requested"
+PASSWORD_RESET_COMPLETED = "password.reset_completed"
 DONATION_CREATED = "donation.created"
 DONATION_REVIEWED = "donation.reviewed"
 DONATION_SCHEDULED = "donation.scheduled"

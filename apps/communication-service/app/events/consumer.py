@@ -150,6 +150,12 @@ class EventConsumer:
                 )
             return
 
+        if event_name == E.PASSWORD_RESET_COMPLETED:
+            email = _str(p, "email")
+            if email:
+                await email_service.send_password_changed_email(email=email)
+            return
+
         pool = get_pool()
         async with pool.acquire() as conn:
             async with conn.transaction():
