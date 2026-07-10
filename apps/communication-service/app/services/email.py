@@ -7,6 +7,7 @@ import httpx
 
 from app.core.config import settings
 from app.services.email_templates import (
+    render_password_reset_email,
     render_verification_email,
     render_verification_success_email,
 )
@@ -50,10 +51,10 @@ async def send_email(*, to: str, subject: str, html: str, text: str | None = Non
 
 
 async def send_verification_email(
-    *, email: str, verification_url: str, expires_at: str
+    *, email: str, code: str, expires_at: str
 ) -> None:
     subject, html, text = render_verification_email(
-        verification_url=verification_url,
+        code=code,
         expires_at=expires_at,
         recipient_email=email,
         brand_name=settings.brevo_sender_name or "Charity Platform",
@@ -73,17 +74,12 @@ async def send_verification_success_email(*, email: str) -> None:
 
 
 async def send_password_reset_email(
-    *, email: str, reset_url: str, expires_at: str
+    *, email: str, code: str, expires_at: str
 ) -> None:
-    # Minimal HTML for now; can reuse base layout later.
-    await send_email(
-        to=email,
-        subject="Đặt lại mật khẩu — Charity Platform",
-        html=(
-            f"<p>Xin chào,</p>"
-            f"<p>Đặt lại mật khẩu:</p>"
-            f'<p><a href="{reset_url}">{reset_url}</a></p>'
-            f"<p>Hết hạn: {expires_at}</p>"
-        ),
-        text=f"Đặt lại mật khẩu: {reset_url} (hết hạn {expires_at})",
+    subject, html, text = render_password_reset_email(
+        code=code,
+        expires_at=expires_at,
+        recipient_email=email,
+        brand_name=settings.brevo_sender_name or "Charity Platform",
     )
+    await send_email(to=email, subject=subject, html=html, text=text)

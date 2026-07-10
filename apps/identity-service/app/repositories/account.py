@@ -88,6 +88,36 @@ class AccountRepository:
             password_hash,
         )
 
+    async def reclaim_unverified(
+        self,
+        account_id: uuid.UUID,
+        *,
+        password_hash: str,
+        phone: str | None = None,
+    ) -> Account | None:
+        """Overwrite credentials on an unverified account (email-squatting reclaim).
+
+        Returns None if the row is no longer reclaimable (race: verified meanwhile).
+        """
+        record = await self._conn.fetchrow(
+            f"""
+            UPDATE accounts
+            SET password_hash = $2,
+                phone = COALESCE($3, phone),
+                status = 'unverified',
+                email_verified = false,
+                updated_at = now()
+            WHERE id = $1
+              AND status = 'unverified'
+              AND email_verified = false
+            RETURNING {_ACCOUNT_COLUMNS}
+            """,
+            account_id,
+            password_hash,
+            phone,
+        )
+        return _to_account(record)
+
     async def update_last_login(
         self, account_id: uuid.UUID, when: datetime
     ) -> None:

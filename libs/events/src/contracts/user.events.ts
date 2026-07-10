@@ -12,7 +12,8 @@ export interface UserVerifiedEvent {
 export interface EmailVerificationRequestedEvent {
   userId: string;
   email: string;
-  token: string;
+  /** 6-digit OTP shown in email; identity stores only the hash */
+  code: string;
   expiresAt: string;
 }
 
@@ -24,7 +25,8 @@ export interface EmailVerifiedEvent {
 export interface PasswordResetRequestedEvent {
   userId: string;
   email: string;
-  token: string;
+  /** 6-digit OTP shown in email; identity stores only the hash */
+  code: string;
   expiresAt: string;
 }
 

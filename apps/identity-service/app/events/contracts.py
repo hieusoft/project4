@@ -23,7 +23,7 @@ class UserVerifiedEvent(BaseModel):
 class EmailVerificationRequestedEvent(BaseModel):
     userId: str
     email: str
-    token: str
+    code: str  # 6-digit OTP (shown once in email; stored hashed in DB)
     expiresAt: str  # ISO-8601
 
 
@@ -35,7 +35,7 @@ class EmailVerifiedEvent(BaseModel):
 class PasswordResetRequestedEvent(BaseModel):
     userId: str
     email: str
-    token: str
+    code: str  # 6-digit OTP (shown once in email; stored hashed in DB)
     expiresAt: str  # ISO-8601
 
 

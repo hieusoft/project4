@@ -56,9 +56,9 @@ services:
   community-service:
     build:
       context: .
-      args: { SERVICE_PATH: apps/community-service }
+      dockerfile: apps/community-service/Dockerfile
     env_file: .env
-    environment: { NODE_ENV: production, PORT: "${COMMUNITY_SERVICE_PORT:-3002}" }
+    environment: { PORT: "${COMMUNITY_SERVICE_PORT:-3002}" }
     ports: ["${COMMUNITY_SERVICE_PORT:-3002}:${COMMUNITY_SERVICE_PORT:-3002}"]
     depends_on: [postgres, redis, rabbitmq]
   communication-service:

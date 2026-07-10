@@ -162,8 +162,8 @@ PostgreSQL · Redis · RabbitMQ
 | Thành phần | Công nghệ |
 |---|---|
 | Gateway | Kong |
-| Identity, Media, Communication | Python / FastAPI |
-| Community, AI | Node.js / NestJS |
+| Identity, Media, Communication, Community | Python / FastAPI |
+| AI | Node.js / NestJS (scaffold) |
 | DB / Cache / MQ | PostgreSQL 16, Redis 7, RabbitMQ |
 | Storage | Cloudflare R2 |
 | CI/CD | GitHub Actions → GHCR → SSH + Compose |
@@ -188,7 +188,7 @@ docker-compose.prod.yml
 |---|---|---|---|
 | identity-service | 3001 | FastAPI | Có nghiệp vụ |
 | media-service | 3006 | FastAPI | Có nghiệp vụ |
-| community-service | 3002 | NestJS | Scaffold |
+| community-service | 3002 | FastAPI | Groups, members, posts, comments |
 | communication-service | 3005 | FastAPI (Python) | Brevo email, FCM, Socket.IO chat, notifications |
 | ai-service | 3007 | NestJS | Scaffold |
 | docs-portal | 8080 (internal) | nginx + Swagger UI | Hub multi-spec tại `/docs` |

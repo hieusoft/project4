@@ -163,42 +163,59 @@ def _meta_row(label: str, value: str) -> str:
     )
 
 
-def render_verification_email(
-    *,
-    verification_url: str,
-    expires_at: str,
-    recipient_email: str | None = None,
-    brand_name: str = "Charity Platform",
-) -> tuple[str, str, str]:
-    subject = f"Xác minh email của bạn"
-    expiry_label = _format_expiry(expires_at)
-    email_line = escape(recipient_email) if recipient_email else ""
+def _otp_code_block(*, code: str, label: str) -> str:
+    safe_code = escape(code.strip())
+    safe_label = escape(label)
+    return f"""\
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:24px 0 8px 0;">
+  <tr>
+    <td align="center" style="background-color:{_ACCENT_SOFT};border:1px solid {_LINE};border-radius:4px;padding:20px 16px;">
+      <p style="margin:0 0 8px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:{_SOFT};">
+        {safe_label}
+      </p>
+      <p style="margin:0;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:32px;font-weight:600;letter-spacing:0.28em;color:{_INK};">
+        {safe_code}
+      </p>
+    </td>
+  </tr>
+</table>
+"""
 
+
+def _meta_block(*, recipient_email: str | None, expires_at: str) -> tuple[str, str]:
+    expiry_label = _format_expiry(expires_at)
     meta_rows = ""
-    if email_line:
-        meta_rows += _meta_row("Email", recipient_email or "")
+    if recipient_email:
+        meta_rows += _meta_row("Email", recipient_email)
     if expiry_label:
         meta_rows += _meta_row("Hết hạn", expiry_label)
-
-    meta_block = ""
-    if meta_rows:
-        meta_block = f"""\
+    if not meta_rows:
+        return "", expiry_label
+    block = f"""\
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"
        style="margin:24px 0 8px 0;border-top:1px solid {_LINE};border-bottom:1px solid {_LINE};">
   {meta_rows}
 </table>
 """
+    return block, expiry_label
 
+
+def render_verification_email(
+    *,
+    code: str,
+    expires_at: str,
+    recipient_email: str | None = None,
+    brand_name: str = "Charity Platform",
+) -> tuple[str, str, str]:
+    subject = "Mã xác minh email của bạn"
+    meta_block, expiry_label = _meta_block(
+        recipient_email=recipient_email, expires_at=expires_at
+    )
     body = f"""\
 {_h1("Xác minh địa chỉ email")}
-{_p("Cảm ơn bạn đã đăng ký. Một bước nữa để kích hoạt tài khoản và sử dụng nền tảng quyên góp.")}
-{_btn(href=verification_url, label="Xác minh email")}
-{_p(
-    f'Nếu nút không hoạt động, mở liên kết này:<br/>'
-    f'<a href="{escape(verification_url, quote=True)}" '
-    f'style="color:{_ACCENT};text-decoration:underline;word-break:break-all;font-size:13px;">'
-    f"{escape(verification_url)}</a>",
-)}
+{_p("Cảm ơn bạn đã đăng ký. Nhập mã 6 số dưới đây trong ứng dụng để kích hoạt tài khoản.")}
+{_otp_code_block(code=code, label="Mã xác minh")}
+{_p("Mã chỉ dùng một lần. Không chia sẻ mã với người khác.")}
 {meta_block}
 {_p(
     "Nếu bạn không tạo tài khoản, hãy bỏ qua email này.",
@@ -207,15 +224,54 @@ def render_verification_email(
 """
     html = _base(
         title=subject,
-        preheader="Một bước nữa để kích hoạt tài khoản của bạn.",
+        preheader=f"Mã xác minh của bạn: {code.strip()}",
         body_html=body,
         brand_name=brand_name,
     )
     text = (
         f"{subject}\n\n"
-        f"Xác minh email: {verification_url}\n"
+        f"Mã xác minh: {code.strip()}\n"
         f"Hết hạn: {expiry_label or expires_at}\n\n"
+        "Nhập mã trong ứng dụng để kích hoạt tài khoản.\n"
         "Nếu bạn không đăng ký, hãy bỏ qua email này."
+    )
+    return subject, html, text
+
+
+def render_password_reset_email(
+    *,
+    code: str,
+    expires_at: str,
+    recipient_email: str | None = None,
+    brand_name: str = "Charity Platform",
+) -> tuple[str, str, str]:
+    subject = "Mã đặt lại mật khẩu"
+    meta_block, expiry_label = _meta_block(
+        recipient_email=recipient_email, expires_at=expires_at
+    )
+    body = f"""\
+{_h1("Đặt lại mật khẩu")}
+{_p("Chúng tôi nhận được yêu cầu đặt lại mật khẩu. Nhập mã 6 số dưới đây trong ứng dụng để tiếp tục.")}
+{_otp_code_block(code=code, label="Mã đặt lại")}
+{_p("Mã chỉ dùng một lần. Không chia sẻ mã với người khác.")}
+{meta_block}
+{_p(
+    "Nếu bạn không yêu cầu đặt lại mật khẩu, hãy bỏ qua email này. Mật khẩu hiện tại vẫn giữ nguyên.",
+    last=True,
+)}
+"""
+    html = _base(
+        title=subject,
+        preheader=f"Mã đặt lại mật khẩu: {code.strip()}",
+        body_html=body,
+        brand_name=brand_name,
+    )
+    text = (
+        f"{subject}\n\n"
+        f"Mã đặt lại mật khẩu: {code.strip()}\n"
+        f"Hết hạn: {expiry_label or expires_at}\n\n"
+        "Nhập mã trong ứng dụng để đặt mật khẩu mới.\n"
+        "Nếu bạn không yêu cầu, hãy bỏ qua email này."
     )
     return subject, html, text
 

@@ -56,9 +56,9 @@ jobs:
             context: .
             build_args: ""
           - service: community-service
-            dockerfile: Dockerfile
+            dockerfile: apps/community-service/Dockerfile
             context: .
-            build_args: SERVICE_PATH=apps/community-service
+            build_args: ""
           - service: communication-service
             dockerfile: apps/communication-service/Dockerfile
             context: .

@@ -43,6 +43,8 @@ class Settings(BaseSettings):
     access_token_ttl: str = "15m"
     refresh_token_ttl: str = "7d"
     two_factor_challenge_ttl: str = "5m"
+    # After OTP is checked, client may set password until this session JWT expires.
+    password_reset_session_ttl: str = "10m"
     totp_issuer: str = "charity-auth"
     email_verification_expiry_hours: int = 24
     password_reset_expiry_hours: int = 1
@@ -80,6 +82,10 @@ class Settings(BaseSettings):
     @property
     def two_factor_challenge_ttl_seconds(self) -> int:
         return parse_duration_seconds(self.two_factor_challenge_ttl, default_unit="m")
+
+    @property
+    def password_reset_session_ttl_seconds(self) -> int:
+        return parse_duration_seconds(self.password_reset_session_ttl, default_unit="m")
 
 
 settings = Settings()

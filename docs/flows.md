@@ -8,14 +8,14 @@ sequenceDiagram
     participant COM as Communication
     C->>K: POST /api/identity/auth/register (public)
     K->>ID: forward
-    ID->>ID: INSERT accounts(status=unverified,email_verified=false)<br/>account_roles(role=USER) + verification token hash
-    ID-->>COM: ⇢ email.verification_requested {user_id,email,token,expires_at}
-    COM->>COM: gửi email verify link
+    ID->>ID: INSERT accounts(status=unverified,email_verified=false)<br/>account_roles(role=USER) + OTP 6 số (hash)
+    ID-->>COM: ⇢ email.verification_requested {userId,email,code,expiresAt}
+    COM->>COM: gửi email mã xác minh 6 số
     Note over ID,COM: Chưa coi là đăng ký thành công cho đến khi email được xác minh
-    C->>K: POST /api/identity/auth/verify-email {token}
+    C->>K: POST /api/identity/auth/verify-email {email, code}
     K->>ID: forward
-    ID->>ID: check token hash + expires → accounts.status=active,email_verified=true<br/>INSERT user_profiles nếu chưa có
-    ID-->>COM: ⇢ user.registered + email.verified
+    ID->>ID: check code hash + expires (+ attempts) → accounts.status=active,email_verified=true
+    ID-->>COM: ⇢ email.verified + user.verified
     C->>K: POST /api/identity/auth/login
     ID->>ID: verify password → INSERT refresh_tokens
     ID-->>C: access_token (iss=charity-auth, 15p) + refresh_token (7d)
@@ -23,7 +23,11 @@ sequenceDiagram
 ```
 
 - **Refresh**: `POST /api/identity/auth/refresh` → verify hash trong `refresh_tokens`, rotate (revoke cũ, cấp mới)
-- **Quên mật khẩu**: `forgot-password` → publish `password.reset_requested` để Communication gửi link reset; `reset-password` nhận token link.
+- **Quên mật khẩu (3 bước)**:
+  1. `POST /auth/forgot-password {email}` → OTP 6 số + email
+  2. `POST /auth/verify-reset-code {email, code}` → `{reset_token, expires_in}` (session ~10m)
+  3. `POST /auth/reset-password {reset_token, new_password}` (hoặc one-shot `{email, code, new_password}`)
+- **Đăng ký trùng email/phone unverified (reclaim)**: nếu account đã tồn tại nhưng **chưa verify**, `POST /register` **ghi đè** password + `full_name` (và phone nếu gửi), phát OTP mới — **không** 409, **không** cần TTL 24h. Email/phone đã verify vẫn **409**.
 - **Role lưu ý**: Identity chỉ quản lý role toàn hệ thống (`USER`, `PLATFORM_ADMIN`). Role trong nhóm như `owner/moderator/member` thuộc Community `group_members` và được kiểm tra theo từng group.
 
 #### Luồng 2: Tạo nhóm, xin tham gia, duyệt thành viên

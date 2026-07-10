@@ -135,7 +135,7 @@ const socket = io("http://localhost:3005", {
 
 | Event | Hành vi |
 |---|---|
-| `email.verification_requested` | Brevo verify link |
+| `email.verification_requested` | Brevo mã OTP 6 số (`code`) |
 | `password.reset_requested` | Brevo reset link |
 | `donation.created` | Conversation `donor_group` + notify `notifyUserIds` |
 | `donation.reviewed` / `scheduled` / `completed` | Notify (+ reminder) |

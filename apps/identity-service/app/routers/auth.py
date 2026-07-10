@@ -15,6 +15,8 @@ from app.schemas.auth import (
     ResetPasswordRequest,
     TwoFactorLoginRequest,
     VerifyEmailRequest,
+    VerifyResetCodeRequest,
+    VerifyResetCodeResponse,
 )
 from app.schemas.common import DataEnvelope, MessageResponse
 from app.schemas.token import TokenPair, TwoFactorChallenge
@@ -45,7 +47,7 @@ async def register(body: RegisterRequest, service: AuthServiceDep):
 
 @router.post("/verify-email", response_model=DataEnvelope[MessageResponse])
 async def verify_email(body: VerifyEmailRequest, service: AuthServiceDep):
-    await service.verify_email(body.token)
+    await service.verify_email(email=body.email, code=body.code)
     return DataEnvelope(data=MessageResponse(message="Email verified"))
 
 
@@ -56,7 +58,7 @@ async def resend_verification(
     await service.resend_verification(body.email)
     # Always 200 to avoid leaking whether the email exists.
     return DataEnvelope(
-        data=MessageResponse(message="If the email exists, a verification link was sent")
+        data=MessageResponse(message="If the email exists, a verification code was sent")
     )
 
 
@@ -93,13 +95,27 @@ async def logout(body: LogoutRequest, service: AuthServiceDep):
 
 @router.post("/forgot-password", response_model=DataEnvelope[MessageResponse])
 async def forgot_password(body: ForgotPasswordRequest, service: AuthServiceDep):
+    """Step 1 — send 6-digit code to email (always 200)."""
     await service.forgot_password(body.email)
     return DataEnvelope(
-        data=MessageResponse(message="If the email exists, a reset link was sent")
+        data=MessageResponse(message="If the email exists, a reset code was sent")
     )
+
+
+@router.post(
+    "/verify-reset-code",
+    response_model=DataEnvelope[VerifyResetCodeResponse],
+)
+async def verify_reset_code(
+    body: VerifyResetCodeRequest, service: AuthServiceDep
+):
+    """Step 2 — check OTP, return short-lived reset_token for password form."""
+    result = await service.verify_reset_code(email=body.email, code=body.code)
+    return DataEnvelope(data=result)
 
 
 @router.post("/reset-password", response_model=DataEnvelope[MessageResponse])
 async def reset_password(body: ResetPasswordRequest, service: AuthServiceDep):
+    """Step 3 — set new password (prefer reset_token from step 2)."""
     await service.reset_password(body)
     return DataEnvelope(data=MessageResponse(message="Password reset successful"))

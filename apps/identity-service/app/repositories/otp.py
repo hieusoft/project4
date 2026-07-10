@@ -52,6 +52,31 @@ class OtpRepository:
         )
         return OtpCode.model_validate(dict(record)) if record is not None else None
 
+    async def get_active_for_account(
+        self, account_id: uuid.UUID, purpose: OtpPurpose
+    ) -> OtpCode | None:
+        """Latest unused OTP for this account+purpose (email OTP is looked up by email)."""
+        record = await self._conn.fetchrow(
+            f"""
+            SELECT {_COLUMNS} FROM otp_codes
+            WHERE account_id = $1 AND purpose = $2 AND used_at IS NULL
+            ORDER BY created_at DESC
+            LIMIT 1
+            """,
+            account_id,
+            purpose.value,
+        )
+        return OtpCode.model_validate(dict(record)) if record is not None else None
+
+    async def bump_attempts(self, otp_id: uuid.UUID) -> None:
+        await self._conn.execute(
+            """
+            UPDATE otp_codes SET attempts = attempts + 1
+            WHERE id = $1 AND used_at IS NULL
+            """,
+            otp_id,
+        )
+
     async def mark_used(self, otp_id: uuid.UUID) -> None:
         await self._conn.execute(
             "UPDATE otp_codes SET used_at = now() WHERE id = $1 AND used_at IS NULL",

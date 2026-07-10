@@ -18,7 +18,10 @@ class RegisterRequest(BaseModel):
 
 
 class VerifyEmailRequest(BaseModel):
-    token: str = Field(min_length=1)
+    """Email + 6-digit OTP from verification email (no magic-link token)."""
+
+    email: EmailStr
+    code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
 
 
 class ResendVerificationRequest(BaseModel):
@@ -57,6 +60,37 @@ class ForgotPasswordRequest(BaseModel):
     email: EmailStr
 
 
+class VerifyResetCodeRequest(BaseModel):
+    """Step 2: check OTP before showing the new-password form."""
+
+    email: EmailStr
+    code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+
+
+class VerifyResetCodeResponse(BaseModel):
+    """Client stores reset_token and sends it with the new password."""
+
+    reset_token: str
+    expires_in: int  # seconds
+    token_type: str = "Bearer"
+
+
 class ResetPasswordRequest(BaseModel):
-    token: str = Field(min_length=1)
+    """Step 3: set new password after OTP was checked.
+
+    Prefer ``reset_token`` from ``/verify-reset-code``.
+    One-shot ``email`` + ``code`` + ``new_password`` still accepted.
+    """
+
     new_password: str = Field(min_length=8, max_length=128)
+    reset_token: str | None = Field(default=None, min_length=1)
+    email: EmailStr | None = None
+    code: str | None = Field(default=None, min_length=6, max_length=6, pattern=r"^\d{6}$")
+
+    @model_validator(mode="after")
+    def _token_or_code(self) -> "ResetPasswordRequest":
+        if self.reset_token:
+            return self
+        if self.email and self.code:
+            return self
+        raise ValueError("Provide reset_token, or email + code")

@@ -123,12 +123,12 @@ class EventConsumer:
     async def _dispatch(self, event_name: str, p: dict[str, Any]) -> None:
         if event_name == E.EMAIL_VERIFICATION_REQUESTED:
             email = _str(p, "email")
-            token = _str(p, "token")
-            if email and token:
-                url = f"{settings.frontend_base}/verify-email?token={token}"
+            # Prefer 6-digit OTP (`code`); accept legacy `token` only if it looks numeric.
+            code = _str(p, "code") or _str(p, "token")
+            if email and code:
                 await email_service.send_verification_email(
                     email=email,
-                    verification_url=url,
+                    code=code,
                     expires_at=_str(p, "expiresAt"),
                 )
             return
@@ -141,12 +141,11 @@ class EventConsumer:
 
         if event_name == E.PASSWORD_RESET_REQUESTED:
             email = _str(p, "email")
-            token = _str(p, "token")
-            if email and token:
-                url = f"{settings.frontend_base}/reset-password?token={token}"
+            code = _str(p, "code") or _str(p, "token")
+            if email and code:
                 await email_service.send_password_reset_email(
                     email=email,
-                    reset_url=url,
+                    code=code,
                     expires_at=_str(p, "expiresAt"),
                 )
             return

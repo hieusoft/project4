@@ -25,10 +25,18 @@ def verify_password(password: str, password_hash: str) -> bool:
     return _pwd_context.verify(password, password_hash)
 
 
-# --- Opaque tokens (refresh / verify / reset) ------------------------------
+# --- Opaque tokens (refresh / password-reset) ------------------------------
 def generate_token(nbytes: int = 32) -> str:
     """Cryptographically-secure URL-safe token (raw value, shown once)."""
     return secrets.token_urlsafe(nbytes)
+
+
+def generate_otp_code(digits: int = 6) -> str:
+    """Numeric OTP for email verification (zero-padded)."""
+    if digits < 4 or digits > 10:
+        raise ValueError("digits must be between 4 and 10")
+    upper = 10**digits
+    return f"{secrets.randbelow(upper):0{digits}d}"
 
 
 def hash_token(raw_token: str) -> str:
@@ -69,6 +77,25 @@ def create_challenge_token(subject: str) -> str:
             (now + timedelta(seconds=settings.two_factor_challenge_ttl_seconds)).timestamp()
         ),
         "type": "2fa_challenge",
+    }
+    return jwt.encode(payload, settings.jwt_secret, algorithm=_ALGORITHM)
+
+
+def create_password_reset_token(*, subject: str, otp_id: str) -> str:
+    """Short-lived token after reset OTP is verified — authorizes set-new-password."""
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": subject,
+        "otp_id": otp_id,
+        "iss": settings.jwt_issuer,
+        "iat": int(now.timestamp()),
+        "exp": int(
+            (
+                now
+                + timedelta(seconds=settings.password_reset_session_ttl_seconds)
+            ).timestamp()
+        ),
+        "type": "password_reset",
     }
     return jwt.encode(payload, settings.jwt_secret, algorithm=_ALGORITHM)
 

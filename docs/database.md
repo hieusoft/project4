@@ -10,7 +10,7 @@ CREATE TABLE accounts (
   phone          varchar(20) UNIQUE,
   password_hash  varchar(255) NOT NULL,
   status         account_status NOT NULL DEFAULT 'unverified',
-  email_verified boolean NOT NULL DEFAULT false, -- true sau khi bấm link verify email
+  email_verified boolean NOT NULL DEFAULT false, -- true sau khi nhập đúng mã OTP 6 số
   totp_secret    text,                           -- secret TOTP 2FA (không trả ra API)
   totp_enabled   boolean NOT NULL DEFAULT false,
   last_login_at  timestamptz,
@@ -46,7 +46,7 @@ CREATE INDEX idx_refresh_token_hash ON refresh_tokens(token_hash) WHERE revoked_
 CREATE TABLE otp_codes (
   id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   account_id uuid NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-  code_hash  varchar(255) NOT NULL,          -- SHA-256 của verification/reset token; không lưu token thô
+  code_hash  varchar(255) NOT NULL,          -- SHA-256 của OTP 6 số (verify) hoặc reset token; không lưu thô
   purpose    otp_purpose NOT NULL,           -- verify_account hoặc reset_password
   attempts   smallint NOT NULL DEFAULT 0,    -- giữ để rate-limit nếu dùng code challenge sau này
   expires_at timestamptz NOT NULL,
