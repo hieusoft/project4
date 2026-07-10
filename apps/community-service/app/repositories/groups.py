@@ -7,13 +7,14 @@ from typing import Any
 import asyncpg
 
 from app.models.domain import Group
-from app.models.enums import GroupStatus
+from app.models.enums import GroupStatus, MemberStatus
 
 _COLS = (
     "id, name, slug, description, avatar_url, cover_url, address, "
     "province_code, district_code, owner_id, status, allow_member_post, "
     "require_post_review, member_count, reputation_score, created_at, updated_at"
 )
+_G = ", ".join(f"g.{c.strip()}" for c in _COLS.split(","))
 
 
 def _slugify(name: str) -> str:
@@ -114,6 +115,52 @@ class GroupRepository:
             *args,
         )
         return [Group.model_validate(dict(r)) for r in rows], int(total or 0)
+
+    async def list_for_user(
+        self,
+        user_id: uuid.UUID,
+        *,
+        member_status: MemberStatus | None = MemberStatus.approved,
+        limit: int,
+        offset: int,
+    ) -> tuple[list[tuple[Group, str, str]], int]:
+        """Groups the user belongs to. Returns (group, member_role, member_status)."""
+        args: list[Any] = [user_id]
+        status_clause = ""
+        if member_status is not None:
+            args.append(member_status.value)
+            status_clause = f"AND gm.status = ${len(args)}"
+
+        total = await self._conn.fetchval(
+            f"""
+            SELECT count(*)
+            FROM group_members gm
+            JOIN groups g ON g.id = gm.group_id
+            WHERE gm.user_id = $1 {status_clause}
+            """,
+            *args,
+        )
+        args.extend([limit, offset])
+        rows = await self._conn.fetch(
+            f"""
+            SELECT {_G},
+                   gm.role AS member_role,
+                   gm.status AS member_status
+            FROM group_members gm
+            JOIN groups g ON g.id = gm.group_id
+            WHERE gm.user_id = $1 {status_clause}
+            ORDER BY gm.joined_at DESC NULLS LAST, gm.created_at DESC
+            LIMIT ${len(args) - 1} OFFSET ${len(args)}
+            """,
+            *args,
+        )
+        out: list[tuple[Group, str, str]] = []
+        for r in rows:
+            d = dict(r)
+            role = d.pop("member_role")
+            mstatus = d.pop("member_status")
+            out.append((Group.model_validate(d), str(role), str(mstatus)))
+        return out, int(total or 0)
 
     async def update(self, group_id: uuid.UUID, fields: dict[str, Any]) -> Group | None:
         if not fields:

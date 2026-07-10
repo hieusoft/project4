@@ -52,6 +52,13 @@ class GroupOut(BaseModel):
     updated_at: datetime
 
 
+class MyGroupOut(GroupOut):
+    """Group plus the current user's membership on that group."""
+
+    my_role: MemberRole
+    my_status: MemberStatus
+
+
 class JoinGroupRequest(BaseModel):
     message: str | None = Field(default=None, max_length=1000)
 

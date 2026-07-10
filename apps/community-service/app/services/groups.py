@@ -98,6 +98,26 @@ class GroupService:
             offset=offset,
         )
 
+    async def list_mine(
+        self,
+        user: CurrentUser,
+        *,
+        member_status: MemberStatus | None,
+        limit: int,
+        offset: int,
+    ) -> tuple[list[tuple[Group, MemberRole, MemberStatus]], int]:
+        """Groups the current user has joined (default: approved membership)."""
+        rows, total = await self._groups.list_for_user(
+            user.uuid,
+            member_status=member_status,
+            limit=limit,
+            offset=offset,
+        )
+        out: list[tuple[Group, MemberRole, MemberStatus]] = []
+        for group, role, mstatus in rows:
+            out.append((group, MemberRole(role), MemberStatus(mstatus)))
+        return out, total
+
     async def update(
         self, group_id: uuid.UUID, user: CurrentUser, data: UpdateGroupRequest
     ) -> Group:

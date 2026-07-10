@@ -55,7 +55,8 @@ Community quản lý **hội nhóm thiện nguyện** như “tổ chức trung 
 | Method | Path | Auth | Mô tả |
 |---|---|---|---|
 | POST | `/groups` | JWT | Tạo nhóm (`pending`) + owner member |
-| GET | `/groups` | Optional | List (mặc định chỉ `active`) |
+| GET | `/groups` | Optional | Catalog public (mặc định chỉ `active`) — **không** lọc membership |
+| GET | `/groups/me` | JWT | **Nhóm user đã tham gia** (+ `my_role`, `my_status`) |
 | GET | `/groups/{id}` | Optional | Chi tiết (pending: owner/member/admin) |
 | PATCH | `/groups/{id}` | JWT mod+ | Cập nhật thông tin nhóm |
 | POST | `/admin/groups/{id}/approve` | Admin | Duyệt → `active` |

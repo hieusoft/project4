@@ -14,6 +14,7 @@ from app.schemas.groups import (
     JoinGroupRequest,
     JoinRequestOut,
     MemberOut,
+    MyGroupOut,
     UpdateGroupRequest,
     UpdateMemberRoleRequest,
     UpdateMemberStatusRequest,
@@ -49,6 +50,7 @@ async def list_groups(
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
 ):
+    """Public catalog of groups (default: active only). Not membership-filtered."""
     items, total = await service.list(
         status=status_filter,
         province_code=province_code,
@@ -60,6 +62,38 @@ async def list_groups(
     return DataEnvelope(
         data=Page(
             items=[_group_out(g) for g in items],
+            meta=PageMeta(total=total, limit=limit, offset=offset),
+        )
+    )
+
+
+@router.get("/groups/me", response_model=DataEnvelope[Page[MyGroupOut]])
+async def list_my_groups(
+    service: GroupServiceDep,
+    user: CurrentUserDep,
+    member_status: MemberStatus | None = Query(
+        default=MemberStatus.approved,
+        alias="member_status",
+        description="Filter by membership status; omit/null for all",
+    ),
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+):
+    """Groups the current user belongs to (joined / owns), with my_role + my_status."""
+    rows, total = await service.list_mine(
+        user, member_status=member_status, limit=limit, offset=offset
+    )
+    items = [
+        MyGroupOut(
+            **_group_out(g).model_dump(),
+            my_role=role,
+            my_status=mstatus,
+        )
+        for g, role, mstatus in rows
+    ]
+    return DataEnvelope(
+        data=Page(
+            items=items,
             meta=PageMeta(total=total, limit=limit, offset=offset),
         )
     )
