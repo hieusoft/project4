@@ -133,6 +133,12 @@ class EventConsumer:
                 )
             return
 
+        if event_name == E.EMAIL_VERIFIED:
+            email = _str(p, "email")
+            if email:
+                await email_service.send_verification_success_email(email=email)
+            return
+
         if event_name == E.PASSWORD_RESET_REQUESTED:
             email = _str(p, "email")
             token = _str(p, "token")

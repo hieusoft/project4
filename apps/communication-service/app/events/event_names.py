@@ -1,6 +1,7 @@
 """RabbitMQ routing keys (mirror libs/events)."""
 
 EMAIL_VERIFICATION_REQUESTED = "email.verification_requested"
+EMAIL_VERIFIED = "email.verified"
 PASSWORD_RESET_REQUESTED = "password.reset_requested"
 DONATION_CREATED = "donation.created"
 DONATION_REVIEWED = "donation.reviewed"

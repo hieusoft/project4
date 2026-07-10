@@ -6,6 +6,10 @@ import logging
 import httpx
 
 from app.core.config import settings
+from app.services.email_templates import (
+    render_verification_email,
+    render_verification_success_email,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -48,22 +52,30 @@ async def send_email(*, to: str, subject: str, html: str, text: str | None = Non
 async def send_verification_email(
     *, email: str, verification_url: str, expires_at: str
 ) -> None:
-    await send_email(
-        to=email,
-        subject="Xác minh email — Charity Platform",
-        html=(
-            f"<p>Xin chào,</p>"
-            f"<p>Vui lòng xác minh email:</p>"
-            f'<p><a href="{verification_url}">{verification_url}</a></p>'
-            f"<p>Hết hạn: {expires_at}</p>"
-        ),
-        text=f"Xác minh email: {verification_url} (hết hạn {expires_at})",
+    subject, html, text = render_verification_email(
+        verification_url=verification_url,
+        expires_at=expires_at,
+        recipient_email=email,
+        brand_name=settings.brevo_sender_name or "Charity Platform",
     )
+    await send_email(to=email, subject=subject, html=html, text=text)
+
+
+async def send_verification_success_email(*, email: str) -> None:
+    """Welcome email after the user successfully verifies their address."""
+    login_url = f"{settings.frontend_base}/login"
+    subject, html, text = render_verification_success_email(
+        login_url=login_url,
+        recipient_email=email,
+        brand_name=settings.brevo_sender_name or "Charity Platform",
+    )
+    await send_email(to=email, subject=subject, html=html, text=text)
 
 
 async def send_password_reset_email(
     *, email: str, reset_url: str, expires_at: str
 ) -> None:
+    # Minimal HTML for now; can reuse base layout later.
     await send_email(
         to=email,
         subject="Đặt lại mật khẩu — Charity Platform",
