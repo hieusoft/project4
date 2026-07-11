@@ -1,0 +1,226 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Marketplace Service API",
+    "version": "1.0.0",
+    "description": "API documentation for the Marketplace Service."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3004",
+      "description": "Local server"
+    }
+  ],
+  "tags": [
+    { "name": "Listings", "description": "Operations about listings" },
+    { "name": "Requests", "description": "Operations about item requests" },
+    { "name": "Stats", "description": "Marketplace statistics" }
+  ],
+  "paths": {
+    "/catalog": {
+      "get": {
+        "tags": ["Listings"],
+        "summary": "Get catalog of active listings",
+        "parameters": [
+          { "in": "query", "name": "category", "schema": { "type": "string" } },
+          { "in": "query", "name": "province", "schema": { "type": "string" } },
+          { "in": "query", "name": "group_id", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "A list of catalog items" }
+        }
+      }
+    },
+    "/listings": {
+      "get": {
+        "tags": ["Listings"],
+        "summary": "Returns a list of listings",
+        "responses": {
+          "200": { "description": "A JSON array of listings" }
+        }
+      },
+      "post": {
+        "tags": ["Listings"],
+        "summary": "Create a new listing",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "inventory_item_id": { "type": "string" },
+                  "group_id": { "type": "string" },
+                  "title": { "type": "string" },
+                  "description": { "type": "string" },
+                  "category_id": { "type": "string" },
+                  "condition": { "type": "string" },
+                  "quantity_total": { "type": "integer" },
+                  "created_by": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Listing created successfully" }
+        }
+      }
+    },
+    "/listings/{id}": {
+      "get": {
+        "tags": ["Listings"],
+        "summary": "Get listing by ID",
+        "parameters": [
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "A single listing" }
+        }
+      }
+    },
+    "/requests": {
+      "get": {
+        "tags": ["Requests"],
+        "summary": "Get all item requests",
+        "responses": {
+          "200": { "description": "A list of requests" }
+        }
+      },
+      "post": {
+        "tags": ["Requests"],
+        "summary": "Create an item request",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "listing_id": { "type": "string" },
+                  "group_id": { "type": "string" },
+                  "receiver_id": { "type": "string" },
+                  "quantity": { "type": "integer" },
+                  "reason": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Request created successfully" }
+        }
+      }
+    },
+    "/requests/{id}/approve": {
+      "put": {
+        "tags": ["Requests"],
+        "summary": "Approve a request",
+        "parameters": [
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": { "reviewer_id": { "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Request approved" }
+        }
+      }
+    },
+    "/requests/{id}/reject": {
+      "put": {
+        "tags": ["Requests"],
+        "summary": "Reject a request",
+        "parameters": [
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": { "reviewer_id": { "type": "string" }, "reject_reason": { "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Request rejected" }
+        }
+      }
+    },
+    "/requests/{id}/schedule": {
+      "put": {
+        "tags": ["Requests"],
+        "summary": "Schedule a request",
+        "parameters": [
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": { "scheduled_at": { "type": "string", "format": "date-time" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Request scheduled" }
+        }
+      }
+    },
+    "/requests/{id}/complete": {
+      "put": {
+        "tags": ["Requests"],
+        "summary": "Complete a request",
+        "parameters": [
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "confirmed_by": { "type": "string" },
+                  "qr_token": { "type": "string" },
+                  "photo_url": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Request completed" }
+        }
+      }
+    },
+    "/stats": {
+      "get": {
+        "tags": ["Stats"],
+        "summary": "Get daily statistics",
+        "parameters": [
+          { "in": "query", "name": "from_date", "schema": { "type": "string", "format": "date" } },
+          { "in": "query", "name": "to_date", "schema": { "type": "string", "format": "date" } },
+          { "in": "query", "name": "group_id", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Statistics data" }
+        }
+      }
+    }
+  }
+}
