@@ -85,5 +85,13 @@ services:
     environment: { NODE_ENV: production, PORT: "${AI_SERVICE_PORT:-3007}" }
     ports: ["${AI_SERVICE_PORT:-3007}:${AI_SERVICE_PORT:-3007}"]
     depends_on: [postgres, redis, rabbitmq]
+  marketplace-service:
+    build:
+      context: apps/marketplace-service
+      dockerfile: Dockerfile
+    env_file: .env
+    environment: { PORT: "${MARKETPLACE_SERVICE_PORT:-3004}" }
+    ports: ["${MARKETPLACE_SERVICE_PORT:-3004}:${MARKETPLACE_SERVICE_PORT:-3004}"]
+    depends_on: [postgres, rabbitmq]
 volumes:
   postgres_data:
