@@ -1,8 +1,7 @@
 """Application settings loaded from environment / .env.
 
-Reads the same repo-level `.env` as the rest of the platform. R2 credentials
-and JWT config are shared; the S3 endpoint is derived from the account id
-(Cloudflare R2 endpoints are always https://<account_id>.r2.cloudflarestorage.com).
+Reads the same repo-level `.env` as the rest of the platform. Object storage
+is SeaweedFS (S3-compatible gateway) running in Docker — not cloud R2.
 """
 from __future__ import annotations
 
@@ -35,12 +34,18 @@ class Settings(BaseSettings):
     postgres_port: int = 5432
     media_db_name: str = "media_db"
 
-    # Cloudflare R2
-    r2_account_id: str = ""
-    r2_access_key_id: str = ""
-    r2_secret_access_key: str = ""
-    r2_bucket: str = ""
-    r2_public_base_url: str = ""
+    # SeaweedFS (S3-compatible) — self-hosted object storage
+    # Internal endpoint used by media-service (Docker service name).
+    seaweed_s3_endpoint: str = "http://seaweedfs:8333"
+    # Host browsers use for presigned PUT / public GET. Defaults to endpoint
+    # if empty; in Docker set to http://localhost:8333 (or your public host).
+    seaweed_s3_public_endpoint: str = "http://localhost:8333"
+    seaweed_access_key_id: str = "seaweed"
+    seaweed_secret_access_key: str = "seaweed"
+    seaweed_bucket: str = "media"
+    # Public base for stored public_url: typically {public_endpoint}/{bucket}
+    seaweed_public_base_url: str = "http://localhost:8333/media"
+    seaweed_s3_region: str = "us-east-1"
 
     # Upload limits / lifecycle (defaults — no need to declare in .env)
     presign_expires_seconds: int = 300
@@ -57,14 +62,9 @@ class Settings(BaseSettings):
         )
 
     @property
-    def r2_endpoint(self) -> str:
-        """S3 API endpoint derived from the R2 account id."""
-        return f"https://{self.r2_account_id}.r2.cloudflarestorage.com"
-
-    @property
-    def r2_public_base(self) -> str:
-        """Public CDN base with any trailing slash stripped."""
-        return self.r2_public_base_url.rstrip("/")
+    def seaweed_public_base(self) -> str:
+        """Public object URL base with any trailing slash stripped."""
+        return self.seaweed_public_base_url.rstrip("/")
 
 
 settings = Settings()

@@ -19,7 +19,7 @@
 |---|---|
 | [services/identity.md](./services/identity.md) | Auth, JWT, profile, OTP |
 | [services/community.md](./services/community.md) | Nhóm, member, post |
-| [services/media.md](./services/media.md) | Presign R2, link media |
+| [services/media.md](./services/media.md) | Presign SeaweedFS, link media |
 | [services/communication.md](./services/communication.md) | Email, FCM, chat, notify |
 | [services/donation.md](./services/donation.md) | Quyên góp (thiết kế) |
 | [services/marketplace.md](./services/marketplace.md) | Gian hàng 0 đồng (thiết kế) |

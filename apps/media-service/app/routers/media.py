@@ -8,11 +8,12 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 
 from app.core.deps import ADMIN_ROLES, CurrentUserDep
 from app.schemas.common import DataEnvelope
 from app.schemas.media import (
+    MIME_EXT,
     ConfirmRequest,
     LinkRequest,
     MediaOut,
@@ -42,6 +43,57 @@ async def presign(
         file_size=body.file_size,
     )
     return DataEnvelope(data=result)
+
+
+@router.post(
+    "/files/upload",
+    status_code=status.HTTP_201_CREATED,
+    response_model=DataEnvelope[MediaOut],
+    summary="Proxy upload (multipart) — preferred for Flutter Web",
+)
+async def upload(
+    user: CurrentUserDep,
+    service: MediaServiceDep,
+    file: UploadFile = File(...),
+    ref_type: str = Form(default="avatar"),
+):
+    """Browser clients often cannot PUT directly to SeaweedFS S3 (CORS).
+
+    Path is ``/files/upload`` (not ``/upload``) so it never collides with
+    ``GET /{media_id}`` which would otherwise return HTTP 405.
+
+    This endpoint accepts the file, streams it to SeaweedFS server-side, and
+    returns media metadata including ``public_url``.
+    """
+    raw = await file.read()
+    mime_type = (file.content_type or "image/jpeg").split(";")[0].strip().lower()
+    if mime_type == "image/jpg":
+        mime_type = "image/jpeg"
+    if mime_type not in MIME_EXT:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported mime_type: {mime_type}. Allowed: {list(MIME_EXT)}",
+        )
+    if ref_type not in (
+        "donation",
+        "listing",
+        "post",
+        "avatar",
+        "chat",
+        "delivery",
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported ref_type: {ref_type}",
+        )
+
+    media = await service.upload_bytes(
+        owner_id=uuid.UUID(user.id),
+        mime_type=mime_type,
+        ref_type=ref_type,
+        body=raw,
+    )
+    return DataEnvelope(data=MediaOut.model_validate(media, from_attributes=True))
 
 
 @router.post("/confirm", response_model=DataEnvelope[MediaOut])

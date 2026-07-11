@@ -67,17 +67,17 @@ sequenceDiagram
 sequenceDiagram
     participant C as Client
     participant M as Media
-    participant R2 as Cloudflare R2
+    participant S as SeaweedFS
     participant X as Service nghiệp vụ
     C->>M: POST /api/media/presign {mime_type, ref_type}
     M->>M: INSERT media_files(status=temp, bucket_key)
     M-->>C: {media_id, presigned_url, public_url}
-    C->>R2: PUT file lên presigned_url (không qua backend)
+    C->>S: PUT file lên presigned_url (không qua backend)
     C->>M: POST /api/media/confirm {media_id}
     Note over C,X: Client tạo entity (donation/post/listing...)<br/>gửi kèm public_url + media_id
     X->>M: PUT /media/link {media_ids, ref_type, ref_id} (sync, sau khi tạo entity)
     M->>M: UPDATE status=linked, gắn ref_id
-    Note over M: Cron mỗi giờ: DELETE file temp > 24h (cả R2 + DB)
+    Note over M: Cron mỗi giờ: DELETE file temp > 24h (cả object + DB)
 ```
 
 #### Luồng 4: Quyên góp - từ đăng ký đến nhập kho (luồng lõi 1)

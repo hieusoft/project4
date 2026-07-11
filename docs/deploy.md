@@ -60,7 +60,7 @@ Tối thiểu nên đổi:
 - `JWT_SECRET`
 - `POSTGRES_PASSWORD`
 - `RABBITMQ_PASSWORD` / `RABBITMQ_URL` (khớp nhau)
-- các key R2 / LLM / FCM nếu dùng
+- các key SEAWEED_* / LLM / FCM nếu dùng
 
 ### SSH key cho GitHub Actions
 

@@ -2,7 +2,7 @@
 
 Temp media = presigned/uploaded but never linked to a business entity (user
 abandoned the upload, or an entity edit unlinked it). After temp_ttl_hours we
-delete the R2 object and hard-delete the row.
+delete the SeaweedFS object and hard-delete the row.
 
 Runs as an asyncio background task started in the app lifespan: one sweep at
 startup (clears leftovers) then every cleanup_interval_minutes. A failed sweep
@@ -16,7 +16,7 @@ import logging
 from app.core.config import settings
 from app.core.database import get_pool
 from app.repositories.media import MediaRepository
-from app.services import r2
+from app.services import storage
 
 logger = logging.getLogger(__name__)
 
@@ -31,10 +31,12 @@ async def cleanup_expired_temp() -> int:
     removed = 0
     for media in expired:
         try:
-            await r2.delete_object(media.bucket_key)
+            await storage.delete_object(media.bucket_key)
         except Exception as exc:  # object may never have been PUT — ignore
             logger.warning(
-                "cleanup: cannot delete R2 object %s: %s", media.bucket_key, exc
+                "cleanup: cannot delete storage object %s: %s",
+                media.bucket_key,
+                exc,
             )
         async with pool.acquire() as conn:
             await MediaRepository(conn).delete_by_id(media.id)

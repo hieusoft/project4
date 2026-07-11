@@ -17,6 +17,30 @@ services:
     container_name: charity-redis
     ports: ["${REDIS_PORT:-6379}:6379"]
     healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 10s, timeout: 5s, retries: 5 }
+  seaweedfs:
+    image: chrislusf/seaweedfs:3.80
+    container_name: charity-seaweedfs
+    command:
+      - server
+      - -dir=/data
+      - -s3
+      - -s3.port=8333
+      - -s3.config=/etc/seaweedfs/s3.json
+      - -ip.bind=0.0.0.0
+      - -master.volumeSizeLimitMB=100
+    ports:
+      - "${SEAWEED_S3_PORT:-8333}:8333"
+      - "${SEAWEED_MASTER_PORT:-9333}:9333"
+      - "${SEAWEED_FILER_PORT:-8888}:8888"
+    volumes:
+      - seaweedfs_data:/data
+      - ./infra/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:9333/cluster/status >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+      start_period: 15s
   rabbitmq:
     image: rabbitmq:3-management-alpine
     container_name: charity-rabbitmq
@@ -29,3 +53,4 @@ services:
     healthcheck: { test: ["CMD", "rabbitmq-diagnostics", "ping"], interval: 10s, timeout: 5s, retries: 5 }
 volumes:
   postgres_data:
+  seaweedfs_data:

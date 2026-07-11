@@ -16,6 +16,7 @@ from app.core.config import settings
 from app.core.database import close_pool, init_pool
 from app.core.exceptions import register_exception_handlers
 from app.routers import health, media
+from app.services import storage
 from app.services.cleanup import cleanup_expired_temp, run_cleanup_loop
 
 logging.basicConfig(
@@ -29,6 +30,13 @@ logger = logging.getLogger(settings.service_name)
 async def lifespan(_app: FastAPI):
     # Startup
     await init_pool()
+    try:
+        await storage.ensure_bucket()
+    except Exception:
+        logger.exception(
+            "could not ensure SeaweedFS bucket %s — uploads may fail",
+            settings.seaweed_bucket,
+        )
     # One sweep at startup to clear leftovers, then the periodic loop.
     try:
         await cleanup_expired_temp()

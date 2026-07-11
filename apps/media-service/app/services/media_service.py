@@ -15,7 +15,7 @@ from app.models.domain import MediaFile
 from app.models.enums import MediaStatus
 from app.repositories.media import MediaRepository
 from app.schemas.media import PresignResponse
-from app.services import r2
+from app.services import storage
 
 
 class MediaService:
@@ -36,8 +36,8 @@ class MediaService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="File exceeds max allowed size",
             )
-        object_key = r2.generate_object_key(ref_type, mime_type)
-        public_url = r2.public_url(object_key)
+        object_key = storage.generate_object_key(ref_type, mime_type)
+        public_url = storage.public_url(object_key)
 
         media = await self._media.create_temp(
             owner_id=owner_id,
@@ -47,7 +47,7 @@ class MediaService:
             size_bytes=file_size,
             ref_type=ref_type,
         )
-        upload_url = r2.create_presigned_put_url(object_key, mime_type)
+        upload_url = storage.create_presigned_put_url(object_key, mime_type)
         return PresignResponse(
             media_id=media.id,
             upload_url=upload_url,
@@ -57,16 +57,58 @@ class MediaService:
             expires_in=settings.presign_expires_seconds,
         )
 
+    # --- Direct upload (proxy — for browser/CORS-limited clients) ---------
+    async def upload_bytes(
+        self,
+        *,
+        owner_id: uuid.UUID,
+        mime_type: str,
+        ref_type: str,
+        body: bytes,
+    ) -> MediaFile:
+        """Upload file via media-service → SeaweedFS (avoids browser CORS)."""
+        file_size = len(body)
+        if file_size == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Empty file",
+            )
+        if file_size > settings.max_file_size_bytes:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="File exceeds max allowed size",
+            )
+
+        object_key = storage.generate_object_key(ref_type, mime_type)
+        public_url = storage.public_url(object_key)
+
+        media = await self._media.create_temp(
+            owner_id=owner_id,
+            bucket_key=object_key,
+            public_url=public_url,
+            mime_type=mime_type,
+            size_bytes=file_size,
+            ref_type=ref_type,
+        )
+        try:
+            await storage.put_object(object_key, body, mime_type)
+        except Exception as exc:  # noqa: BLE001 — surface storage failures
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Failed to upload to storage: {exc}",
+            ) from exc
+        return media
+
     # --- Confirm ----------------------------------------------------------
     async def confirm(
         self, *, media_id: uuid.UUID, owner_id: uuid.UUID
     ) -> MediaFile:
         media = await self._require_owned(media_id, owner_id)
-        exists = await r2.object_exists(media.bucket_key)
+        exists = await storage.object_exists(media.bucket_key)
         if not exists:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Object not uploaded to R2 yet",
+                detail="Object not uploaded to storage yet",
             )
         return media
 

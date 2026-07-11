@@ -165,7 +165,7 @@ PostgreSQL · Redis · RabbitMQ
 | Identity, Media, Communication, Community | Python / FastAPI |
 | AI | Node.js / NestJS (scaffold) |
 | DB / Cache / MQ | PostgreSQL 16, Redis 7, RabbitMQ |
-| Storage | Cloudflare R2 |
+| Storage | SeaweedFS (S3 self-hosted) |
 | CI/CD | GitHub Actions → GHCR → SSH + Compose |
 
 ### Cấu trúc repo

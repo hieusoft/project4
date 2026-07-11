@@ -2,10 +2,10 @@ charity-platform/
 ├── README.md
 ├── .gitignore
 ├── .env                                # biến môi trường local
-├── .env.example                        # mẫu biến chung: JWT_SECRET, R2 keys, LLM keys...
+├── .env.example                        # mẫu biến chung: JWT_SECRET, SEAWEED_*, LLM keys...
 ├── Dockerfile
 ├── docker-compose.yml                  # full stack: kong + services + infra
-├── docker-compose.infra.yml            # dev local: chỉ postgres, redis, rabbitmq
+├── docker-compose.infra.yml            # dev local: postgres, redis, rabbitmq, seaweedfs
 │
 ├── infra/
 │   ├── kong/
@@ -18,8 +18,10 @@ charity-platform/
 │   ├── postgres/
 │   │   └── init/
 │   │       └── 01-create-databases.sql # tạo database cho các service
-│   └── rabbitmq/
-│       └── definitions.json            # khai báo sẵn exchanges, queues
+│   ├── rabbitmq/
+│   │   └── definitions.json            # khai báo sẵn exchanges, queues
+│   └── seaweedfs/
+│       └── s3.json                     # credentials S3 gateway
 
 │
 ├── libs/

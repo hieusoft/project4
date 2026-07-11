@@ -1,7 +1,7 @@
 """Request/response DTOs for the media endpoints.
 
 Allowed mime types and ref_type→folder mapping live here as the single source
-of truth, reused by the R2 service for object-key generation.
+of truth, reused by the storage service for object-key generation.
 """
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 from app.models.enums import MediaStatus
 
-# ref_type (purpose) → folder prefix on the R2 bucket.
+# ref_type (purpose) → folder prefix on the SeaweedFS bucket.
 REF_TYPE_FOLDERS: dict[str, str] = {
     "donation": "donations",
     "listing": "listings",

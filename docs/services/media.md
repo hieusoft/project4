@@ -2,25 +2,29 @@
 
 | | |
 |---|---|
-| **Mục đích** | Quản lý upload file an toàn: cấp URL tạm (presigned) lên Cloudflare R2, xác nhận file, gắn media với entity nghiệp vụ |
-| **Stack** | Python 3.12 · FastAPI · asyncpg · boto3 (S3 API R2) · PyJWT |
+| **Mục đích** | Quản lý upload file an toàn: cấp URL tạm (presigned) lên SeaweedFS, xác nhận file, gắn media với entity nghiệp vụ |
+| **Stack** | Python 3.12 · FastAPI · asyncpg · boto3 (S3 API SeaweedFS) · PyJWT |
 | **Port** | `3006` |
 | **Gateway** | `/api/media` |
 | **Database** | `media_db` |
+| **Storage** | SeaweedFS (S3 gateway `:8333`) trong Docker |
 | **Code** | `apps/media-service/` |
 
 ---
 
 ## Service này làm gì?
 
-Media **không** nhận file multipart qua backend. Client upload **trực tiếp** lên R2 bằng URL đã ký.
+Media hỗ trợ 2 cách upload:
+
+1. **Presign** — client PUT trực tiếp lên SeaweedFS bằng URL đã ký.
+2. **Proxy** `POST /files/upload` — browser gửi multipart → media-service upload server-side (tránh CORS).
 
 | Có trách nhiệm | Không làm |
 |---|---|
 | Presign PUT URL (TTL ngắn) | Auth đăng ký/login |
 | Lưu metadata `media_files` | Resize / AI (→ AI) |
-| Confirm file đã lên R2 | Business entity (post, donation…) |
-| Link / unlink `ref_type` + `ref_id` | Serve ảnh public (CDN R2) |
+| Confirm file đã lên storage | Business entity (post, donation…) |
+| Link / unlink `ref_type` + `ref_id` | CDN cloud bên thứ ba |
 | Cleanup file `temp` quá hạn | |
 
 ---
@@ -43,8 +47,8 @@ Media **không** nhận file multipart qua backend. Client upload **trực tiế
 **Public URL:**
 
 ```text
-{R2_PUBLIC_BASE_URL}/{object_key}
-# ví dụ https://cdn-img.example.com/avatars/2026/07/10/10/01/uuid.jpg
+{SEAWEED_PUBLIC_BASE_URL}/{object_key}
+# ví dụ http://localhost:8333/media/avatars/2026/07/10/10/01/uuid.jpg
 ```
 
 ---
@@ -54,7 +58,8 @@ Media **không** nhận file multipart qua backend. Client upload **trực tiế
 | Method | Path | Body | Mô tả |
 |---|---|---|---|
 | POST | `/presign` | `mime_type`, `ref_type`, `file_size` | Tạo record temp + `upload_url` |
-| POST | `/confirm` | `media_id` | HEAD R2 — file đã tồn tại? |
+| POST | `/files/upload` | multipart `file`, `ref_type` | Proxy upload (Flutter Web) |
+| POST | `/confirm` | `media_id` | HEAD object — file đã tồn tại? |
 | PUT | `/link` | `media_ids[]`, `ref_type`, `ref_id` | Gắn entity (gọi sau khi tạo post/donation…) |
 | PUT | `/unlink` | `media_ids[]` | Gỡ gắn (owner) |
 | GET | `/{media_id}` | — | Metadata (owner hoặc admin) |
@@ -75,16 +80,16 @@ Media **không** nhận file multipart qua backend. Client upload **trực tiế
 sequenceDiagram
     participant C as Client
     participant M as Media
-    participant R2 as Cloudflare R2
+    participant S as SeaweedFS (S3)
     participant X as Business service
 
     C->>M: POST /presign {mime_type, ref_type, file_size}
     Note over M: JWT owner_id
     M->>M: INSERT media_files(status=temp)
     M-->>C: {media_id, upload_url, public_url, headers, expires_in}
-    C->>R2: PUT file → upload_url (Content-Type = mime)
+    C->>S: PUT file → upload_url (Content-Type = mime)
     C->>M: POST /confirm {media_id}
-    M->>R2: HEAD object
+    M->>S: HEAD object
     M-->>C: metadata OK
     C->>X: Tạo entity kèm public_url + media_id
     X->>M: PUT /link {media_ids, ref_type, ref_id}
@@ -93,19 +98,31 @@ sequenceDiagram
 
 ### Cleanup
 
-- Cron trong process: file `temp` quá `TEMP_TTL_HOURS` (mặc định 24h) → xóa R2 + DB.
+- Cron trong process: file `temp` quá `TEMP_TTL_HOURS` (mặc định 24h) → xóa object + DB.
 
 ---
 
-## Cấu hình R2 (env)
+## Cấu hình SeaweedFS (env)
 
-| Biến | Ý nghĩa |
+| Biến | Ý nghĩa | Mặc định local |
+|---|---|---|
+| `SEAWEED_S3_ENDPOINT` | S3 API nội bộ (media-service) | `http://seaweedfs:8333` |
+| `SEAWEED_S3_PUBLIC_ENDPOINT` | Host client dùng cho presigned PUT | `http://localhost:8333` |
+| `SEAWEED_ACCESS_KEY_ID` | Access key (khớp `infra/seaweedfs/s3.json`) | `seaweed` |
+| `SEAWEED_SECRET_ACCESS_KEY` | Secret key | `seaweed` |
+| `SEAWEED_BUCKET` | Tên bucket (tạo lúc startup) | `media` |
+| `SEAWEED_PUBLIC_BASE_URL` | Base cho `public_url` | `http://localhost:8333/media` |
+| `SEAWEED_S3_REGION` | Region ký S3v4 | `us-east-1` |
+
+Compose service: `seaweedfs` (image `chrislusf/seaweedfs`), volume `seaweedfs_data`.
+
+Ports host:
+
+| Port | Vai trò |
 |---|---|
-| `R2_ACCOUNT_ID` | ~32 hex (endpoint = `https://{id}.r2.cloudflarestorage.com`) |
-| `R2_ACCESS_KEY_ID` | API token access key |
-| `R2_SECRET_ACCESS_KEY` | Secret (bắt buộc để ký URL) |
-| `R2_BUCKET` | Tên bucket |
-| `R2_PUBLIC_BASE_URL` | CDN / custom domain |
+| `8333` | S3 gateway |
+| `9333` | Master |
+| `8888` | Filer UI |
 
 ---
 
@@ -115,3 +132,4 @@ sequenceDiagram
 - Admin (`PLATFORM_ADMIN`) có thể đọc media bất kỳ.
 - Presign TTL ngắn (`presign_expires_seconds`, mặc định 300s).
 - Giới hạn kích thước (`max_file_size_bytes`, mặc định 5MB).
+- Đổi access/secret trong `infra/seaweedfs/s3.json` + env khi lên production.

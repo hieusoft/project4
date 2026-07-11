@@ -65,11 +65,11 @@ Web / Mobile App
 │ Marketplace   │ Gian hàng, yêu cầu nhận, trao tặng,  │
 │               │ thống kê                             │
 │ Communication │ Chat (Socket.IO), FCM, email (Brevo) │
-│ Media         │ Upload ảnh lên Cloudflare R2         │
+│ Media         │ Upload ảnh lên SeaweedFS (S3)        │
 │ AI            │ Tích hợp LLM                         │
 └──────────────────────────────────────────────────────┘
        │
-PostgreSQL (db-per-service) · Redis · RabbitMQ
+PostgreSQL (db-per-service) · Redis · RabbitMQ · SeaweedFS
 ```
 
 ## 🛠 Tech Stack
@@ -85,7 +85,7 @@ PostgreSQL (db-per-service) · Redis · RabbitMQ
 | Cache / Presence | Redis 7 |
 | Message Broker | RabbitMQ |
 | Realtime | Socket.IO (python-socketio, communication-service) |
-| Lưu trữ file | Cloudflare R2 (S3-compatible, presigned URL) |
+| Lưu trữ file | SeaweedFS (S3-compatible, self-hosted, presigned URL) |
 | Email | Brevo transactional API (communication-service) |
 | Push notification | Firebase FCM (communication-service) |
 | Identity / Media / Communication | Python FastAPI |
@@ -114,7 +114,7 @@ PostgreSQL (db-per-service) · Redis · RabbitMQ
 
 ```bash
 # 1. Chuẩn bị env
-# File .env đã được tạo; chỉnh JWT_SECRET, R2 keys, LLM key... theo môi trường.
+# File .env đã được tạo; chỉnh JWT_SECRET, SEAWEED_*, LLM key... theo môi trường.
 
 # 2. Chạy toàn bộ hệ thống qua Docker
 docker compose up -d

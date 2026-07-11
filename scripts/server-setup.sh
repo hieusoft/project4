@@ -213,7 +213,7 @@ if [ ! -f "$APP_DIR/.env" ]; then
   fi
   echo "    Created $APP_DIR/.env — EDIT THIS FILE before first deploy:"
   echo "      - JWT_SECRET, POSTGRES_PASSWORD, RABBITMQ_PASSWORD"
-  echo "      - R2_*, LLM_*, FCM_* if used"
+  echo "      - SEAWEED_*, LLM_*, FCM_* if used"
 else
   echo "    .env already exists, left unchanged"
 fi

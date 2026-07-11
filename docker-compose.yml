@@ -13,6 +13,23 @@ services:
   redis:
     image: redis:7-alpine
     ports: ["${REDIS_PORT:-6379}:6379"]
+  seaweedfs:
+    image: chrislusf/seaweedfs:3.80
+    command:
+      - server
+      - -dir=/data
+      - -s3
+      - -s3.port=8333
+      - -s3.config=/etc/seaweedfs/s3.json
+      - -ip.bind=0.0.0.0
+      - -master.volumeSizeLimitMB=100
+    ports:
+      - "${SEAWEED_S3_PORT:-8333}:8333"
+      - "${SEAWEED_MASTER_PORT:-9333}:9333"
+      - "${SEAWEED_FILER_PORT:-8888}:8888"
+    volumes:
+      - seaweedfs_data:/data
+      - ./infra/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
   rabbitmq:
     image: rabbitmq:3-management-alpine
     env_file: .env
@@ -76,7 +93,7 @@ services:
     env_file: .env
     environment: { PORT: "${MEDIA_SERVICE_PORT:-3006}" }
     ports: ["${MEDIA_SERVICE_PORT:-3006}:${MEDIA_SERVICE_PORT:-3006}"]
-    depends_on: [postgres]
+    depends_on: [postgres, seaweedfs]
   ai-service:
     build:
       context: .
@@ -95,3 +112,4 @@ services:
     depends_on: [postgres, rabbitmq]
 volumes:
   postgres_data:
+  seaweedfs_data:

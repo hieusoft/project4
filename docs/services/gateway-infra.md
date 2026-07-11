@@ -96,9 +96,17 @@ Communication **retry** connect consumer.
 
 ---
 
-## 6. Cloudflare R2 (ngoài Docker)
+## 6. SeaweedFS (trong Docker)
 
-Dùng bởi **Media** (và CDN public). Không chạy trong compose.
+Object storage self-hosted cho **Media**. Service `seaweedfs` trong compose:
+
+| Port | Vai trò |
+|---|---|
+| `8333` | S3 gateway (boto3 + public URL) |
+| `9333` | Master |
+| `8888` | Filer |
+
+Config credentials: `infra/seaweedfs/s3.json`. Env: `SEAWEED_*` (xem [media.md](./media.md)).
 
 ---
 

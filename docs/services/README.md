@@ -32,7 +32,7 @@ Client (Web / Mobile)
 | [Donation](./donation.md) | 3003 | Quyên góp, kiểm tra đồ, kho, hành trình món đồ | ⏳ Chưa code |
 | [Marketplace](./marketplace.md) | 3004 | Gian hàng 0 đồng, yêu cầu nhận, trao tặng | ⏳ Chưa code |
 | [Communication](./communication.md) | 3005 | Email, push, chat realtime, thông báo in-app | ✅ Đã có |
-| [Media](./media.md) | 3006 | Upload ảnh (presigned R2), lifecycle media | ✅ Đã có |
+| [Media](./media.md) | 3006 | Upload ảnh (presigned SeaweedFS), lifecycle media | ✅ Đã có |
 | [AI](./ai.md) | 3007 | LLM: nhận diện đồ, gợi ý nhóm, kiểm duyệt | 🔶 Scaffold |
 | [Gateway & Infra](./gateway-infra.md) | 8000… | Kong, Postgres, Redis, RabbitMQ, Docs | ✅ |
 
@@ -49,7 +49,7 @@ Client (Web / Mobile)
 
 ```text
 Đăng ký/Login (Identity)
-    → Upload ảnh (Media + R2)
+    → Upload ảnh (Media + SeaweedFS)
     → Tạo / tham gia nhóm (Community)
     → Quyên góp đồ (Donation) ← chưa code
     → Nhập kho → đăng gian hàng (Marketplace) ← chưa code

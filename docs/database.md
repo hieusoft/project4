@@ -487,7 +487,7 @@ CREATE TYPE media_status AS ENUM ('temp','linked','deleted');
 CREATE TABLE media_files (
   id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   owner_id   uuid NOT NULL,
-  bucket_key varchar(500) UNIQUE NOT NULL,        -- key trên R2: donations/2026/07/xxx.jpg
+  bucket_key varchar(500) UNIQUE NOT NULL,        -- key trên SeaweedFS: donations/2026/07/xxx.jpg
   public_url varchar(500) NOT NULL,
   mime_type  varchar(100) NOT NULL,
   size_bytes bigint NOT NULL,

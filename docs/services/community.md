@@ -101,7 +101,7 @@ sequenceDiagram
     participant COM as Communication
     participant AD as Admin
 
-    U->>M: Upload avatar (presign → R2 → confirm)
+    U->>M: Upload avatar (presign → SeaweedFS → confirm)
     U->>CM: POST /groups {name, province_code, avatar_url}
     CM->>CM: groups.status=pending<br/>group_members(owner, approved)
     CM-->>COM: group.created

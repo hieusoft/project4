@@ -180,7 +180,7 @@ RABBITMQ_URL=amqp://charity:MatKhauRabbitCuaBan_123@rabbitmq:5672
    - `POSTGRES_HOST=postgres`
    - `REDIS_HOST=redis`
    - trong URL: `@rabbitmq:5672`
-3. R2 / FCM / LLM để trống được nếu chưa dùng.
+3. SEAWEED_* dùng default trong `.env.example` (compose tự chạy SeaweedFS). FCM / LLM để trống được nếu chưa dùng.
 
 #### Tạo secret / password nhanh trên server
 
@@ -243,11 +243,12 @@ RABBITMQ_EXCHANGE=charity.events
 COMMUNICATION_EVENTS_QUEUE=communication.events
 FRONTEND_BASE_URL=http://localhost:3000
 
-R2_ACCOUNT_ID=
-R2_ACCESS_KEY_ID=
-R2_SECRET_ACCESS_KEY=
-R2_BUCKET=
-R2_PUBLIC_BASE_URL=
+SEAWEED_S3_ENDPOINT=http://seaweedfs:8333
+SEAWEED_S3_PUBLIC_ENDPOINT=http://YOUR_SERVER_IP:8333
+SEAWEED_ACCESS_KEY_ID=seaweed
+SEAWEED_SECRET_ACCESS_KEY=seaweed
+SEAWEED_BUCKET=media
+SEAWEED_PUBLIC_BASE_URL=http://YOUR_SERVER_IP:8333/media
 
 FCM_PROJECT_ID=
 FCM_CLIENT_EMAIL=
