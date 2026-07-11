@@ -8,14 +8,9 @@ const CompleteRequestDTO = require('../../Application/DTOs/CompleteRequestDTO');
 class RequestController {
   constructor({ requestUseCases }) {
     this.requestUseCases = requestUseCases;
-    
-    
-    
-    
-    
   }
 
-  async getRequestsUseCase(req, res) {
+  async getRequests(req, res) {
     try {
       const requests = await this.requestUseCases.getRequests(req.query);
       return ApiResponse.success(res, requests);
@@ -25,7 +20,7 @@ class RequestController {
     }
   }
 
-  async createRequestUseCase(req, res) {
+  async createRequest(req, res) {
     try {
       const dto = new CreateRequestDTO(req.body);
       dto.validate();
@@ -38,7 +33,7 @@ class RequestController {
     }
   }
 
-  async approveRequestUseCase(req, res) {
+  async approveRequest(req, res) {
     try {
       const { id } = req.params;
       const dto = new ApproveRequestDTO(req.body);
@@ -52,7 +47,7 @@ class RequestController {
     }
   }
 
-  async rejectRequestUseCase(req, res) {
+  async rejectRequest(req, res) {
     try {
       const { id } = req.params;
       const dto = new RejectRequestDTO(req.body);
@@ -66,7 +61,7 @@ class RequestController {
     }
   }
 
-  async scheduleRequestUseCase(req, res) {
+  async scheduleRequest(req, res) {
     try {
       const { id } = req.params;
       const dto = new ScheduleRequestDTO(req.body);
@@ -80,7 +75,7 @@ class RequestController {
     }
   }
 
-  async completeRequestUseCase(req, res) {
+  async completeRequest(req, res) {
     try {
       const { id } = req.params;
       const dto = new CompleteRequestDTO(req.body);

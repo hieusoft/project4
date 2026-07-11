@@ -3,8 +3,8 @@ class StatsUseCases {
     this.statsRepository = statsRepository;
   }
 
-  async getDailyStats(date, groupId = null) {
-    return await this.statsRepository.findByDateAndGroup(date, groupId);
+  async getDailyStats(filters = {}) {
+    return await this.statsRepository.find(filters);
   }
 }
 

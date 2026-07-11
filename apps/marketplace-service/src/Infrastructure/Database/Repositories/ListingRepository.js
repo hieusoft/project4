@@ -107,7 +107,9 @@ class ListingRepository extends IListingRepository {
             INSERT INTO listing_images (listing_id, image_url, sort_order)
             VALUES ($1, $2, $3) RETURNING *
           `;
-          const { rows: imgRows } = await client.query(imgQuery, [savedListing.id, img.image_url || img, index]);
+          const imageUrl = img.image_url || img.upload_id || img;
+          const sortOrder = img.sort_order !== undefined ? img.sort_order : index;
+          const { rows: imgRows } = await client.query(imgQuery, [savedListing.id, imageUrl, sortOrder]);
           savedImages.push(new ListingImage(imgRows[0]));
         }
       }

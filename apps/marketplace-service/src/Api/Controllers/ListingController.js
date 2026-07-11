@@ -4,12 +4,9 @@ const CreateListingDTO = require('../../Application/DTOs/CreateListingDTO');
 class ListingController {
   constructor({ listingUseCases }) {
     this.listingUseCases = listingUseCases;
-    
-    
-    
   }
 
-  async getListingsUseCase(req, res) {
+  async getListings(req, res) {
     try {
       const listings = await this.listingUseCases.getListings(req.query);
       return ApiResponse.success(res, listings);
@@ -19,7 +16,7 @@ class ListingController {
     }
   }
 
-  async getListingByIdUseCase(req, res) {
+  async getListingById(req, res) {
     try {
       const listing = await this.listingUseCases.getListingById(req.params.id);
       return ApiResponse.success(res, listing);
@@ -29,7 +26,7 @@ class ListingController {
     }
   }
 
-  async getCatalogUseCase(req, res) {
+  async getCatalog(req, res) {
     try {
       const listings = await this.listingUseCases.getCatalog(req.query);
       return ApiResponse.success(res, listings);
@@ -39,7 +36,7 @@ class ListingController {
     }
   }
 
-  async createListingUseCase(req, res) {
+  async createListing(req, res) {
     try {
       const dto = new CreateListingDTO(req.body);
       dto.validate();
