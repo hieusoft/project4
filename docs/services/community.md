@@ -18,7 +18,7 @@ Community quản lý **hội nhóm thiện nguyện** như “tổ chức trung 
 
 | Có trách nhiệm | Không làm |
 |---|---|
-| CRUD nhóm (tạo pending, admin duyệt active) | Auth / JWT cấp phát (→ Identity) |
+| CRUD nhóm (tạo active ngay; admin vẫn suspend được) | Auth / JWT cấp phát (→ Identity) |
 | Thành viên + join request | Upload ảnh (client → Media, chỉ lưu URL) |
 | Bài viết, ảnh bài viết, comment, reaction | Quyên góp / kho (→ Donation) |
 | Phân quyền **trong nhóm**: owner / moderator / member | Gian hàng 0 đồng (→ Marketplace) |
@@ -41,8 +41,8 @@ Community quản lý **hội nhóm thiện nguyện** như “tổ chức trung 
 
 | Status | Ý nghĩa |
 |---|---|
-| `pending` | Mới tạo, chờ admin duyệt — public list **không** hiện |
-| `active` | Hoạt động bình thường |
+| `pending` | (legacy) chờ duyệt — public list **không** hiện |
+| `active` | Hoạt động bình thường (mặc định khi tạo) |
 | `suspended` | Bị tạm dừng |
 | `closed` | Đóng |
 
@@ -54,7 +54,7 @@ Community quản lý **hội nhóm thiện nguyện** như “tổ chức trung 
 
 | Method | Path | Auth | Mô tả |
 |---|---|---|---|
-| POST | `/groups` | JWT | Tạo nhóm (`pending`) + owner member |
+| POST | `/groups` | JWT | Tạo nhóm (`active`) + owner member — không cần admin duyệt |
 | GET | `/groups` | Optional | Catalog public (mặc định chỉ `active`) — **không** lọc membership |
 | GET | `/groups/me` | JWT | **Nhóm user đã tham gia** (+ `my_role`, `my_status`) |
 | GET | `/groups/{id}` | Optional | Chi tiết (pending: owner/member/admin) |
@@ -103,12 +103,9 @@ sequenceDiagram
 
     U->>M: Upload avatar (presign → SeaweedFS → confirm)
     U->>CM: POST /groups {name, province_code, avatar_url}
-    CM->>CM: groups.status=pending<br/>group_members(owner, approved)
+    CM->>CM: groups.status=active<br/>group_members(owner, approved)
     CM-->>COM: group.created
-    Note over COM: (Có thể notify admin — tùy consumer)
-    AD->>CM: POST /admin/groups/{id}/approve
-    CM->>CM: status=active
-    CM-->>COM: group.approved → notify owner
+    Note over AD: Admin vẫn có thể suspend qua /admin/groups/{id}/suspend
 ```
 
 ### 2) Xin tham gia & duyệt

@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS groups (
   province_code       varchar(10),
   district_code       varchar(10),
   owner_id            uuid NOT NULL,
-  status              group_status NOT NULL DEFAULT 'pending',
+  status              group_status NOT NULL DEFAULT 'active',
   allow_member_post   boolean NOT NULL DEFAULT true,
   require_post_review boolean NOT NULL DEFAULT false,
   member_count        int NOT NULL DEFAULT 1,

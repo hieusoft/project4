@@ -159,9 +159,11 @@ jobs:
             fi
 
             # Update compose + infra config from repo
+            # Drop local dirty files so pull cannot abort (server must track origin/main)
             git fetch origin main
             git checkout main
-            git pull --ff-only origin main
+            git reset --hard origin/main
+            git clean -fd -e .env -e .env.local -e '*.override.yml'
 
             # Pull private (or rate-limited) images from GHCR
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin

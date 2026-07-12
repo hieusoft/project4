@@ -51,7 +51,7 @@ class GroupRepository:
               province_code, district_code, owner_id, status,
               allow_member_post, require_post_review, member_count
             ) VALUES (
-              $1,$2,$3,$4,$5,$6,$7,$8,$9,'pending',$10,$11,1
+              $1,$2,$3,$4,$5,$6,$7,$8,$9,'active',$10,$11,1
             )
             RETURNING {_COLS}
             """,
