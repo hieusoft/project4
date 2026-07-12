@@ -30,7 +30,7 @@ class MemberRepository:
         record = await self._conn.fetchrow(
             f"""
             INSERT INTO group_members (group_id, user_id, role, status, joined_at)
-            VALUES ($1, $2, $3, $4, $5)
+            VALUES ($1, $2, $3::member_role, $4::member_status, $5)
             ON CONFLICT (group_id, user_id) DO UPDATE
               SET role = EXCLUDED.role,
                   status = EXCLUDED.status,
@@ -68,14 +68,14 @@ class MemberRepository:
     ) -> tuple[list[GroupMember], int]:
         if status is not None:
             total = await self._conn.fetchval(
-                "SELECT count(*) FROM group_members WHERE group_id=$1 AND status=$2",
+                "SELECT count(*) FROM group_members WHERE group_id=$1 AND status=$2::member_status",
                 group_id,
                 status.value,
             )
             rows = await self._conn.fetch(
                 f"""
                 SELECT {_MEMBER_COLS} FROM group_members
-                WHERE group_id=$1 AND status=$2
+                WHERE group_id=$1 AND status=$2::member_status
                 ORDER BY created_at ASC
                 LIMIT $3 OFFSET $4
                 """,
@@ -117,7 +117,7 @@ class MemberRepository:
     ) -> GroupMember | None:
         record = await self._conn.fetchrow(
             f"""
-            UPDATE group_members SET role = $3
+            UPDATE group_members SET role = $3::member_role
             WHERE group_id = $1 AND user_id = $2 AND status = 'approved'
             RETURNING {_MEMBER_COLS}
             """,
@@ -136,9 +136,9 @@ class MemberRepository:
         record = await self._conn.fetchrow(
             f"""
             UPDATE group_members
-            SET status = $3,
+            SET status = $3::member_status,
                 joined_at = CASE
-                  WHEN $3 = 'approved' THEN COALESCE(joined_at, $4)
+                  WHEN $3::member_status = 'approved' THEN COALESCE(joined_at, $4)
                   ELSE joined_at
                 END
             WHERE group_id = $1 AND user_id = $2
@@ -183,14 +183,14 @@ class MemberRepository:
     ) -> tuple[list[JoinRequest], int]:
         if status is not None:
             total = await self._conn.fetchval(
-                "SELECT count(*) FROM group_join_requests WHERE group_id=$1 AND status=$2",
+                "SELECT count(*) FROM group_join_requests WHERE group_id=$1 AND status=$2::member_status",
                 group_id,
                 status.value,
             )
             rows = await self._conn.fetch(
                 f"""
                 SELECT {_JOIN_COLS} FROM group_join_requests
-                WHERE group_id=$1 AND status=$2
+                WHERE group_id=$1 AND status=$2::member_status
                 ORDER BY created_at ASC
                 LIMIT $3 OFFSET $4
                 """,
@@ -226,7 +226,7 @@ class MemberRepository:
         record = await self._conn.fetchrow(
             f"""
             UPDATE group_join_requests
-            SET status = $2, reviewed_by = $3, reviewed_at = now()
+            SET status = $2::member_status, reviewed_by = $3, reviewed_at = now()
             WHERE id = $1 AND status = 'pending'
             RETURNING {_JOIN_COLS}
             """,

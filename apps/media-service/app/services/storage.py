@@ -28,24 +28,47 @@ logger = logging.getLogger(__name__)
 _VN_OFFSET = timedelta(hours=7)
 
 _client = None
+_presign_client = None
+
+_BOTO_CONFIG = Config(
+    signature_version="s3v4",
+    s3={"addressing_style": "path"},
+)
+
+
+def _make_client(endpoint_url: str):
+    return boto3.client(
+        "s3",
+        region_name=settings.seaweed_s3_region,
+        endpoint_url=endpoint_url,
+        aws_access_key_id=settings.seaweed_access_key_id,
+        aws_secret_access_key=settings.seaweed_secret_access_key,
+        config=_BOTO_CONFIG,
+    )
 
 
 def _get_client():
-    """S3 client pointed at the internal SeaweedFS endpoint (Docker network)."""
+    """S3 client for server-side ops (Docker network → seaweedfs)."""
     global _client
     if _client is None:
-        _client = boto3.client(
-            "s3",
-            region_name=settings.seaweed_s3_region,
-            endpoint_url=settings.seaweed_s3_endpoint,
-            aws_access_key_id=settings.seaweed_access_key_id,
-            aws_secret_access_key=settings.seaweed_secret_access_key,
-            config=Config(
-                signature_version="s3v4",
-                s3={"addressing_style": "path"},
-            ),
-        )
+        _client = _make_client(settings.seaweed_s3_endpoint)
     return _client
+
+
+def _get_presign_client():
+    """S3 client for presigned URLs — must use the browser-facing host.
+
+    SigV4 signs the Host header. Signing with the internal hostname then
+    rewriting the URL breaks verification (403 SignatureDoesNotMatch).
+    """
+    global _presign_client
+    if _presign_client is None:
+        endpoint = (
+            settings.seaweed_s3_public_endpoint.rstrip("/")
+            or settings.seaweed_s3_endpoint
+        )
+        _presign_client = _make_client(endpoint)
+    return _presign_client
 
 
 def generate_object_key(ref_type: str, mime_type: str) -> str:
@@ -64,12 +87,8 @@ def public_url(object_key: str) -> str:
 
 
 def create_presigned_put_url(object_key: str, content_type: str) -> str:
-    """Local signing operation (no network call).
-
-    Signed against the internal endpoint, then host is rewritten to the
-    public endpoint so browsers can reach SeaweedFS (e.g. localhost:8333).
-    """
-    url = _get_client().generate_presigned_url(
+    """Local signing operation (no network call) against the public endpoint."""
+    return _get_presign_client().generate_presigned_url(
         "put_object",
         Params={
             "Bucket": settings.seaweed_bucket,
@@ -78,11 +97,6 @@ def create_presigned_put_url(object_key: str, content_type: str) -> str:
         },
         ExpiresIn=settings.presign_expires_seconds,
     )
-    internal = settings.seaweed_s3_endpoint.rstrip("/")
-    public = settings.seaweed_s3_public_endpoint.rstrip("/")
-    if public and public != internal and url.startswith(internal):
-        url = public + url[len(internal) :]
-    return url
 
 
 async def put_object(object_key: str, body: bytes, content_type: str) -> None:

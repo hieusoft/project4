@@ -34,7 +34,7 @@ class PostRepository:
         record = await self._conn.fetchrow(
             f"""
             INSERT INTO posts (group_id, author_id, content, type, ref_id, status)
-            VALUES ($1, $2, $3, $4, $5, $6)
+            VALUES ($1, $2, $3, $4::post_type, $5, $6::content_status)
             RETURNING {_POST_COLS}
             """,
             group_id,
@@ -125,7 +125,8 @@ class PostRepository:
         parts: list[str] = []
         values: list[Any] = []
         for i, (col, val) in enumerate(updates.items(), start=2):
-            parts.append(f"{col} = ${i}")
+            cast = "::content_status" if col == "status" else ""
+            parts.append(f"{col} = ${i}{cast}")
             values.append(val.value if hasattr(val, "value") else val)
         set_clause = ", ".join(parts) + ", updated_at = now()"
         record = await self._conn.fetchrow(

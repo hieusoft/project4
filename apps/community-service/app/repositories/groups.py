@@ -94,7 +94,8 @@ class GroupRepository:
         args: list[Any] = []
         if status is not None:
             args.append(status.value)
-            clauses.append(f"status = ${len(args)}")
+            # asyncpg sends str as text; PG needs explicit cast to enum for =
+            clauses.append(f"status = ${len(args)}::group_status")
         if province_code:
             args.append(province_code)
             clauses.append(f"province_code = ${len(args)}")
@@ -129,7 +130,7 @@ class GroupRepository:
         status_clause = ""
         if member_status is not None:
             args.append(member_status.value)
-            status_clause = f"AND gm.status = ${len(args)}"
+            status_clause = f"AND gm.status = ${len(args)}::member_status"
 
         total = await self._conn.fetchval(
             f"""
@@ -185,7 +186,8 @@ class GroupRepository:
         parts: list[str] = []
         values: list[Any] = []
         for i, (col, val) in enumerate(updates.items(), start=2):
-            parts.append(f"{col} = ${i}")
+            cast = "::group_status" if col == "status" else ""
+            parts.append(f"{col} = ${i}{cast}")
             values.append(val.value if hasattr(val, "value") else val)
         set_clause = ", ".join(parts) + ", updated_at = now()"
         record = await self._conn.fetchrow(
