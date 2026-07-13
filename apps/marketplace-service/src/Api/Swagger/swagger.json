@@ -7,8 +7,12 @@
   },
   "servers": [
     {
+      "url": "/api/marketplace",
+      "description": "Kong gateway"
+    },
+    {
       "url": "http://localhost:3004",
-      "description": "Local server"
+      "description": "Direct (local)"
     }
   ],
   "tags": [
@@ -125,7 +129,8 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "properties": { "reviewer_id": { "type": "string" } }
+                "properties": { "reviewed_by": { "type": "string", "format": "uuid" } },
+                "required": ["reviewed_by"]
               }
             }
           }
@@ -148,7 +153,11 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "properties": { "reviewer_id": { "type": "string" }, "reject_reason": { "type": "string" } }
+                "properties": {
+                  "reviewed_by": { "type": "string", "format": "uuid" },
+                  "reason": { "type": "string" }
+                },
+                "required": ["reviewed_by", "reason"]
               }
             }
           }
@@ -171,7 +180,11 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "properties": { "scheduled_at": { "type": "string", "format": "date-time" } }
+                "properties": {
+                  "reviewed_by": { "type": "string", "format": "uuid" },
+                  "scheduled_at": { "type": "string", "format": "date-time" }
+                },
+                "required": ["reviewed_by", "scheduled_at"]
               }
             }
           }

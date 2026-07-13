@@ -12,7 +12,7 @@ Client (Web / Mobile)
    /api/identity      → identity-service      :3001
    /api/community     → community-service     :3002
    /api/donation      → donation-service      :3003  (chưa implement)
-   /api/marketplace   → marketplace-service   :3004  (chưa implement)
+   /api/marketplace   → marketplace-service   :3004
    /api/communication → communication-service :3005
    /api/media         → media-service         :3006
    /api/ai            → ai-service            :3007  (scaffold)
@@ -30,7 +30,7 @@ Client (Web / Mobile)
 | [Identity](./identity.md) | 3001 | Định danh: đăng ký, đăng nhập, JWT, hồ sơ, 2FA | ✅ Đã có |
 | [Community](./community.md) | 3002 | Hội nhóm, thành viên, bài viết, tương tác | ✅ Đã có |
 | [Donation](./donation.md) | 3003 | Quyên góp, kiểm tra đồ, kho, hành trình món đồ | ⏳ Chưa code |
-| [Marketplace](./marketplace.md) | 3004 | Gian hàng 0 đồng, yêu cầu nhận, trao tặng | ⏳ Chưa code |
+| [Marketplace](./marketplace.md) | 3004 | Gian hàng 0 đồng, yêu cầu nhận, trao tặng | 🔶 Skeleton (OpenAPI đã gắn hub) |
 | [Communication](./communication.md) | 3005 | Email, push, chat realtime, thông báo in-app | ✅ Đã có |
 | [Media](./media.md) | 3006 | Upload ảnh (presigned SeaweedFS), lifecycle media | ✅ Đã có |
 | [AI](./ai.md) | 3007 | LLM: nhận diện đồ, gợi ý nhóm, kiểm duyệt | 🔶 Scaffold |
@@ -52,7 +52,7 @@ Client (Web / Mobile)
     → Upload ảnh (Media + SeaweedFS)
     → Tạo / tham gia nhóm (Community)
     → Quyên góp đồ (Donation) ← chưa code
-    → Nhập kho → đăng gian hàng (Marketplace) ← chưa code
+    → Nhập kho → đăng gian hàng (Marketplace)
     → Người cần đăng ký nhận → duyệt → trao tặng
     → Chat / email / push (Communication)
     → AI hỗ trợ gợi ý / kiểm duyệt (AI)

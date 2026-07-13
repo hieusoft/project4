@@ -3,11 +3,12 @@
 | | |
 |---|---|
 | **Mục đích** | Gian hàng 0 đồng: đăng listing từ kho, người cần đăng ký nhận, nhóm duyệt, hẹn lịch, trao tặng (QR), thống kê |
-| **Stack dự kiến** | FastAPI hoặc NestJS |
+| **Stack** | Node.js · Express · pg · amqplib |
 | **Port** | `3004` |
 | **Gateway** | `/api/marketplace` |
 | **Database** | `marketplace_db` |
-| **Code** | `apps/marketplace-service/` — **chưa implement** |
+| **Code** | `apps/marketplace-service/` |
+| **OpenAPI** | `/openapi.json` (hub: `/api/marketplace/openapi.json`) |
 | **Schema** | `docs/database.md` (marketplace_db) |
 
 ---
@@ -70,14 +71,16 @@ sequenceDiagram
 
 ---
 
-## API dự kiến (chưa code)
+## API (đã code skeleton)
 
 - `POST/GET /listings`, `GET /listings/{id}`
-- `GET /catalog` (toàn hệ thống)
+- `GET /catalog` (toàn hệ thống, chỉ `active`)
 - `POST /requests`, `GET /requests`
 - `PUT /requests/{id}/approve|reject|schedule|complete`
-- Thống kê theo group / platform
+- `GET /stats`
 
-Route Kong `/api/marketplace` đã khai báo — gọi hiện tại sẽ **502**.
+Swagger: hub `/docs` → tab **Marketplace**, hoặc trực tiếp `/api/marketplace/openapi.json`.
+
+Còn thiếu so thiết kế: JWT/auth, verify inventory (Donation), cancel/no_show, update/close listing.
 
 Xem thêm [flows.md](../flows.md) các luồng nhận đồ / QR.

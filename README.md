@@ -215,6 +215,7 @@ curl http://localhost:8000/api/identity/health
 | http://localhost:8000/docs | **Swagger hub** (tất cả service) |
 | http://localhost:8000/api/identity/openapi.json | OpenAPI Identity |
 | http://localhost:8000/api/media/openapi.json | OpenAPI Media |
+| http://localhost:8000/api/marketplace/openapi.json | OpenAPI Marketplace |
 | http://localhost:15672 | RabbitMQ UI |
 | http://localhost:3001/docs | Swagger identity (direct) |
 | http://localhost:3005/docs | Swagger communication (direct) |

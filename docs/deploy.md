@@ -28,7 +28,7 @@ PR / push cũng chạy workflow **CI** (build image, không push, không deploy)
 | `communication-service` | root `Dockerfile` + `SERVICE_PATH` |
 | `ai-service` | root `Dockerfile` + `SERVICE_PATH` |
 
-> `donation-service` và `marketplace-service` chưa có code — chưa build/deploy. Route Kong vẫn khai báo sẵn (sẽ 502 cho đến khi service có).
+> `donation-service` chưa có code — route Kong vẫn khai báo sẵn (sẽ 502 cho đến khi service có). `marketplace-service` đã có skeleton + OpenAPI trên hub `/docs`.
 
 ---
 

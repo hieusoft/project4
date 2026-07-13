@@ -4,6 +4,7 @@
     { "url": "/api/media/openapi.json", "name": "Media" },
     { "url": "/api/communication/openapi.json", "name": "Communication" },
     { "url": "/api/community/openapi.json", "name": "Community" },
+    { "url": "/api/marketplace/openapi.json", "name": "Marketplace" },
     { "url": "/api/ai/openapi.json", "name": "AI" }
   ],
   "urls.primaryName": "Identity",
@@ -14,6 +15,6 @@
   "filter": true,
   "tryItOutEnabled": true,
   "validatorUrl": null,
-  "notes": "Donation + Marketplace chưa có code — thêm vào đây khi service sẵn sàng"
+  "notes": "Donation chưa có OpenAPI — thêm khi service sẵn sàng"
 }
 
