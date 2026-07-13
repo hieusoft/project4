@@ -15,6 +15,7 @@ FROM nginx:1.27-alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY index.html /usr/share/nginx/html/index.html
 COPY swagger-config.json /usr/share/nginx/html/swagger-config.json
+COPY specs/ /usr/share/nginx/html/specs/
 COPY --from=assets /out/ /usr/share/nginx/html/
 
 EXPOSE 8080

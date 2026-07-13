@@ -4,7 +4,7 @@
     { "url": "/api/media/openapi.json", "name": "Media" },
     { "url": "/api/communication/openapi.json", "name": "Communication" },
     { "url": "/api/community/openapi.json", "name": "Community" },
-    { "url": "/api/marketplace/openapi.json", "name": "Marketplace" },
+    { "url": "/docs/specs/marketplace.openapi.json", "name": "Marketplace" },
     { "url": "/api/ai/openapi.json", "name": "AI" }
   ],
   "urls.primaryName": "Identity",

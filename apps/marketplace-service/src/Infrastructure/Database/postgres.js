@@ -7,7 +7,7 @@ class PostgresDB {
       port: process.env.POSTGRES_PORT || 5432,
       user: process.env.POSTGRES_USER || 'postgres',
       password: process.env.POSTGRES_PASSWORD || 'postgres',
-      database: 'marketplace_db',
+      database: process.env.MARKETPLACE_DB_NAME || 'marketplace_db',
     });
   }
 

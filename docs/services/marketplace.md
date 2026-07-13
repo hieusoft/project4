@@ -8,7 +8,7 @@
 | **Gateway** | `/api/marketplace` |
 | **Database** | `marketplace_db` |
 | **Code** | `apps/marketplace-service/` |
-| **OpenAPI** | `/openapi.json` (hub: `/api/marketplace/openapi.json`) |
+| **OpenAPI** | Live: `/openapi.json` · Hub static: `/docs/specs/marketplace.openapi.json` |
 | **Schema** | `docs/database.md` (marketplace_db) |
 
 ---

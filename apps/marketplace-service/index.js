@@ -13,11 +13,8 @@ const StatsRepository = require('./src/Infrastructure/Database/Repositories/Stat
 
 // Application Use Cases
 const ListingUseCases = require('./src/Application/UseCases/ListingUseCases');
-
 const RequestUseCases = require('./src/Application/UseCases/RequestUseCases');
-
 const StatsUseCases = require('./src/Application/UseCases/StatsUseCases');
-
 
 // Api Interfaces
 const ListingController = require('./src/Api/Controllers/ListingController');
@@ -28,13 +25,16 @@ const setupSwagger = require('./src/Api/Swagger/index');
 
 async function bootstrap() {
   const app = express();
-  const PORT = process.env.PORT || 3004;
+  const PORT = Number(process.env.PORT) || 3004;
 
   app.use(cors());
   app.use(express.json());
 
+  // OpenAPI + health first so Kong/docs hub work even if MQ/DB are slow
   setupSwagger(app);
-  await rabbitMQPublisher.connect();
+  app.get('/health', (_req, res) => {
+    res.json({ service: 'marketplace-service', status: 'ok' });
+  });
 
   // Instantiate Repositories
   const listingRepository = new ListingRepository(db);
@@ -44,30 +44,49 @@ async function bootstrap() {
   const statsRepository = new StatsRepository(db);
 
   // Instantiate Use Cases
-  const listingUseCases = new ListingUseCases({ listingRepository, messagePublisher: rabbitMQPublisher });
-
-  const requestUseCases = new RequestUseCases({ requestRepository, listingRepository, messagePublisher: rabbitMQPublisher });
-
+  const listingUseCases = new ListingUseCases({
+    listingRepository,
+    messagePublisher: rabbitMQPublisher,
+  });
+  const requestUseCases = new RequestUseCases({
+    requestRepository,
+    listingRepository,
+    messagePublisher: rabbitMQPublisher,
+  });
   const statsUseCases = new StatsUseCases({ statsRepository });
-
 
   // Instantiate Controllers
   const listingController = new ListingController({ listingUseCases });
   const requestController = new RequestController({ requestUseCases });
   const statsController = new StatsController({ statsUseCases });
 
-  // Init Router
-  const apiRouter = createRouter({ listingController, requestController, statsController });
+  const apiRouter = createRouter({
+    listingController,
+    requestController,
+    statsController,
+  });
   app.use('/', apiRouter);
 
-  // 404 Handler
   app.use((req, res) => {
     res.status(404).json({ error: 'Not Found', path: req.path });
   });
 
-  app.listen(PORT, () => {
-    console.log(`Marketplace Service running on port ${PORT}`);
+  // Listen BEFORE RabbitMQ — amqp.connect can hang and would block OpenAPI otherwise
+  await new Promise((resolve, reject) => {
+    const server = app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Marketplace Service running on 0.0.0.0:${PORT}`);
+      resolve(server);
+    });
+    server.on('error', reject);
+  });
+
+  // Background MQ connect (do not block HTTP)
+  rabbitMQPublisher.connect().catch((err) => {
+    console.error('RabbitMQ background connect failed:', err.message || err);
   });
 }
 
-bootstrap();
+bootstrap().catch((err) => {
+  console.error('Marketplace bootstrap failed:', err);
+  process.exit(1);
+});
