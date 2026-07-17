@@ -17,6 +17,7 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
+    "types": ["node"],
     "paths": {
       "@libs/common": ["common/src"],
       "@libs/events": ["events/src"],
