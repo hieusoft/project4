@@ -1,31 +1,38 @@
-import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
-
-const DEFAULT_PORT = 3007;
-const GATEWAY_PREFIX = process.env.OPENAPI_SERVER_URL ?? '/api/ai';
+import { Transport, MicroserviceOptions } from '@nestjs/microservices';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { Logger } from '@nestjs/common';
 
 async function bootstrap() {
+  const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
-  app.enableCors();
 
-  const config = new DocumentBuilder()
-    .setTitle('ai-service')
-    .setDescription('AI service API')
-    .setVersion('0.1.0')
-    .addServer(GATEWAY_PREFIX)
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('docs', app, document, {
-    jsonDocumentUrl: 'openapi.json',
-    swaggerOptions: { persistAuthorization: true },
+  // Setup RabbitMQ Microservice for moderation
+  app.connectMicroservice<MicroserviceOptions>({
+    transport: Transport.RMQ,
+    options: {
+      urls: [process.env.RABBITMQ_URL || 'amqp://admin:admin123@localhost:5672'],
+      queue: 'ai_moderation_queue',
+      queueOptions: {
+        durable: true,
+      },
+      noAck: false, // We will manually ack
+    },
   });
 
-  const port = Number(process.env.PORT ?? DEFAULT_PORT);
-  await app.listen(port, '0.0.0.0');
-  console.log(`ai-service is running on http://localhost:${port}`);
-  console.log(`OpenAPI: http://localhost:${port}/openapi.json`);
+  // Setup Swagger for REST APIs
+  const config = new DocumentBuilder()
+    .setTitle('AI Service API')
+    .setDescription('The AI Service API for generating text and moderating content')
+    .setVersion('1.0')
+    .build();
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('docs', app, document);
+
+  // Start all microservices and HTTP server
+  await app.startAllMicroservices();
+  await app.listen(3007);
+  logger.log('AI Service is running on http://localhost:3007 (REST) and connected to RabbitMQ (Microservice)');
 }
-void bootstrap();
+bootstrap();
