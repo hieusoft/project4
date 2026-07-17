@@ -134,7 +134,7 @@ Tra ve mang JSON (khong co blockcode markdown) dinh dang:
         size: '1024x1024',
         quality: 'standard', // or high as per request
       });
-      return response.data[0].url || '';
+      return response.data?.[0]?.url || '';
     } catch (error: any) {
       this.logger.error(`Error generating image: ${error.message}`, error.stack);
       throw error;
