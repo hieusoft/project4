@@ -88,6 +88,20 @@ class RequestController {
       return ApiResponse.error(res, err);
     }
   }
+
+  async getDeliveryConfirmation(req, res) {
+    try {
+      const { id } = req.params;
+      const confirmation = await this.requestUseCases.getDeliveryConfirmation(id);
+      if (!confirmation) {
+        return ApiResponse.error(res, new Error('Delivery confirmation not found'), 404);
+      }
+      return ApiResponse.success(res, confirmation);
+    } catch (err) {
+      console.error(err);
+      return ApiResponse.error(res, err);
+    }
+  }
 }
 
 module.exports = RequestController;
