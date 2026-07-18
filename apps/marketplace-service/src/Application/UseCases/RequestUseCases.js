@@ -2,10 +2,11 @@ const { NotFoundError, DomainError } = require('../Exceptions');
 const ItemRequest = require('../../Domain/Entities/ItemRequest');
 
 class RequestUseCases {
-  constructor({ requestRepository, listingRepository, messagePublisher }) {
+  constructor({ requestRepository, listingRepository, messagePublisher, deliveryConfirmationRepository }) {
     this.requestRepository = requestRepository;
     this.listingRepository = listingRepository;
     this.messagePublisher = messagePublisher;
+    this.deliveryConfirmationRepository = deliveryConfirmationRepository;
   }
 
   async approveRequest(requestId, reviewerId) {
@@ -41,13 +42,7 @@ class RequestUseCases {
 
     const result = await this.requestRepository.completeWithTransaction(request, listing, completionData);
 
-    let donorId = null;
-    if (this.listingRepository) {
-      const listing = await this.listingRepository.findById(request.listing_id);
-      if (listing) {
-        donorId = listing.created_by;
-      }
-    }
+    let donorId = listing ? listing.created_by : null;
 
     await this.messagePublisher.publishRequestCompleted({
       requestId: result.request.id,
@@ -82,6 +77,11 @@ class RequestUseCases {
 
   async getRequests(filters = {}) {
     return await this.requestRepository.find(filters);
+  }
+
+  async getDeliveryConfirmation(requestId) {
+    if (!this.deliveryConfirmationRepository) return null;
+    return await this.deliveryConfirmationRepository.findByRequestId(requestId);
   }
 
   async rejectRequest(requestId, reviewerId, reason) {

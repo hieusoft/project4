@@ -15,11 +15,13 @@ const StatsRepository = require('./src/Infrastructure/Database/Repositories/Stat
 const ListingUseCases = require('./src/Application/UseCases/ListingUseCases');
 const RequestUseCases = require('./src/Application/UseCases/RequestUseCases');
 const StatsUseCases = require('./src/Application/UseCases/StatsUseCases');
+const ListingImageUseCases = require('./src/Application/UseCases/ListingImageUseCases');
 
 // Api Interfaces
 const ListingController = require('./src/Api/Controllers/ListingController');
 const RequestController = require('./src/Api/Controllers/RequestController');
 const StatsController = require('./src/Api/Controllers/StatsController');
+const ListingImageController = require('./src/Api/Controllers/ListingImageController');
 const createRouter = require('./src/Api/Routes/index');
 const setupSwagger = require('./src/Api/Swagger/index');
 
@@ -52,18 +54,24 @@ async function bootstrap() {
     requestRepository,
     listingRepository,
     messagePublisher: rabbitMQPublisher,
+    deliveryConfirmationRepository,
   });
   const statsUseCases = new StatsUseCases({ statsRepository });
+  const listingImageUseCases = new ListingImageUseCases({
+    listingImageRepository,
+  });
 
   // Instantiate Controllers
   const listingController = new ListingController({ listingUseCases });
   const requestController = new RequestController({ requestUseCases });
   const statsController = new StatsController({ statsUseCases });
+  const listingImageController = new ListingImageController({ listingImageUseCases });
 
   const apiRouter = createRouter({
     listingController,
     requestController,
     statsController,
+    listingImageController,
   });
   app.use('/', apiRouter);
 

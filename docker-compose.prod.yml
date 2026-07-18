@@ -110,6 +110,7 @@ services:
       - communication-service
       - media-service
       - ai-service
+      - marketplace-service
 
   identity-service:
     image: ${IMAGE_REGISTRY}/identity-service:${IMAGE_TAG:-latest}
@@ -175,6 +176,18 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  marketplace-service:
+    image: ${IMAGE_REGISTRY}/marketplace-service:${IMAGE_TAG:-latest}
+    <<: *app-env
+    environment:
+      PORT: "${MARKETPLACE_SERVICE_PORT:-3004}"
+      NODE_ENV: production
+    depends_on:
+      postgres:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
