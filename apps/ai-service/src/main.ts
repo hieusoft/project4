@@ -32,9 +32,12 @@ async function bootstrap() {
     jsonDocumentUrl: 'openapi.json',
   });
 
+  // Enable CORS
+  app.enableCors({ origin: '*' });
+
   // Start all microservices and HTTP server
   await app.startAllMicroservices();
-  await app.listen(3007);
-  logger.log('AI Service is running on http://localhost:3007 (REST) and connected to RabbitMQ (Microservice)');
+  await app.listen(process.env.PORT || 3007, '0.0.0.0');
+  logger.log(`AI Service is running on http://localhost:${process.env.PORT || 3007} (REST)`);
 }
 bootstrap();
