@@ -31,7 +31,12 @@ class RequestRepository extends IRequestRepository {
       queryText += ` AND receiver_id = $${params.length}`;
     }
     
-    queryText += ' ORDER BY created_at DESC LIMIT 50';
+    const page = parseInt(filters.page, 10) || 1;
+    const limit = parseInt(filters.limit, 10) || 20;
+    const offset = (page - 1) * limit;
+
+    queryText += ` ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    params.push(limit, offset);
     
     const { rows } = await this.db.query(queryText, params);
     return rows.map(row => new ItemRequest(row));
