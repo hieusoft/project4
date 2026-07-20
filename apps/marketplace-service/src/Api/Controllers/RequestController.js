@@ -12,8 +12,8 @@ class RequestController {
 
   async getRequests(req, res) {
     try {
-      const requests = await this.requestUseCases.getRequests(req.query);
-      return ApiResponse.success(res, requests);
+      const result = await this.requestUseCases.getRequests(req.query);
+      return ApiResponse.success(res, result.data, 200, result.meta);
     } catch (err) {
       console.error(err);
       return ApiResponse.error(res, err, 500);

@@ -1,6 +1,10 @@
 class ApiResponse {
-  static success(res, data, statusCode = 200) {
-    return res.status(statusCode).json({ data });
+  static success(res, data, statusCode = 200, meta = null) {
+    const response = { data };
+    if (meta) {
+      response.meta = meta;
+    }
+    return res.status(statusCode).json(response);
   }
 
   static error(res, error, statusCode = 400) {

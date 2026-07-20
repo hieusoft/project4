@@ -9,27 +9,36 @@ class RequestRepository extends IRequestRepository {
 
   async find(filters = {}) {
     let queryText = 'SELECT * FROM item_requests WHERE 1=1';
+    let countQueryText = 'SELECT COUNT(*) FROM item_requests WHERE 1=1';
     const params = [];
     
     if (filters.group_id) {
       params.push(filters.group_id);
       queryText += ` AND group_id = $${params.length}`;
+      countQueryText += ` AND group_id = $${params.length}`;
     }
     
     if (filters.listing_id) {
       params.push(filters.listing_id);
       queryText += ` AND listing_id = $${params.length}`;
+      countQueryText += ` AND listing_id = $${params.length}`;
     }
 
     if (filters.status) {
       params.push(filters.status);
       queryText += ` AND status = $${params.length}`;
+      countQueryText += ` AND status = $${params.length}`;
     }
 
     if (filters.receiver_id) {
       params.push(filters.receiver_id);
       queryText += ` AND receiver_id = $${params.length}`;
+      countQueryText += ` AND receiver_id = $${params.length}`;
     }
+    
+    // Copy the WHERE clauses to count query before adding LIMIT/OFFSET
+    const { rows: countRows } = await this.db.query(countQueryText, params);
+    const total = parseInt(countRows[0].count, 10);
     
     const page = parseInt(filters.page, 10) || 1;
     const limit = parseInt(filters.limit, 10) || 20;
@@ -39,7 +48,18 @@ class RequestRepository extends IRequestRepository {
     params.push(limit, offset);
     
     const { rows } = await this.db.query(queryText, params);
-    return rows.map(row => new ItemRequest(row));
+    const data = rows.map(row => new ItemRequest(row));
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data,
+      meta: {
+        page,
+        limit,
+        total,
+        total_pages: totalPages
+      }
+    };
   }
 
   async findById(id) {
