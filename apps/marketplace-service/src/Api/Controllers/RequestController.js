@@ -102,6 +102,30 @@ class RequestController {
       return ApiResponse.error(res, err);
     }
   }
+
+  async cancelRequest(req, res) {
+    try {
+      const { id } = req.params;
+      const { user_id } = req.body; // or req.user.id if auth middleware is present
+      const request = await this.requestUseCases.cancelRequest(id, user_id);
+      return ApiResponse.success(res, request);
+    } catch (err) {
+      console.error(err);
+      return ApiResponse.error(res, err);
+    }
+  }
+
+  async noShowRequest(req, res) {
+    try {
+      const { id } = req.params;
+      const { reviewer_id } = req.body;
+      const request = await this.requestUseCases.noShowRequest(id, reviewer_id);
+      return ApiResponse.success(res, request);
+    } catch (err) {
+      console.error(err);
+      return ApiResponse.error(res, err);
+    }
+  }
 }
 
 module.exports = RequestController;

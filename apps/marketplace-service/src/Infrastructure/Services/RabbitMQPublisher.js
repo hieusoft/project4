@@ -8,6 +8,10 @@ const QUEUE_BINDINGS = [
   // Analytics
   { queue: 'marketplace.analytics.queue', routingKey: 'listing.created' },
   { queue: 'marketplace.analytics.queue', routingKey: 'request.completed' },
+  { queue: 'marketplace.analytics.queue', routingKey: 'user.verified' },
+  { queue: 'marketplace.analytics.queue', routingKey: 'donation.completed' },
+  { queue: 'marketplace.analytics.queue', routingKey: 'group.member_approved' },
+  { queue: 'marketplace.analytics.queue', routingKey: 'ai.moderation_result' },
   
   // Communication
   { queue: 'communication.events', routingKey: 'listing.created' },
@@ -16,6 +20,9 @@ const QUEUE_BINDINGS = [
   { queue: 'communication.events', routingKey: 'request.rejected' },
   { queue: 'communication.events', routingKey: 'request.scheduled' },
   { queue: 'communication.events', routingKey: 'request.completed' },
+  { queue: 'communication.events', routingKey: 'request.cancelled' },
+  { queue: 'communication.events', routingKey: 'request.no_show' },
+  { queue: 'communication.events', routingKey: 'listing.closed' },
 ];
 
 class RabbitMQPublisher extends IEventPublisher {
@@ -85,6 +92,18 @@ class RabbitMQPublisher extends IEventPublisher {
 
   publishRequestCompleted(payload) {
     this.publish('request.completed', payload);
+  }
+
+  publishRequestCancelled(payload) {
+    this.publish('request.cancelled', payload);
+  }
+
+  publishRequestNoShow(payload) {
+    this.publish('request.no_show', payload);
+  }
+
+  publishListingClosed(payload) {
+    this.publish('listing.closed', payload);
   }
 }
 

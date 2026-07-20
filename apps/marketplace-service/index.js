@@ -5,6 +5,8 @@ const cors = require('cors');
 // Infrastructure
 const db = require('./src/Infrastructure/Database/postgres');
 const rabbitMQPublisher = require('./src/Infrastructure/Services/RabbitMQPublisher');
+const RabbitMQConsumer = require('./src/Infrastructure/Services/RabbitMQConsumer');
+const { CommunityClient, DonationClient } = require('@libs/clients');
 const ListingRepository = require('./src/Infrastructure/Database/Repositories/ListingRepository');
 const ListingImageRepository = require('./src/Infrastructure/Database/Repositories/ListingImageRepository');
 const RequestRepository = require('./src/Infrastructure/Database/Repositories/RequestRepository');
@@ -38,7 +40,9 @@ async function bootstrap() {
     res.json({ service: 'marketplace-service', status: 'ok' });
   });
 
-  // Instantiate Repositories
+  // Instantiate Repositories & Clients
+  const communityClient = new CommunityClient({ baseUrl: process.env.COMMUNITY_SERVICE_URL || 'http://community-service:3002/api' });
+  const donationClient = new DonationClient({ baseUrl: process.env.DONATION_SERVICE_URL || 'http://donation-service:3003/api' });
   const listingRepository = new ListingRepository(db);
   const listingImageRepository = new ListingImageRepository(db);
   const requestRepository = new RequestRepository(db);
@@ -48,11 +52,15 @@ async function bootstrap() {
   // Instantiate Use Cases
   const listingUseCases = new ListingUseCases({
     listingRepository,
+    donationClient,
+    communityClient,
     messagePublisher: rabbitMQPublisher,
   });
   const requestUseCases = new RequestUseCases({
     requestRepository,
     listingRepository,
+    communityClient,
+    donationClient,
     messagePublisher: rabbitMQPublisher,
     deliveryConfirmationRepository,
   });
@@ -60,6 +68,9 @@ async function bootstrap() {
   const listingImageUseCases = new ListingImageUseCases({
     listingImageRepository,
   });
+
+  // Instantiate Consumers
+  const rabbitMQConsumer = new RabbitMQConsumer(statsUseCases, listingUseCases);
 
   // Instantiate Controllers
   const listingController = new ListingController({ listingUseCases });
@@ -90,7 +101,10 @@ async function bootstrap() {
 
   // Background MQ connect (do not block HTTP)
   rabbitMQPublisher.connect().catch((err) => {
-    console.error('RabbitMQ background connect failed:', err.message || err);
+    console.error('RabbitMQ Publisher background connect failed:', err.message || err);
+  });
+  rabbitMQConsumer.connect().catch((err) => {
+    console.error('RabbitMQ Consumer background connect failed:', err.message || err);
   });
 }
 

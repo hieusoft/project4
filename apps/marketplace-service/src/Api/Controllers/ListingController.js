@@ -48,6 +48,31 @@ class ListingController {
       return ApiResponse.error(res, err);
     }
   }
+
+  async closeListing(req, res) {
+    try {
+      const { id } = req.params;
+      const { user_id } = req.body;
+      const listing = await this.listingUseCases.closeListing(id, user_id);
+      return ApiResponse.success(res, listing);
+    } catch (err) {
+      console.error(err);
+      return ApiResponse.error(res, err);
+    }
+  }
+
+  async updateListing(req, res) {
+    try {
+      const { id } = req.params;
+      const listingData = req.body;
+      const { user_id } = req.body;
+      const listing = await this.listingUseCases.updateListing(id, listingData, user_id);
+      return ApiResponse.success(res, listing);
+    } catch (err) {
+      console.error(err);
+      return ApiResponse.error(res, err);
+    }
+  }
 }
 
 module.exports = ListingController;

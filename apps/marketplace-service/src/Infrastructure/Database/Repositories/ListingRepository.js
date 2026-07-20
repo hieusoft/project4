@@ -151,6 +151,36 @@ class ListingRepository extends IListingRepository {
       client.release();
     }
   }
+
+  async update(listing) {
+    const queryText = `
+      UPDATE listings
+      SET 
+        title = $1,
+        description = $2,
+        category_id = $3,
+        condition = $4,
+        quantity_total = $5,
+        quantity_available = $6,
+        province_code = $7,
+        district_code = $8,
+        status = $9,
+        view_count = $10,
+        updated_at = now()
+      WHERE id = $11
+      RETURNING *
+    `;
+    const params = [
+      listing.title, listing.description, listing.category_id, listing.condition,
+      listing.quantity_total, listing.quantity_available, listing.province_code,
+      listing.district_code, listing.status, listing.view_count, listing.id
+    ];
+    
+    const { rows } = await this.db.query(queryText, params);
+    
+    // For images, we would ideally sync them, but for now we just return the updated listing
+    return new Listing(rows[0]);
+  }
 }
 
 module.exports = ListingRepository;

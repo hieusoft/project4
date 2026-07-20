@@ -98,6 +98,64 @@
         "responses": {
           "200": { "description": "A single listing" }
         }
+      },
+      "put": {
+        "tags": ["Listings"],
+        "summary": "Update a listing",
+        "security": [
+          { "bearerAuth": [] }
+        ],
+        "parameters": [
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": { "type": "string" },
+                  "description": { "type": "string" },
+                  "condition": { "type": "string" },
+                  "category_id": { "type": "string", "format": "uuid" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Listing updated successfully" }
+        }
+      }
+    },
+    "/listings/{id}/close": {
+      "put": {
+        "tags": ["Listings"],
+        "summary": "Close a listing",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": { "user_id": { "type": "string", "format": "uuid" } },
+                "required": ["user_id"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Listing closed" }
+        }
       }
     },
     "/requests": {
@@ -273,6 +331,76 @@
         },
         "responses": {
           "200": { "description": "Request completed" }
+        }
+      }
+    },
+    "/requests/{id}/cancel": {
+      "put": {
+        "tags": ["Requests"],
+        "summary": "Cancel a request",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": { "user_id": { "type": "string", "format": "uuid" } },
+                "required": ["user_id"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Request cancelled" }
+        }
+      }
+    },
+    "/requests/{id}/no_show": {
+      "put": {
+        "tags": ["Requests"],
+        "summary": "Mark a request as no-show",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": { "reviewer_id": { "type": "string", "format": "uuid" } },
+                "required": ["reviewer_id"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Request marked as no-show" }
+        }
+      }
+    },
+    "/stats/summary": {
+      "get": {
+        "tags": ["Stats"],
+        "summary": "Get aggregate statistics summary",
+        "parameters": [
+          { "in": "query", "name": "group_id", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Aggregated statistics data" }
         }
       }
     },
