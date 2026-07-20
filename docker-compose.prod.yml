@@ -111,6 +111,7 @@ services:
       - media-service
       - ai-service
       - marketplace-service
+      - donation-service
 
   identity-service:
     image: ${IMAGE_REGISTRY}/identity-service:${IMAGE_TAG:-latest}
@@ -191,6 +192,21 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+
+  donation-service:
+    image: ${IMAGE_REGISTRY}/donation-service:${IMAGE_TAG:-latest}
+    <<: *app-env
+    environment:
+      PORT: "${DONATION_SERVICE_PORT:-3003}"
+      NODE_ENV: production
+      COMMUNITY_SERVICE_URL: "http://community-service:3002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      community-service:
+        condition: service_started
 
 networks:
   charity:

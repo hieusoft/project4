@@ -1,0 +1,6 @@
+DONATION_CREATED = "donation.created"
+DONATION_REVIEWED = "donation.reviewed"
+DONATION_SCHEDULED = "donation.scheduled"
+DONATION_COMPLETED = "donation.completed"
+INVENTORY_IMPORTED = "inventory.imported"
+ITEM_STATUS_CHANGED = "inventory.item_status_changed"

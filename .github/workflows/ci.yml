@@ -56,6 +56,10 @@ jobs:
             dockerfile: apps/marketplace-service/Dockerfile
             context: apps/marketplace-service
             build_args: ""
+          - service: donation-service
+            dockerfile: apps/donation-service/Dockerfile
+            context: .
+            build_args: ""
 
     steps:
       - name: Checkout

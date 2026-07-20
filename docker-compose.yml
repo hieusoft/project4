@@ -63,6 +63,7 @@ services:
       - media-service
       - ai-service
       - marketplace-service
+      - donation-service
   identity-service:
     build:
       context: .
@@ -111,6 +112,16 @@ services:
     environment: { PORT: "${MARKETPLACE_SERVICE_PORT:-3004}" }
     ports: ["${MARKETPLACE_SERVICE_PORT:-3004}:${MARKETPLACE_SERVICE_PORT:-3004}"]
     depends_on: [postgres, rabbitmq]
+  donation-service:
+    build:
+      context: .
+      dockerfile: apps/donation-service/Dockerfile
+    env_file: .env
+    environment:
+      PORT: "${DONATION_SERVICE_PORT:-3003}"
+      COMMUNITY_SERVICE_URL: "http://community-service:3002"
+    ports: ["${DONATION_SERVICE_PORT:-3003}:${DONATION_SERVICE_PORT:-3003}"]
+    depends_on: [postgres, rabbitmq, community-service]
 volumes:
   postgres_data:
   seaweedfs_data:

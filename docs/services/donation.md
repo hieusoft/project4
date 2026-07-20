@@ -3,101 +3,98 @@
 | | |
 |---|---|
 | **Mục đích** | Quy trình quyên góp lõi: donor đăng ký cho đồ → nhóm duyệt → hẹn lịch → kiểm tra thực tế → nhập kho + hành trình món đồ |
-| **Stack dự kiến** | FastAPI hoặc NestJS (theo chuẩn platform) |
+| **Stack** | Python 3.12 · FastAPI · asyncpg · aio-pika · httpx |
 | **Port** | `3003` |
 | **Gateway** | `/api/donation` |
 | **Database** | `donation_db` |
-| **Code** | `apps/donation-service/` — **chưa implement** |
-| **Schema** | Mô tả trong `docs/database.md` (donation_db) |
+| **Code** | `apps/donation-service/` |
+| **Schema** | `infra/postgres/init/05-donation-schema.sql` |
 
 ---
 
-## Service này sẽ làm gì?
+## Service này làm gì?
 
 Donation là **luồng nghiệp vụ lõi #1** của nền tảng.
 
-| Có trách nhiệm (thiết kế) | Không làm |
+| Có trách nhiệm | Không làm |
 |---|---|
 | Tạo donation + items + ảnh khai báo | Auth (Identity) |
 | Moderator duyệt / từ chối / hẹn lịch | Upload file (Media) |
 | Kiểm tra thực tế (actual images) | Gian hàng listing (Marketplace) |
 | Import kho / inventory | Chat (Communication qua event) |
 | Timeline hành trình món đồ | |
-| Event cho Communication (notify, chat room) | |
+| Internal inventory API cho Marketplace | |
 
-**Quy tắc đã chốt:** Donor **không bắt buộc** là member của nhóm.
+**Quy tắc:** Donor **không bắt buộc** là member của nhóm. Verify group `active` qua Community HTTP.
 
 ---
 
-## Trạng thái donation (thiết kế)
+## Trạng thái
 
 ```text
-pending → accepted → scheduled → received → completed
-                 ↘ rejected
-                 ↘ cancelled
+DONATION: pending → accepted → scheduled → received → completed
+                 ↘ rejected | cancelled
+ITEM:     pending → accepted | rejected  (accepted → inventory in_stock)
+INVENTORY: in_stock → listed → reserved → delivered | discarded
 ```
 
 ---
 
-## Luồng nghiệp vụ dự kiến
+## API (sau strip `/api/donation`)
 
-```mermaid
-sequenceDiagram
-    participant D as Donor
-    participant M as Media
-    participant DON as Donation
-    participant CM as Community
-    participant COM as Communication
+### Donations (JWT)
 
-    D->>M: Upload ảnh đồ (presign…)
-    D->>DON: POST /donations {group_id, items[], images[]}
-    DON->>CM: Verify group active (HTTP sync)
-    DON->>DON: INSERT donation pending + items
-    DON-->>COM: donation.created
-    COM->>COM: Tạo conversation donor_group + notify mods
+| Method | Path | Mô tả |
+|---|---|---|
+| POST | `/donations` | Tạo đơn + items + images |
+| GET | `/donations` | List (`group_id`, `status`, `mine`) |
+| GET | `/donations/{id}` | Chi tiết |
+| PUT | `/donations/{id}/review` | `{ action: accepted\|rejected, reason? }` |
+| PUT | `/donations/{id}/schedule` | `{ scheduled_at }` |
+| PUT | `/donations/{id}/cancel` | Donor hủy |
+| PUT | `/donations/{id}/items/{itemId}/check` | Check món + nhập kho nếu accepted |
+| GET | `/donations/{id}/timeline` | Hành trình |
 
-    Note over DON: Moderator duyệt ảnh
-    DON->>DON: accepted / rejected
-    DON-->>COM: donation.reviewed
+### Inventory (JWT)
 
-    Note over DON: Hẹn lịch nhận đồ
-    DON->>DON: scheduled
-    DON-->>COM: donation.scheduled (+ reminder)
+| Method | Path | Mô tả |
+|---|---|---|
+| GET | `/categories` | Danh mục |
+| GET | `/inventory` | List kho (`group_id`, `status`, `mine`) |
+| GET | `/inventory/{id}` | Chi tiết |
+| GET | `/inventory/{id}/history` | Timeline món đồ |
 
-    Note over DON: Kiểm tra thực tế + nhập kho
-    DON->>DON: received → completed + inventory
-    DON-->>COM: donation.completed
-```
+### Internal (Marketplace client)
+
+| Method | Path | Mô tả |
+|---|---|---|
+| GET | `/internal/inventory/{id}` | Lấy item |
+| PUT | `/internal/inventory/{id}/status` | `{ status, refType?, refId? }` |
 
 ---
 
-## Events sẽ publish
+## Events
 
-| Event | Ý nghĩa |
+| Event | Khi |
 |---|---|
-| `donation.created` | Đơn mới |
+| `donation.created` | Tạo đơn |
 | `donation.reviewed` | Duyệt / từ chối |
 | `donation.scheduled` | Hẹn lịch |
-| `donation.completed` | Hoàn tất + nhập kho |
-| `inventory.imported` | Item vào kho |
+| `donation.completed` | Mọi item đã check |
+| `inventory.imported` | Món accepted → kho |
+| `inventory.item_status_changed` | Đổi status kho |
 
 ---
 
-## API dự kiến (chưa có code)
+## Env
 
-- `POST /donations`
-- `GET /donations`, `GET /donations/{id}`
-- `PUT /donations/{id}/review`
-- `PUT /donations/{id}/schedule`
-- `PUT /donations/{id}/receive` (check-in thực tế)
-- `GET /donations/{id}/timeline`
-
-Chi tiết sequence hiện có trong [flows.md](../flows.md) (Luồng 4).
-
-## Việc cần làm khi implement
-
-1. Scaffold service + Dockerfile + schema SQL init  
-2. Repositories donation / items / images / inventory  
-3. HTTP client gọi Community (group active)  
-4. Publish events khớp `libs/events`  
-5. Route Kong đã có sẵn (`/api/donation`) — hiện 502 nếu gọi  
+```env
+PORT=3003
+OPENAPI_SERVER_URL=/api/donation
+DONATION_DB_NAME=donation_db
+JWT_SECRET=...
+JWT_ISSUER=charity-auth
+RABBITMQ_URL=amqp://...
+COMMUNITY_SERVICE_URL=http://community-service:3002
+COMMUNITY_CHECK_SOFT=false
+```
