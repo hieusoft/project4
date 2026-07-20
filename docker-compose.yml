@@ -109,9 +109,12 @@ services:
       context: apps/marketplace-service
       dockerfile: Dockerfile
     env_file: .env
-    environment: { PORT: "${MARKETPLACE_SERVICE_PORT:-3004}" }
+    environment:
+      PORT: "${MARKETPLACE_SERVICE_PORT:-3004}"
+      COMMUNITY_SERVICE_URL: "http://community-service:3002"
+      DONATION_SERVICE_URL: "http://donation-service:3003"
     ports: ["${MARKETPLACE_SERVICE_PORT:-3004}:${MARKETPLACE_SERVICE_PORT:-3004}"]
-    depends_on: [postgres, rabbitmq]
+    depends_on: [postgres, rabbitmq, community-service, donation-service]
   donation-service:
     build:
       context: .

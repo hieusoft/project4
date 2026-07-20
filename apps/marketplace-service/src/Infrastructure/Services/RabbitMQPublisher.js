@@ -7,8 +7,12 @@ const EXCHANGE = 'charity.events';
 const QUEUE_BINDINGS = [
   // Analytics
   { queue: 'marketplace.analytics.queue', routingKey: 'listing.created' },
+  { queue: 'marketplace.analytics.queue', routingKey: 'request.created' },
   { queue: 'marketplace.analytics.queue', routingKey: 'request.completed' },
-  
+  { queue: 'marketplace.analytics.queue', routingKey: 'donation.completed' },
+  { queue: 'marketplace.analytics.queue', routingKey: 'user.verified' },
+  { queue: 'marketplace.analytics.queue', routingKey: 'group.member_approved' },
+
   // Communication
   { queue: 'communication.events', routingKey: 'listing.created' },
   { queue: 'communication.events', routingKey: 'request.created' },

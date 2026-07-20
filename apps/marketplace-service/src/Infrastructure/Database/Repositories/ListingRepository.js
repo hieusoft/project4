@@ -151,6 +151,36 @@ class ListingRepository extends IListingRepository {
       client.release();
     }
   }
+
+  async update(listing) {
+    const { rows } = await this.db.query(
+      `
+      UPDATE listings
+      SET quantity_available = $1,
+          status = $2,
+          title = COALESCE($3, title),
+          description = COALESCE($4, description),
+          updated_at = NOW()
+      WHERE id = $5
+      RETURNING *
+      `,
+      [
+        listing.quantity_available,
+        listing.status,
+        listing.title || null,
+        listing.description || null,
+        listing.id,
+      ]
+    );
+    if (!rows.length) return null;
+    const { rows: imageRows } = await this.db.query(
+      'SELECT * FROM listing_images WHERE listing_id = $1',
+      [listing.id]
+    );
+    const images = imageRows.map((img) => new ListingImage(img));
+    return new Listing({ ...rows[0], images });
+  }
 }
 
 module.exports = ListingRepository;
+

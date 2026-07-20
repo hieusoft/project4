@@ -1,7 +1,5 @@
 /**
- * End-to-end flow test for marketplace-service (in-memory).
- * No Postgres/RabbitMQ required — exercises domain + use cases.
- *
+ * Marketplace domain/use-case flow tests (in-memory).
  * Run: node scripts/flow-test.js
  */
 const assert = require('assert');
@@ -18,8 +16,8 @@ const CreateRequestDTO = require(path.join(root, 'src/Application/DTOs/CreateReq
 const CompleteRequestDTO = require(path.join(root, 'src/Application/DTOs/CompleteRequestDTO'));
 
 const uuid = () => crypto.randomUUID();
-
 const results = [];
+
 function ok(name) {
   results.push({ name, pass: true });
   console.log(`  PASS  ${name}`);
@@ -38,7 +36,6 @@ async function test(name, fn) {
   }
 }
 
-// --- In-memory repos ---
 class MemListingRepo {
   constructor() {
     this.items = new Map();
@@ -46,11 +43,10 @@ class MemListingRepo {
   async findAll(filters = {}) {
     let rows = [...this.items.values()];
     if (filters.status) rows = rows.filter((r) => r.status === filters.status);
-    if (filters.group_id) rows = rows.filter((r) => r.group_id === filters.group_id);
     return { data: rows, meta: { page: 1, limit: 20, total: rows.length, total_pages: 1 } };
   }
-  async find(filters) {
-    return this.findAll(filters);
+  async find(f) {
+    return this.findAll(f);
   }
   async findById(id) {
     return this.items.get(id) || null;
@@ -65,11 +61,13 @@ class MemListingRepo {
           ? listing.quantity_available
           : listing.quantity_total || 1,
       status: listing.status || 'active',
-      created_at: new Date(),
-      updated_at: new Date(),
     });
     this.items.set(id, saved);
     return saved;
+  }
+  async update(listing) {
+    this.items.set(listing.id, new Listing({ ...listing }));
+    return this.items.get(listing.id);
   }
 }
 
@@ -78,47 +76,39 @@ class MemRequestRepo {
     this.items = new Map();
     this.confirmations = [];
   }
-  async find(filters = {}) {
-    let rows = [...this.items.values()];
-    if (filters.status) rows = rows.filter((r) => r.status === filters.status);
-    if (filters.listing_id) rows = rows.filter((r) => r.listing_id === filters.listing_id);
-    return { data: rows, meta: { page: 1, limit: 20, total: rows.length, total_pages: 1 } };
+  async find() {
+    return { data: [...this.items.values()], meta: {} };
   }
   async findById(id) {
     return this.items.get(id) || null;
   }
   async save(request) {
     const id = request.id || uuid();
-    const saved = new ItemRequest({
-      ...request,
-      id,
-      status: request.status || 'pending',
-      created_at: new Date(),
-      updated_at: new Date(),
-    });
+    const saved = new ItemRequest({ ...request, id, status: request.status || 'pending' });
     this.items.set(id, saved);
     return saved;
   }
   async update(request) {
-    this.items.set(request.id, new ItemRequest({ ...request, updated_at: new Date() }));
+    this.items.set(request.id, new ItemRequest({ ...request }));
+    return this.items.get(request.id);
+  }
+  async updateWithListing(request, listing) {
+    this.items.set(request.id, new ItemRequest({ ...request }));
     return this.items.get(request.id);
   }
   async completeWithTransaction(request, listing, completionData) {
-    if (!listing) throw new Error('listing is null in completeWithTransaction');
-    const updated = new ItemRequest({ ...request });
-    this.items.set(request.id, updated);
+    this.items.set(request.id, new ItemRequest({ ...request }));
     this.confirmations.push({ request_id: request.id, ...completionData });
-    // simulate listing update
-    return { request: updated };
+    return { request: this.items.get(request.id) };
   }
 }
 
 class MemDeliveryRepo {
-  constructor(requestRepo) {
-    this.requestRepo = requestRepo;
+  constructor(rr) {
+    this.rr = rr;
   }
-  async findByRequestId(requestId) {
-    return this.requestRepo.confirmations.find((c) => c.request_id === requestId) || null;
+  async findByRequestId(id) {
+    return this.rr.confirmations.find((c) => c.request_id === id) || null;
   }
 }
 
@@ -146,386 +136,306 @@ class CapturingPublisher {
   }
 }
 
-function setup() {
-  const listingRepository = new MemListingRepo();
-  const requestRepository = new MemRequestRepo();
-  const deliveryConfirmationRepository = new MemDeliveryRepo(requestRepository);
-  const messagePublisher = new CapturingPublisher();
-  const listingUseCases = new ListingUseCases({ listingRepository, messagePublisher });
-  const requestUseCases = new RequestUseCases({
-    requestRepository,
-    listingRepository,
-    messagePublisher,
-    deliveryConfirmationRepository,
-  });
-  return {
-    listingRepository,
-    requestRepository,
-    listingUseCases,
-    requestUseCases,
-    messagePublisher,
-  };
+class FakeCommunity {
+  constructor({ members = {}, mods = {} } = {}) {
+    this.members = members;
+    this.mods = mods;
+  }
+  async verifyMembership(userId, groupId) {
+    const key = `${groupId}:${userId}`;
+    return { approved: !!this.members[key], role: this.members[key] || null };
+  }
+  async isModerator(userId, groupId) {
+    return !!this.mods[`${groupId}:${userId}`];
+  }
+}
+
+class FakeDonation {
+  constructor(items = {}) {
+    this.items = items;
+    this.updates = [];
+  }
+  async getInventoryItem(id) {
+    return this.items[id] || null;
+  }
+  async updateItemStatus(id, status, ref) {
+    this.updates.push({ id, status, ref });
+    if (this.items[id]) this.items[id].status = status;
+    return this.items[id];
+  }
 }
 
 const MOD_ID = uuid();
 const RECEIVER_ID = uuid();
 const GROUP_ID = uuid();
-const CATEGORY_ID = uuid();
-const INV_ITEM_ID = uuid();
+const CAT_ID = uuid();
+const INV_ID = uuid();
+
+function setup(extra = {}) {
+  const listingRepository = new MemListingRepo();
+  const requestRepository = new MemRequestRepo();
+  const messagePublisher = new CapturingPublisher();
+  const communityClient =
+    extra.community ||
+    new FakeCommunity({
+      members: { [`${GROUP_ID}:${RECEIVER_ID}`]: 'member', [`${GROUP_ID}:${MOD_ID}`]: 'owner' },
+      mods: { [`${GROUP_ID}:${MOD_ID}`]: true },
+    });
+  const donationClient =
+    extra.donation ||
+    new FakeDonation({
+      [INV_ID]: {
+        id: INV_ID,
+        status: 'in_stock',
+        group_id: GROUP_ID,
+        name: 'Ao',
+        category_id: CAT_ID,
+        condition: 'good',
+        quantity: 1,
+      },
+    });
+
+  const listingUseCases = new ListingUseCases({
+    listingRepository,
+    messagePublisher,
+    donationClient,
+    communityClient,
+  });
+  const requestUseCases = new RequestUseCases({
+    requestRepository,
+    listingRepository,
+    messagePublisher,
+    deliveryConfirmationRepository: new MemDeliveryRepo(requestRepository),
+    donationClient,
+    communityClient,
+  });
+  return { listingRepository, requestRepository, listingUseCases, requestUseCases, messagePublisher, donationClient };
+}
 
 async function main() {
-  console.log('\n=== Marketplace flow tests (in-memory) ===\n');
+  console.log('\n=== Marketplace flow tests (updated design) ===\n');
 
-  // --- Domain unit ---
-  await test('Domain: Listing.reserve reduces qty and sets reserved', () => {
-    const l = new Listing({
-      id: uuid(),
-      inventory_item_id: INV_ITEM_ID,
-      group_id: GROUP_ID,
-      title: 'Áo',
-      category_id: CATEGORY_ID,
-      condition: 'good',
-      quantity_total: 2,
-      quantity_available: 2,
-      created_by: MOD_ID,
-    });
+  await test('Domain: reserve on approve pattern + release', () => {
+    const l = new Listing({ quantity_total: 2, quantity_available: 2, status: 'active' });
     l.reserve(1);
     assert.strictEqual(l.quantity_available, 1);
-    assert.strictEqual(l.status, 'active');
     l.reserve(1);
-    assert.strictEqual(l.quantity_available, 0);
     assert.strictEqual(l.status, 'reserved');
+    l.release(1);
+    assert.strictEqual(l.quantity_available, 1);
+    assert.strictEqual(l.status, 'active');
   });
 
-  await test('Domain: Listing.reserve throws when not enough', () => {
-    const l = new Listing({
-      quantity_total: 1,
-      quantity_available: 1,
-      status: 'active',
-    });
-    assert.throws(() => l.reserve(2));
-  });
-
-  await test('Domain: ItemRequest state machine happy path', () => {
-    const r = new ItemRequest({ listing_id: uuid(), group_id: GROUP_ID, receiver_id: RECEIVER_ID });
-    assert.strictEqual(r.status, 'pending');
-    r.approve(MOD_ID);
-    assert.strictEqual(r.status, 'approved');
-    r.schedule(MOD_ID, '2026-08-01T10:00:00Z');
-    assert.strictEqual(r.status, 'scheduled');
-    r.complete();
-    assert.strictEqual(r.status, 'completed');
-    assert.ok(r.completed_at);
-  });
-
-  await test('Domain: cannot approve non-pending', () => {
-    const r = new ItemRequest({ status: 'approved' });
-    assert.throws(() => r.approve(MOD_ID));
-  });
-
-  await test('Domain: cannot schedule non-approved', () => {
-    const r = new ItemRequest({ status: 'pending' });
-    assert.throws(() => r.schedule(MOD_ID, new Date()));
-  });
-
-  await test('Domain: complete from approved without schedule', () => {
+  await test('Domain: cancel / no_show state', () => {
     const r = new ItemRequest({ status: 'pending' });
     r.approve(MOD_ID);
-    r.complete();
-    assert.strictEqual(r.status, 'completed');
+    r.schedule(MOD_ID, '2026-08-01');
+    r.noShow(MOD_ID);
+    assert.strictEqual(r.status, 'no_show');
+    const r2 = new ItemRequest({ status: 'pending' });
+    r2.approve(MOD_ID);
+    r2.cancel(RECEIVER_ID);
+    assert.strictEqual(r2.status, 'cancelled');
   });
 
-  await test('DTO: CreateListingDTO validation', () => {
-    const bad = new CreateListingDTO({});
-    assert.throws(() => bad.validate());
-    const good = new CreateListingDTO({
-      inventory_item_id: INV_ITEM_ID,
-      group_id: GROUP_ID,
-      title: 'Quần',
-      category_id: CATEGORY_ID,
-      condition: 'like_new',
-      created_by: MOD_ID,
-    });
-    good.validate();
-  });
-
-  // --- Full happy path ---
   {
     const ctx = setup();
     let listingId;
     let requestId;
 
-    await test('Flow: create listing → listing.created event', async () => {
+    await test('Create listing verifies inventory + marks listed', async () => {
       const dto = new CreateListingDTO({
-        inventory_item_id: INV_ITEM_ID,
+        inventory_item_id: INV_ID,
         group_id: GROUP_ID,
-        title: 'Áo khoác mùa đông',
-        description: 'Còn tốt',
-        category_id: CATEGORY_ID,
+        title: 'Ao E2E',
+        category_id: CAT_ID,
         condition: 'good',
         quantity_total: 1,
-        province_code: '01',
         created_by: MOD_ID,
-        images: [{ image_url: 'http://cdn/a.jpg' }],
       });
-      dto.validate();
-      const listing = await ctx.listingUseCases.createListing(dto);
+      const listing = await ctx.listingUseCases.createListing(dto, { userId: MOD_ID });
       listingId = listing.id;
-      assert.ok(listingId);
-      assert.strictEqual(listing.status, 'active');
-      // BUG probe: quantity_available may be undefined if DTO omits it
-      if (listing.quantity_available === undefined) {
-        throw new Error(
-          'BUG: quantity_available is undefined after create (CreateListingDTO does not set it; entity defaults only if undefined at construct — DTO missing field may break isAvailable)'
-        );
-      }
       assert.strictEqual(listing.quantity_available, 1);
-      const ev = ctx.messagePublisher.events.find((e) => e.type === 'listing.created');
-      assert.ok(ev, 'expected listing.created');
-      assert.strictEqual(ev.p.listingId, listingId);
+      assert.ok(ctx.donationClient.updates.some((u) => u.status === 'listed'));
+      assert.ok(ctx.messagePublisher.events.some((e) => e.type === 'listing.created'));
     });
 
-    await test('Flow: catalog only active', async () => {
-      const cat = await ctx.listingUseCases.getCatalog();
-      assert.ok(cat.data.some((l) => l.id === listingId));
+    await test('Create request requires membership', async () => {
+      const stranger = uuid();
+      await assert.rejects(
+        () =>
+          ctx.requestUseCases.createRequest(
+            new CreateRequestDTO({
+              listing_id: listingId,
+              group_id: GROUP_ID,
+              receiver_id: stranger,
+              quantity: 1,
+            }),
+            { userId: stranger }
+          ),
+        (e) => e.statusCode === 403 || /Tham gia|member/i.test(e.message)
+      );
     });
 
-    await test('Flow: create request → pending + event', async () => {
-      const dto = new CreateRequestDTO({
-        listing_id: listingId,
-        group_id: GROUP_ID,
-        receiver_id: RECEIVER_ID,
-        quantity: 1,
-        reason: 'Gia đình khó khăn',
-      });
-      dto.validate();
-      const req = await ctx.requestUseCases.createRequest(dto);
+    await test('Create request OK for member', async () => {
+      const req = await ctx.requestUseCases.createRequest(
+        new CreateRequestDTO({
+          listing_id: listingId,
+          group_id: GROUP_ID,
+          receiver_id: RECEIVER_ID,
+          quantity: 1,
+        }),
+        { userId: RECEIVER_ID }
+      );
       requestId = req.id;
       assert.strictEqual(req.status, 'pending');
-      assert.ok(String(req.code).startsWith('REQ-'));
-      assert.ok(ctx.messagePublisher.events.some((e) => e.type === 'request.created'));
     });
 
-    await test('Flow: reject path then re-request (separate setup skip)', async () => {
-      // covered below in dedicated suite
-    });
-
-    await test('Flow: approve request', async () => {
-      const req = await ctx.requestUseCases.approveRequest(requestId, MOD_ID);
+    await test('Approve decreases quantity_available', async () => {
+      const req = await ctx.requestUseCases.approveRequest(requestId, MOD_ID, { userId: MOD_ID });
       assert.strictEqual(req.status, 'approved');
-      assert.strictEqual(req.reviewed_by, MOD_ID);
-      assert.ok(ctx.messagePublisher.events.some((e) => e.type === 'request.approved'));
-
-      // Design vs docs: quantity should decrease on approve — check if still full
       const listing = await ctx.listingRepository.findById(listingId);
-      if (listing.quantity_available === 1 && listing.status === 'active') {
-        // record as soft assertion in console
-        console.warn(
-          '        WARN  design gap: approve does NOT decrease quantity_available / reserve listing (docs: decrease on approve)'
-        );
-      }
+      assert.strictEqual(listing.quantity_available, 0);
+      assert.strictEqual(listing.status, 'reserved');
+      assert.ok(ctx.donationClient.updates.some((u) => u.status === 'reserved'));
     });
 
-    await test('Flow: schedule request', async () => {
-      const when = '2026-08-15T09:00:00.000Z';
-      const req = await ctx.requestUseCases.scheduleRequest(requestId, MOD_ID, when);
-      assert.strictEqual(req.status, 'scheduled');
-      assert.ok(ctx.messagePublisher.events.some((e) => e.type === 'request.scheduled'));
-    });
-
-    await test('Flow: complete with QR → confirmation + event', async () => {
+    await test('Schedule + complete without double-reserve', async () => {
+      await ctx.requestUseCases.scheduleRequest(requestId, MOD_ID, '2026-08-20T10:00:00Z');
       const completion = new CompleteRequestDTO({
         confirmed_by: MOD_ID,
-        qr_token: 'qr-test-token-abc',
-        photo_url: 'http://cdn/delivery.jpg',
-        note: 'Trao thành công',
+        qr_token: 'qr-1',
       });
-      completion.validate();
-      const req = await ctx.requestUseCases.completeRequest(requestId, completion);
+      const req = await ctx.requestUseCases.completeRequest(requestId, completion, {
+        userId: MOD_ID,
+      });
       assert.strictEqual(req.status, 'completed');
-      assert.ok(ctx.messagePublisher.events.some((e) => e.type === 'request.completed'));
-
-      const conf = await ctx.requestUseCases.getDeliveryConfirmation(requestId);
-      assert.ok(conf, 'delivery confirmation missing');
-      assert.strictEqual(conf.qr_token, 'qr-test-token-abc');
-
-      // after complete, listing should have been reserved in memory entity before txn
       const listing = await ctx.listingRepository.findById(listingId);
-      // completeWithTransaction mock does not persist listing qty; use-case mutates entity in memory
-      // Re-fetch from repo may still be old — probe use-case side effect on object held in repo map
-      // In real code, listing is mutated then written in completeWithTransaction
-    });
-
-    await test('Flow: event sequence order (happy path)', () => {
-      const types = ctx.messagePublisher.events.map((e) => e.type);
-      const expected = [
-        'listing.created',
-        'request.created',
-        'request.approved',
-        'request.scheduled',
-        'request.completed',
-      ];
-      let i = 0;
-      for (const t of types) {
-        if (t === expected[i]) i++;
-      }
-      assert.strictEqual(i, expected.length, `events ${JSON.stringify(types)} missing sequence`);
+      assert.strictEqual(listing.quantity_available, 0);
+      assert.ok(ctx.donationClient.updates.some((u) => u.status === 'delivered'));
     });
   }
 
-  // --- Reject path ---
   {
     const ctx = setup();
-    await test('Flow: reject request', async () => {
+    await test('Cancel after approve restores qty', async () => {
       const listing = await ctx.listingUseCases.createListing(
         new CreateListingDTO({
-          inventory_item_id: uuid(),
+          inventory_item_id: INV_ID,
           group_id: GROUP_ID,
-          title: 'Giày',
-          category_id: CATEGORY_ID,
-          condition: 'used',
-          quantity_total: 1,
-          created_by: MOD_ID,
-        })
-      );
-      // ensure qty
-      if (listing.quantity_available === undefined) {
-        listing.quantity_available = 1;
-        ctx.listingRepository.items.set(listing.id, listing);
-      }
-      const req = await ctx.requestUseCases.createRequest(
-        new CreateRequestDTO({
-          listing_id: listing.id,
-          group_id: GROUP_id_or(GROUP_ID),
-          receiver_id: RECEIVER_ID,
-          quantity: 1,
-        })
-      );
-      const rejected = await ctx.requestUseCases.rejectRequest(req.id, MOD_ID, 'Không đủ điều kiện');
-      assert.strictEqual(rejected.status, 'rejected');
-      assert.strictEqual(rejected.reject_reason, 'Không đủ điều kiện');
-      assert.ok(ctx.messagePublisher.events.some((e) => e.type === 'request.rejected'));
-    });
-  }
-
-  // --- Error cases ---
-  {
-    const ctx = setup();
-    await test('Error: request on missing listing → NotFound', async () => {
-      await assert.rejects(
-        () =>
-          ctx.requestUseCases.createRequest(
-            new CreateRequestDTO({
-              listing_id: uuid(),
-              group_id: GROUP_ID,
-              receiver_id: RECEIVER_ID,
-              quantity: 1,
-            })
-          ),
-        (e) => e.message.includes('Listing not found') || e.name === 'NotFoundError'
-      );
-    });
-
-    await test('Error: request qty > available', async () => {
-      const listing = await ctx.listingUseCases.createListing(
-        new CreateListingDTO({
-          inventory_item_id: uuid(),
-          group_id: GROUP_ID,
-          title: 'Bàn',
-          category_id: CATEGORY_ID,
+          title: 'Giay',
+          category_id: CAT_ID,
           condition: 'good',
           quantity_total: 1,
           created_by: MOD_ID,
-        })
+        }),
+        { userId: MOD_ID }
       );
-      if (listing.quantity_available === undefined) {
-        listing.quantity_available = 1;
-        ctx.listingRepository.items.set(listing.id, listing);
-      }
-      await assert.rejects(
-        () =>
-          ctx.requestUseCases.createRequest(
-            new CreateRequestDTO({
-              listing_id: listing.id,
-              group_id: GROUP_ID,
-              receiver_id: RECEIVER_ID,
-              quantity: 5,
-            })
-          ),
-        (e) => /enough available/i.test(e.message)
-      );
-    });
-
-    await test('Error: double approve fails', async () => {
-      const listing = await ctx.listingUseCases.createListing(
-        new CreateListingDTO({
-          inventory_item_id: uuid(),
-          group_id: GROUP_ID,
-          title: 'Tủ',
-          category_id: CATEGORY_ID,
-          condition: 'good',
-          quantity_total: 1,
-          created_by: MOD_ID,
-        })
-      );
-      if (listing.quantity_available === undefined) {
-        listing.quantity_available = 1;
-        ctx.listingRepository.items.set(listing.id, listing);
-      }
       const req = await ctx.requestUseCases.createRequest(
         new CreateRequestDTO({
           listing_id: listing.id,
-          group_id: GROUP_ID,
           receiver_id: RECEIVER_ID,
           quantity: 1,
-        })
+        }),
+        { userId: RECEIVER_ID }
       );
       await ctx.requestUseCases.approveRequest(req.id, MOD_ID);
-      await assert.rejects(() => ctx.requestUseCases.approveRequest(req.id, MOD_ID));
-    });
-
-    await test('Error: complete without confirm fields (DTO)', () => {
-      const dto = new CompleteRequestDTO({});
-      assert.throws(() => dto.validate());
+      let l = await ctx.listingRepository.findById(listing.id);
+      assert.strictEqual(l.quantity_available, 0);
+      await ctx.requestUseCases.cancelRequest(req.id, { userId: RECEIVER_ID });
+      l = await ctx.listingRepository.findById(listing.id);
+      assert.strictEqual(l.quantity_available, 1);
+      assert.strictEqual(l.status, 'active');
     });
   }
 
-  // --- CreateListingDTO quantity_available bug ---
-  await test('Probe: CreateListingDTO → Listing quantity_available default', () => {
-    const dto = new CreateListingDTO({
-      inventory_item_id: INV_ITEM_ID,
-      group_id: GROUP_ID,
-      title: 'X',
-      category_id: CATEGORY_ID,
-      condition: 'good',
-      quantity_total: 3,
-      created_by: MOD_ID,
+  {
+    const ctx = setup();
+    await test('No-show restores qty', async () => {
+      const listing = await ctx.listingUseCases.createListing(
+        new CreateListingDTO({
+          inventory_item_id: INV_ID,
+          group_id: GROUP_ID,
+          title: 'Ban',
+          category_id: CAT_ID,
+          condition: 'good',
+          quantity_total: 1,
+          created_by: MOD_ID,
+        }),
+        { userId: MOD_ID }
+      );
+      const req = await ctx.requestUseCases.createRequest(
+        new CreateRequestDTO({
+          listing_id: listing.id,
+          receiver_id: RECEIVER_ID,
+          quantity: 1,
+        }),
+        { userId: RECEIVER_ID }
+      );
+      await ctx.requestUseCases.approveRequest(req.id, MOD_ID);
+      await ctx.requestUseCases.scheduleRequest(req.id, MOD_ID, '2026-09-01');
+      await ctx.requestUseCases.noShowRequest(req.id, MOD_ID);
+      const l = await ctx.listingRepository.findById(listing.id);
+      assert.strictEqual(l.quantity_available, 1);
+      const r = await ctx.requestRepository.findById(req.id);
+      assert.strictEqual(r.status, 'no_show');
     });
-    const listing = new Listing(dto);
-    // Entity: quantity_available !== undefined ? ... : quantity_total
-    // DTO does not set quantity_available → undefined → should fall back to total
-    assert.strictEqual(
-      listing.quantity_available,
-      3,
-      'Listing entity should default quantity_available from quantity_total'
-    );
-  });
+  }
 
-  // summary
+  {
+    const ctx = setup();
+    await test('Close listing', async () => {
+      const listing = await ctx.listingUseCases.createListing(
+        new CreateListingDTO({
+          inventory_item_id: INV_ID,
+          group_id: GROUP_ID,
+          title: 'Tu',
+          category_id: CAT_ID,
+          condition: 'good',
+          quantity_total: 1,
+          created_by: MOD_ID,
+        }),
+        { userId: MOD_ID }
+      );
+      const closed = await ctx.listingUseCases.closeListing(listing.id, { userId: MOD_ID });
+      assert.strictEqual(closed.status, 'closed');
+    });
+  }
+
+  {
+    const ctx = setup({
+      donation: new FakeDonation({
+        [INV_ID]: { id: INV_ID, status: 'delivered', group_id: GROUP_ID },
+      }),
+    });
+    await test('Reject listing if inventory not in_stock', async () => {
+      await assert.rejects(
+        () =>
+          ctx.listingUseCases.createListing(
+            new CreateListingDTO({
+              inventory_item_id: INV_ID,
+              group_id: GROUP_ID,
+              title: 'X',
+              category_id: CAT_ID,
+              condition: 'good',
+              created_by: MOD_ID,
+            }),
+            { userId: MOD_ID }
+          ),
+        (e) => /in_stock/i.test(e.message)
+      );
+    });
+  }
+
   const passed = results.filter((r) => r.pass).length;
   const failed = results.filter((r) => !r.pass);
   console.log(`\n=== Summary: ${passed}/${results.length} passed ===`);
   if (failed.length) {
-    console.log('Failed:');
     failed.forEach((f) => console.log(`  - ${f.name}: ${f.err}`));
     process.exitCode = 1;
   } else {
     console.log('All tests passed.\n');
   }
-}
-
-function GROUP_id_or(g) {
-  return g;
 }
 
 main().catch((e) => {

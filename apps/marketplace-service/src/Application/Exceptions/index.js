@@ -24,9 +24,16 @@ class DomainError extends ApplicationError {
   }
 }
 
+class ForbiddenError extends ApplicationError {
+  constructor(message) {
+    super(message || 'Forbidden', 403);
+  }
+}
+
 module.exports = {
   ApplicationError,
   NotFoundError,
   ValidationError,
-  DomainError
+  DomainError,
+  ForbiddenError,
 };

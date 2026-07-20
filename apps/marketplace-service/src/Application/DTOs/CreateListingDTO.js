@@ -7,6 +7,8 @@ class CreateListingDTO {
     this.category_id = data.category_id;
     this.condition = data.condition;
     this.quantity_total = data.quantity_total || 1;
+    this.quantity_available =
+      data.quantity_available !== undefined ? data.quantity_available : this.quantity_total;
     this.province_code = data.province_code;
     this.district_code = data.district_code;
     this.created_by = data.created_by;
@@ -14,12 +16,9 @@ class CreateListingDTO {
   }
 
   validate() {
-    if (!this.inventory_item_id) throw new Error("inventory_item_id is required");
-    if (!this.group_id) throw new Error("group_id is required");
-    if (!this.title) throw new Error("title is required");
-    if (!this.category_id) throw new Error("category_id is required");
-    if (!this.condition) throw new Error("condition is required");
-    if (!this.created_by) throw new Error("created_by is required");
+    if (!this.inventory_item_id) throw new Error('inventory_item_id is required');
+    if (!this.group_id) throw new Error('group_id is required');
+    // title/category/condition can be filled from inventory
   }
 }
 

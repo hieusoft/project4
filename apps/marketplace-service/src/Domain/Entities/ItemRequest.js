@@ -14,7 +14,7 @@ class ItemRequest {
     scheduled_at,
     completed_at,
     created_at,
-    updated_at
+    updated_at,
   }) {
     this.id = id;
     this.code = code;
@@ -67,6 +67,30 @@ class ItemRequest {
     }
     this.status = 'completed';
     this.completed_at = new Date();
+  }
+
+  cancel(actorId) {
+    if (!['pending', 'approved', 'scheduled'].includes(this.status)) {
+      throw new Error('Can only cancel open requests');
+    }
+    const prev = this.status;
+    this.status = 'cancelled';
+    this.reviewed_by = actorId || this.reviewed_by;
+    this.updated_at = new Date();
+    return prev;
+  }
+
+  noShow(reviewerId) {
+    if (this.status !== 'scheduled' && this.status !== 'approved') {
+      throw new Error('Can only mark no_show on approved/scheduled requests');
+    }
+    this.status = 'no_show';
+    this.reviewed_by = reviewerId;
+    this.updated_at = new Date();
+  }
+
+  wasReserved() {
+    return ['approved', 'scheduled', 'completed', 'no_show', 'cancelled'].includes(this.status);
   }
 }
 

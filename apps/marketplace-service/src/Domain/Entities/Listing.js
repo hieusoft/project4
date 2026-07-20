@@ -16,7 +16,7 @@ class Listing {
     created_by,
     created_at,
     updated_at,
-    images = []
+    images = [],
   }) {
     this.id = id;
     this.inventory_item_id = inventory_item_id;
@@ -26,7 +26,10 @@ class Listing {
     this.category_id = category_id;
     this.condition = condition;
     this.quantity_total = quantity_total || 1;
-    this.quantity_available = quantity_available !== undefined ? quantity_available : this.quantity_total;
+    this.quantity_available =
+      quantity_available !== undefined && quantity_available !== null
+        ? quantity_available
+        : this.quantity_total;
     this.province_code = province_code;
     this.district_code = district_code;
     this.status = status || 'active';
@@ -37,6 +40,7 @@ class Listing {
     this.images = images;
   }
 
+  /** Decrease available qty (on approve). */
   reserve(quantity) {
     if (this.quantity_available < quantity) {
       throw new Error('Not enough available quantity');
@@ -45,6 +49,21 @@ class Listing {
     if (this.quantity_available === 0) {
       this.status = 'reserved';
     }
+  }
+
+  /** Restore qty (cancel / no_show / reject after approve). */
+  release(quantity) {
+    this.quantity_available += quantity;
+    if (this.quantity_available > this.quantity_total) {
+      this.quantity_available = this.quantity_total;
+    }
+    if (this.status === 'reserved' && this.quantity_available > 0) {
+      this.status = 'active';
+    }
+  }
+
+  close() {
+    this.status = 'closed';
   }
 
   isAvailable(quantity = 1) {

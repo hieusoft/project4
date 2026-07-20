@@ -104,30 +104,44 @@ class RequestRepository extends IRequestRepository {
     const client = await this.db.getClient();
     try {
       await client.query('BEGIN');
-      
+
       const reqQuery = `
-        UPDATE item_requests 
+        UPDATE item_requests
         SET status = $1, completed_at = $2, updated_at = NOW()
         WHERE id = $3
         RETURNING *
       `;
-      const { rows: reqRows } = await client.query(reqQuery, [request.status, request.completed_at, request.id]);
+      const { rows: reqRows } = await client.query(reqQuery, [
+        request.status,
+        request.completed_at,
+        request.id,
+      ]);
       const updatedRequest = new ItemRequest(reqRows[0]);
-      
+
       const confQuery = `
         INSERT INTO delivery_confirmations (request_id, confirmed_by, qr_token, photo_url, note)
         VALUES ($1, $2, $3, $4, $5)
       `;
-      await client.query(confQuery, [request.id, completionData.confirmed_by, completionData.qr_token, completionData.photo_url, completionData.note]);
-      
-      await client.query(`
-        UPDATE listings 
-        SET quantity_available = $1, status = $2 
-        WHERE id = $3
-      `, [listing.quantity_available, listing.status, listing.id]);
-      
+      await client.query(confQuery, [
+        request.id,
+        completionData.confirmed_by,
+        completionData.qr_token,
+        completionData.photo_url,
+        completionData.note,
+      ]);
+
+      if (listing) {
+        await client.query(
+          `
+          UPDATE listings
+          SET quantity_available = $1, status = $2, updated_at = NOW()
+          WHERE id = $3
+          `,
+          [listing.quantity_available, listing.status, listing.id]
+        );
+      }
+
       await client.query('COMMIT');
-      
       return { request: updatedRequest };
     } catch (e) {
       await client.query('ROLLBACK');
@@ -136,6 +150,50 @@ class RequestRepository extends IRequestRepository {
       client.release();
     }
   }
+
+  /** Update request + listing qty/status in one transaction (approve/cancel/no_show). */
+  async updateWithListing(request, listing) {
+    const client = await this.db.getClient();
+    try {
+      await client.query('BEGIN');
+      const { rows: reqRows } = await client.query(
+        `
+        UPDATE item_requests
+        SET status = $1, reviewed_by = $2, reviewed_at = $3, reject_reason = $4,
+            scheduled_at = $5, completed_at = $6, updated_at = NOW()
+        WHERE id = $7
+        RETURNING *
+        `,
+        [
+          request.status,
+          request.reviewed_by,
+          request.reviewed_at,
+          request.reject_reason,
+          request.scheduled_at,
+          request.completed_at || null,
+          request.id,
+        ]
+      );
+      if (listing) {
+        await client.query(
+          `
+          UPDATE listings
+          SET quantity_available = $1, status = $2, updated_at = NOW()
+          WHERE id = $3
+          `,
+          [listing.quantity_available, listing.status, listing.id]
+        );
+      }
+      await client.query('COMMIT');
+      return new ItemRequest(reqRows[0]);
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
+  }
 }
+
 
 module.exports = RequestRepository;

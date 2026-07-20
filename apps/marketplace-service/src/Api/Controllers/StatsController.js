@@ -14,6 +14,17 @@ class StatsController {
       return ApiResponse.error(res, err, 500);
     }
   }
+
+  async getOverview(req, res) {
+    try {
+      const groupId = req.query.group_id || null;
+      const overview = await this.statsUseCases.getOverview(groupId);
+      return ApiResponse.success(res, overview);
+    } catch (err) {
+      console.error(err);
+      return ApiResponse.error(res, err, 500);
+    }
+  }
 }
 
 module.exports = StatsController;

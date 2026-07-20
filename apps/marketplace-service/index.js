@@ -2,22 +2,23 @@ require('dotenv').config({ path: '../../.env' });
 const express = require('express');
 const cors = require('cors');
 
-// Infrastructure
 const db = require('./src/Infrastructure/Database/postgres');
 const rabbitMQPublisher = require('./src/Infrastructure/Services/RabbitMQPublisher');
+const CommunityClient = require('./src/Infrastructure/Services/CommunityClient');
+const DonationClient = require('./src/Infrastructure/Services/DonationClient');
+const AnalyticsConsumer = require('./src/Infrastructure/Services/AnalyticsConsumer');
+
 const ListingRepository = require('./src/Infrastructure/Database/Repositories/ListingRepository');
 const ListingImageRepository = require('./src/Infrastructure/Database/Repositories/ListingImageRepository');
 const RequestRepository = require('./src/Infrastructure/Database/Repositories/RequestRepository');
 const DeliveryConfirmationRepository = require('./src/Infrastructure/Database/Repositories/DeliveryConfirmationRepository');
 const StatsRepository = require('./src/Infrastructure/Database/Repositories/StatsRepository');
 
-// Application Use Cases
 const ListingUseCases = require('./src/Application/UseCases/ListingUseCases');
 const RequestUseCases = require('./src/Application/UseCases/RequestUseCases');
 const StatsUseCases = require('./src/Application/UseCases/StatsUseCases');
 const ListingImageUseCases = require('./src/Application/UseCases/ListingImageUseCases');
 
-// Api Interfaces
 const ListingController = require('./src/Api/Controllers/ListingController');
 const RequestController = require('./src/Api/Controllers/RequestController');
 const StatsController = require('./src/Api/Controllers/StatsController');
@@ -32,36 +33,39 @@ async function bootstrap() {
   app.use(cors({ origin: '*' }));
   app.use(express.json());
 
-  // OpenAPI + health first so Kong/docs hub work even if MQ/DB are slow
   setupSwagger(app);
   app.get('/health', (_req, res) => {
     res.json({ service: 'marketplace-service', status: 'ok' });
   });
 
-  // Instantiate Repositories
+  const communityClient = new CommunityClient();
+  const donationClient = new DonationClient();
+
   const listingRepository = new ListingRepository(db);
   const listingImageRepository = new ListingImageRepository(db);
   const requestRepository = new RequestRepository(db);
   const deliveryConfirmationRepository = new DeliveryConfirmationRepository(db);
   const statsRepository = new StatsRepository(db);
 
-  // Instantiate Use Cases
   const listingUseCases = new ListingUseCases({
     listingRepository,
     messagePublisher: rabbitMQPublisher,
+    donationClient,
+    communityClient,
   });
   const requestUseCases = new RequestUseCases({
     requestRepository,
     listingRepository,
     messagePublisher: rabbitMQPublisher,
     deliveryConfirmationRepository,
+    donationClient,
+    communityClient,
   });
   const statsUseCases = new StatsUseCases({ statsRepository });
   const listingImageUseCases = new ListingImageUseCases({
     listingImageRepository,
   });
 
-  // Instantiate Controllers
   const listingController = new ListingController({ listingUseCases });
   const requestController = new RequestController({ requestUseCases });
   const statsController = new StatsController({ statsUseCases });
@@ -79,7 +83,6 @@ async function bootstrap() {
     res.status(404).json({ error: 'Not Found', path: req.path });
   });
 
-  // Listen BEFORE RabbitMQ — amqp.connect can hang and would block OpenAPI otherwise
   await new Promise((resolve, reject) => {
     const server = app.listen(PORT, '0.0.0.0', () => {
       console.log(`Marketplace Service running on 0.0.0.0:${PORT}`);
@@ -88,9 +91,13 @@ async function bootstrap() {
     server.on('error', reject);
   });
 
-  // Background MQ connect (do not block HTTP)
   rabbitMQPublisher.connect().catch((err) => {
-    console.error('RabbitMQ background connect failed:', err.message || err);
+    console.error('RabbitMQ publisher connect failed:', err.message || err);
+  });
+
+  const analytics = new AnalyticsConsumer({ statsRepository });
+  analytics.connect().catch((err) => {
+    console.error('AnalyticsConsumer connect failed:', err.message || err);
   });
 }
 
