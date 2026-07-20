@@ -29,7 +29,7 @@ async function bootstrap() {
   const app = express();
   const PORT = Number(process.env.PORT) || 3004;
 
-  app.use(cors());
+  app.use(cors({ origin: '*' }));
   app.use(express.json());
 
   // OpenAPI + health first so Kong/docs hub work even if MQ/DB are slow
