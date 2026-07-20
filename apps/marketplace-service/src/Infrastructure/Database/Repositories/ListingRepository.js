@@ -10,38 +10,49 @@ class ListingRepository extends IListingRepository {
 
   async findAll(filters = {}) {
     let queryText = 'SELECT * FROM listings WHERE 1=1';
+    let countQueryText = 'SELECT COUNT(*) FROM listings WHERE 1=1';
     const params = [];
     
     if (filters.status) {
       params.push(filters.status);
       queryText += ` AND status = $${params.length}`;
+      countQueryText += ` AND status = $${params.length}`;
     }
     
     if (filters.group_id) {
       params.push(filters.group_id);
       queryText += ` AND group_id = $${params.length}`;
+      countQueryText += ` AND group_id = $${params.length}`;
     }
 
     if (filters.category_id) {
       params.push(filters.category_id);
       queryText += ` AND category_id = $${params.length}`;
+      countQueryText += ` AND category_id = $${params.length}`;
     }
 
     if (filters.province_code) {
       params.push(filters.province_code);
       queryText += ` AND province_code = $${params.length}`;
+      countQueryText += ` AND province_code = $${params.length}`;
     }
 
     if (filters.district_code) {
       params.push(filters.district_code);
       queryText += ` AND district_code = $${params.length}`;
+      countQueryText += ` AND district_code = $${params.length}`;
     }
 
     // Full-text search on title (uses GIN index idx_listings_search)
     if (filters.search) {
       params.push(filters.search);
       queryText += ` AND to_tsvector('simple', title) @@ plainto_tsquery('simple', $${params.length})`;
+      countQueryText += ` AND to_tsvector('simple', title) @@ plainto_tsquery('simple', $${params.length})`;
     }
+    
+    // Copy the WHERE clauses to count query before adding LIMIT/OFFSET
+    const { rows: countRows } = await this.db.query(countQueryText, params);
+    const total = parseInt(countRows[0].count, 10);
     
     const page = parseInt(filters.page, 10) || 1;
     const limit = parseInt(filters.limit, 10) || 20;
@@ -63,10 +74,22 @@ class ListingRepository extends IListingRepository {
       images = imageRows;
     }
     
-    return rows.map(row => {
+    const data = rows.map(row => {
       const listingImages = images.filter(img => img.listing_id === row.id).map(img => new ListingImage(img));
       return new Listing({ ...row, images: listingImages });
     });
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data,
+      meta: {
+        page,
+        limit,
+        total,
+        total_pages: totalPages
+      }
+    };
   }
 
   async find(filters = {}) {
