@@ -3,7 +3,7 @@ import { AppModule } from './app.module';
 import { Transport, MicroserviceOptions } from '@nestjs/microservices';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Logger } from '@nestjs/common';
-import { json, urlencoded } from 'express';
+const { json, urlencoded } = require('express');
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
