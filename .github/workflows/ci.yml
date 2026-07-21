@@ -61,7 +61,7 @@ jobs:
             context: .
             build_args: ""
           - service: admin-dashboard
-            dockerfile: Dockerfile
+            dockerfile: admin-dashboard/Dockerfile
             context: admin-dashboard
             build_args: ""
 
