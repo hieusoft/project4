@@ -3,7 +3,7 @@
 Nền tảng kết nối **người quyên góp** với **hội nhóm thiện nguyện** theo mô hình **Gian hàng 0 đồng**.
 
 ```text
-Người quyên góp → Chọn nhóm → Tiếp nhận & kiểm tra → Nhập kho
+Người quyên gópp → Chọn nhóm → Tiếp nhận & kiểm tra → Nhập kho
 → Gian hàng 0 đồng → Đăng ký nhận → Xét duyệt → Trao tặng
 ```
 
