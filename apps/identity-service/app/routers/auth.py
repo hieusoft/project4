@@ -35,6 +35,7 @@ async def register(body: RegisterRequest, service: AuthServiceDep):
     return DataEnvelope(
         data=MeResponse(
             id=account.id,
+            username=account.username,
             email=account.email,
             phone=account.phone,
             status=account.status,

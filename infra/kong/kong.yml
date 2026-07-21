@@ -60,3 +60,11 @@ services:
         paths:
           - /api/ai
         strip_path: true
+
+  - name: admin-dashboard
+    url: http://admin-dashboard:3000
+    routes:
+      - name: admin-route
+        paths:
+          - /admin
+        strip_path: true

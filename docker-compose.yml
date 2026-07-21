@@ -64,6 +64,7 @@ services:
       - ai-service
       - marketplace-service
       - donation-service
+      - admin-dashboard
   identity-service:
     build:
       context: .
@@ -125,6 +126,16 @@ services:
       COMMUNITY_SERVICE_URL: "http://community-service:3002"
     ports: ["${DONATION_SERVICE_PORT:-3003}:${DONATION_SERVICE_PORT:-3003}"]
     depends_on: [postgres, rabbitmq, community-service]
+  admin-dashboard:
+    build:
+      context: ./admin-dashboard
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: "${NEXT_PUBLIC_API_BASE_URL:-/api}"
+    environment:
+      NODE_ENV: production
+    ports: ["${ADMIN_DASHBOARD_PORT:-3010}:3000"]
+    depends_on: [kong]
 volumes:
   postgres_data:
   seaweedfs_data:

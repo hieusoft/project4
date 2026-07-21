@@ -112,6 +112,7 @@ services:
       - ai-service
       - marketplace-service
       - donation-service
+      - admin-dashboard
 
   identity-service:
     image: ${IMAGE_REGISTRY}/identity-service:${IMAGE_TAG:-latest}
@@ -213,6 +214,19 @@ services:
         condition: service_healthy
       community-service:
         condition: service_started
+
+  admin-dashboard:
+    image: ${IMAGE_REGISTRY}/admin-dashboard:${IMAGE_TAG:-latest}
+    <<: *app-env
+    environment:
+      NODE_ENV: production
+    ports:
+      - "${ADMIN_DASHBOARD_PORT:-3010}:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:3000"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
 networks:
   charity:
