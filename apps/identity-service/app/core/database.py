@@ -24,6 +24,20 @@ async def init_pool() -> asyncpg.Pool:
             max_size=10,
             command_timeout=30,
         )
+        # Auto-migrate missing username column (if user pulled new code but DB wasn't recreated)
+        async with _pool.acquire() as conn:
+            try:
+                # Check if table exists first
+                table_exists = await conn.fetchval("SELECT 1 FROM information_schema.tables WHERE table_name='accounts'")
+                if table_exists:
+                    column_exists = await conn.fetchval("SELECT 1 FROM information_schema.columns WHERE table_name='accounts' AND column_name='username'")
+                    if not column_exists:
+                        await conn.execute("ALTER TABLE accounts ADD COLUMN username varchar(30);")
+                        await conn.execute("UPDATE accounts SET username = 'u_' || substr(id::text, 1, 8) WHERE username IS NULL;")
+                        await conn.execute("ALTER TABLE accounts ALTER COLUMN username SET NOT NULL;")
+                        await conn.execute("ALTER TABLE accounts ADD CONSTRAINT accounts_username_key UNIQUE (username);")
+            except Exception:
+                pass  # Ignore migration errors to prevent server crash
     return _pool
 
 
