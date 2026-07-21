@@ -35,7 +35,6 @@ echo "==> Deploying $IMAGE_REGISTRY/*:$IMAGE_TAG"
 echo "==> Compose file: $COMPOSE_FILE"
 
 docker compose -f "$COMPOSE_FILE" pull
-docker compose -f "$COMPOSE_FILE" down || true
 docker compose -f "$COMPOSE_FILE" up -d --remove-orphans --wait || \
   docker compose -f "$COMPOSE_FILE" up -d --remove-orphans
 
