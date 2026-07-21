@@ -8,6 +8,7 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 CREATE TABLE IF NOT EXISTS accounts (
   id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  username       varchar(30) UNIQUE NOT NULL,
   email          varchar(255) UNIQUE,
   phone          varchar(20) UNIQUE,
   password_hash  varchar(255) NOT NULL,
@@ -18,7 +19,8 @@ CREATE TABLE IF NOT EXISTS accounts (
   last_login_at  timestamptz,
   created_at     timestamptz NOT NULL DEFAULT now(),
   updated_at     timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT email_or_phone CHECK (email IS NOT NULL OR phone IS NOT NULL)
+  CONSTRAINT email_or_phone CHECK (email IS NOT NULL OR phone IS NOT NULL),
+  CONSTRAINT username_format CHECK (username ~ '^[a-zA-Z0-9_]{3,30}$')
 );
 
 CREATE TABLE IF NOT EXISTS roles (

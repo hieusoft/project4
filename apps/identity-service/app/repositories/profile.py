@@ -56,6 +56,22 @@ class ProfileRepository:
             UserProfile.model_validate(dict(record)) if record is not None else None
         )
 
+    async def get_public_with_username(self, account_id: uuid.UUID) -> dict | None:
+        """Fetch profile joined with account username for public view."""
+        record = await self._conn.fetchrow(
+            """
+            SELECT p.id, p.full_name, p.avatar_url, p.date_of_birth, p.gender,
+                   p.address, p.province_code, p.district_code, p.bio,
+                   p.reputation_score, p.donation_count, p.received_count,
+                   p.created_at, p.updated_at, a.username
+            FROM user_profiles p
+            JOIN accounts a ON a.id = p.id
+            WHERE p.id = $1
+            """,
+            account_id,
+        )
+        return dict(record) if record is not None else None
+
     async def update(
         self, account_id: uuid.UUID, fields: dict[str, object]
     ) -> UserProfile | None:

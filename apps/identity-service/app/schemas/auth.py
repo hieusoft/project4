@@ -5,6 +5,7 @@ from pydantic import BaseModel, EmailStr, Field, model_validator
 
 
 class RegisterRequest(BaseModel):
+    username: str = Field(min_length=3, max_length=30, pattern=r"^[a-zA-Z0-9_]+$")
     email: EmailStr | None = None
     phone: str | None = Field(default=None, max_length=20)
     password: str = Field(min_length=8, max_length=128)
@@ -31,13 +32,14 @@ class ResendVerificationRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr | None = None
     phone: str | None = Field(default=None, max_length=20)
+    username: str | None = Field(default=None, max_length=30)
     password: str = Field(min_length=1, max_length=128)
     device_info: str | None = Field(default=None, max_length=255)
 
     @model_validator(mode="after")
-    def _email_or_phone(self) -> "LoginRequest":
-        if not self.email and not self.phone:
-            raise ValueError("Either email or phone is required")
+    def _email_or_phone_or_username(self) -> "LoginRequest":
+        if not self.email and not self.phone and not self.username:
+            raise ValueError("Either email, phone, or username is required")
         return self
 
 

@@ -24,6 +24,7 @@ class ProfilePublic(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
+    username: str
     full_name: str
     avatar_url: str | None = None
     province_code: str | None = None

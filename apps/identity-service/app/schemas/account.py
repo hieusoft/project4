@@ -15,6 +15,7 @@ class AccountSummary(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
+    username: str
     email: str | None = None
     phone: str | None = None
     status: AccountStatus
@@ -30,6 +31,7 @@ class MeResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
+    username: str
     email: str | None = None
     phone: str | None = None
     status: AccountStatus

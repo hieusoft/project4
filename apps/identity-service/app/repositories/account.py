@@ -10,7 +10,7 @@ from app.models.domain import Account
 from app.models.enums import AccountStatus
 
 _ACCOUNT_COLUMNS = (
-    "id, email, phone, password_hash, status, email_verified, "
+    "id, username, email, phone, password_hash, status, email_verified, "
     "totp_secret, totp_enabled, last_login_at, created_at, updated_at"
 )
 
@@ -26,16 +26,18 @@ class AccountRepository:
     async def create(
         self,
         *,
+        username: str,
         email: str | None,
         phone: str | None,
         password_hash: str,
     ) -> Account:
         record = await self._conn.fetchrow(
             f"""
-            INSERT INTO accounts (email, phone, password_hash, status)
-            VALUES ($1, $2, $3, 'unverified')
+            INSERT INTO accounts (username, email, phone, password_hash, status)
+            VALUES ($1, $2, $3, $4, 'unverified')
             RETURNING {_ACCOUNT_COLUMNS}
             """,
+            username,
             email,
             phone,
             password_hash,
@@ -57,6 +59,12 @@ class AccountRepository:
     async def get_by_phone(self, phone: str) -> Account | None:
         record = await self._conn.fetchrow(
             f"SELECT {_ACCOUNT_COLUMNS} FROM accounts WHERE phone = $1", phone
+        )
+        return _to_account(record)
+
+    async def get_by_username(self, username: str) -> Account | None:
+        record = await self._conn.fetchrow(
+            f"SELECT {_ACCOUNT_COLUMNS} FROM accounts WHERE username = $1", username
         )
         return _to_account(record)
 

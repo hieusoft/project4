@@ -28,6 +28,15 @@ class ProfileService:
             )
         return profile
 
+    async def get_public(self, account_id: uuid.UUID) -> dict:
+        """Get profile with username for public view."""
+        data = await self._profiles.get_public_with_username(account_id)
+        if data is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found"
+            )
+        return data
+
     async def update(
         self, account_id: uuid.UUID, data: ProfileUpdateRequest
     ) -> UserProfile:

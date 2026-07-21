@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 class UserRegisteredEvent(BaseModel):
     userId: str
+    username: str | None = None
     email: str | None = None
     phone: str | None = None
     fullName: str | None = None

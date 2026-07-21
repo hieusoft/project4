@@ -87,6 +87,10 @@ class AuthService:
         if existing is not None:
             return await self._reclaim_unverified(existing, data)
 
+        if await self._accounts.get_by_username(data.username):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="Username already in use"
+            )
         if data.email and await self._accounts.get_by_email(data.email):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT, detail="Email already in use"
@@ -97,6 +101,7 @@ class AuthService:
             )
 
         account = await self._accounts.create(
+            username=data.username,
             email=data.email,
             phone=data.phone,
             password_hash=hash_password(data.password),
@@ -109,6 +114,7 @@ class AuthService:
             event_names.USER_REGISTERED,
             UserRegisteredEvent(
                 userId=str(account.id),
+                username=account.username,
                 email=account.email,
                 phone=account.phone,
                 fullName=data.full_name,
@@ -476,6 +482,8 @@ class AuthService:
 
     # --- Helpers ----------------------------------------------------------
     async def _resolve_login_account(self, data: LoginRequest) -> Account | None:
+        if data.username:
+            return await self._accounts.get_by_username(data.username)
         if data.email:
             return await self._accounts.get_by_email(data.email)
         if data.phone:

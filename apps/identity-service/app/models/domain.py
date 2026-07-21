@@ -24,6 +24,7 @@ class _ORMModel(BaseModel):
 
 class Account(_ORMModel):
     id: uuid.UUID
+    username: str
     email: str | None = None
     phone: str | None = None
     password_hash: str

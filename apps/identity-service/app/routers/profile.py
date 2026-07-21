@@ -20,8 +20,8 @@ router = APIRouter(prefix="/profile", tags=["profile"])
 
 @router.get("/me", response_model=DataEnvelope[ProfilePrivate])
 async def get_my_profile(user: CurrentUserDep, service: ProfileServiceDep):
-    profile = await service.get(uuid.UUID(user.id))
-    return DataEnvelope(data=ProfilePrivate.model_validate(profile))
+    data = await service.get_public(uuid.UUID(user.id))
+    return DataEnvelope(data=ProfilePrivate.model_validate(data))
 
 
 @router.put("/me", response_model=DataEnvelope[ProfilePrivate])
@@ -30,8 +30,9 @@ async def update_my_profile(
     user: CurrentUserDep,
     service: ProfileServiceDep,
 ):
-    profile = await service.update(uuid.UUID(user.id), body)
-    return DataEnvelope(data=ProfilePrivate.model_validate(profile))
+    await service.update(uuid.UUID(user.id), body)
+    data = await service.get_public(uuid.UUID(user.id))
+    return DataEnvelope(data=ProfilePrivate.model_validate(data))
 
 
 @router.get("/me/activities", response_model=DataEnvelope[Paginated[ActivityLogItem]])
@@ -55,5 +56,5 @@ async def list_my_activities(
 
 @router.get("/{account_id}", response_model=DataEnvelope[ProfilePublic])
 async def get_public_profile(account_id: uuid.UUID, service: ProfileServiceDep):
-    profile = await service.get(account_id)
-    return DataEnvelope(data=ProfilePublic.model_validate(profile))
+    data = await service.get_public(account_id)
+    return DataEnvelope(data=ProfilePublic.model_validate(data))

@@ -1,5 +1,6 @@
 export interface UserRegisteredEvent {
   userId: string;
+  username?: string;
   email?: string;
   phone?: string;
   fullName?: string;
