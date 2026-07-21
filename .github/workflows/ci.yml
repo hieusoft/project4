@@ -60,6 +60,10 @@ jobs:
             dockerfile: apps/donation-service/Dockerfile
             context: .
             build_args: ""
+          - service: admin-dashboard
+            dockerfile: Dockerfile
+            context: admin-dashboard
+            build_args: ""
 
     steps:
       - name: Checkout

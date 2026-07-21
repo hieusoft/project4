@@ -79,6 +79,10 @@ jobs:
             dockerfile: apps/donation-service/Dockerfile
             context: .
             build_args: ""
+          - service: admin-dashboard
+            dockerfile: Dockerfile
+            context: admin-dashboard
+            build_args: NEXT_PUBLIC_API_BASE_URL=/api
 
     steps:
       - name: Checkout
