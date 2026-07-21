@@ -6,7 +6,7 @@ import { SuggestGroupsUseCase } from '../../application/use-cases/suggest-groups
 import { GenerateImageUseCase } from '../../application/use-cases/generate-image.usecase';
 
 @ApiTags('ai')
-@Controller('ai')
+@Controller()
 export class AiController {
   constructor(
     private readonly detectItemUseCase: DetectItemUseCase,

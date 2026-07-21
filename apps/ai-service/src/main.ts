@@ -27,7 +27,7 @@ async function bootstrap() {
     .setTitle('AI Service API')
     .setDescription('The AI Service API for generating text and moderating content')
     .setVersion('1.0')
-    .addServer('/api') // Route through Kong Gateway
+    .addServer('/api/ai') // Route through Kong Gateway
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, document, {
