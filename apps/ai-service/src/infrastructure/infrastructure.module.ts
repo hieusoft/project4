@@ -1,12 +1,12 @@
 import { Module } from '@nestjs/common';
-import { GeminiProvider } from './providers/gemini.provider';
+import { OpenAiProvider } from './providers/openai.provider';
 import { AI_PROVIDER } from '../domain/ports/ai-provider.interface';
 
 @Module({
   providers: [
     {
       provide: AI_PROVIDER,
-      useClass: GeminiProvider,
+      useClass: OpenAiProvider,
     },
   ],
   exports: [AI_PROVIDER],
