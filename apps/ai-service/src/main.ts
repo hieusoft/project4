@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { Transport, MicroserviceOptions } from '@nestjs/microservices';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Logger } from '@nestjs/common';
+import { json, urlencoded } from 'express';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -26,6 +27,7 @@ async function bootstrap() {
     .setTitle('AI Service API')
     .setDescription('The AI Service API for generating text and moderating content')
     .setVersion('1.0')
+    .addServer('/api') // Route through Kong Gateway
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, document, {
@@ -34,6 +36,10 @@ async function bootstrap() {
 
   // Enable CORS
   app.enableCors({ origin: '*' });
+
+  // Increase payload limit to prevent 413 Payload Too Large for base64 images
+  app.use(json({ limit: '50mb' }));
+  app.use(urlencoded({ extended: true, limit: '50mb' }));
 
   // Start all microservices and HTTP server
   await app.startAllMicroservices();
