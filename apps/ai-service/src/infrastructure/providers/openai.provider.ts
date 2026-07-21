@@ -11,7 +11,7 @@ export class OpenAiProvider implements IAiProvider {
   private readonly modelName = 'grok-4.5'; // Model theo yeu cau cua ban
 
   constructor() {
-    const apiKey = process.env.OPENAI_API_KEY || 'mk-live-xxxxxxxxxxxxxxxxxxxx';
+    const apiKey = process.env.OPENAI_API_KEY || 'mk-live-DdVkkTIa0XAswaSbJTOiEDQcMVlLwU5NOBMYe7ZqPyw';
     this.openai = new OpenAI({
       apiKey,
       baseURL: 'https://htmustc.id.vn/v1',
