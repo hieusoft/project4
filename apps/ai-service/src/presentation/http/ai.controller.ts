@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus, Inject } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBody } from '@nestjs/swagger';
 import { DetectItemUseCase } from '../../application/use-cases/detect-item.usecase';
 import { GenerateDescriptionUseCase } from '../../application/use-cases/generate-description.usecase';
@@ -9,9 +9,16 @@ import { GenerateImageUseCase } from '../../application/use-cases/generate-image
 @Controller()
 export class AiController {
   constructor(
+    @Inject(DetectItemUseCase)
     private readonly detectItemUseCase: DetectItemUseCase,
+
+    @Inject(GenerateDescriptionUseCase)
     private readonly generateDescriptionUseCase: GenerateDescriptionUseCase,
+
+    @Inject(SuggestGroupsUseCase)
     private readonly suggestGroupsUseCase: SuggestGroupsUseCase,
+
+    @Inject(GenerateImageUseCase)
     private readonly generateImageUseCase: GenerateImageUseCase,
   ) {}
 
@@ -62,4 +69,3 @@ export class AiController {
     return { imageUrl };
   }
 }
-

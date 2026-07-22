@@ -1,4 +1,4 @@
-import { Controller, Logger } from '@nestjs/common';
+import { Controller, Logger, Inject } from '@nestjs/common';
 import { EventPattern, Payload, Ctx, RmqContext } from '@nestjs/microservices';
 import { ModerateContentUseCase } from '../../application/use-cases/moderate-content.usecase';
 
@@ -6,7 +6,10 @@ import { ModerateContentUseCase } from '../../application/use-cases/moderate-con
 export class ModerationController {
   private readonly logger = new Logger(ModerationController.name);
 
-  constructor(private readonly moderateContentUseCase: ModerateContentUseCase) {}
+  constructor(
+    @Inject(ModerateContentUseCase)
+    private readonly moderateContentUseCase: ModerateContentUseCase,
+  ) {}
 
   @EventPattern('post.created')
   async handlePostCreated(@Payload() data: any, @Ctx() context: RmqContext) {
