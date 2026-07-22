@@ -8,175 +8,169 @@ import { ModerationResult } from '../../domain/models/moderation-result.model';
 export class OpenAiProvider implements IAiProvider {
   private readonly logger = new Logger(OpenAiProvider.name);
   private openai: OpenAI;
-  private readonly modelName = 'grok-4.5';
+  private readonly modelName = process.env.OPENAI_MODEL_NAME || 'gpt-5.5';
 
   constructor() {
     const apiKey = process.env.OPENAI_API_KEY || 'mk-live-DdVkkTIa0XAswaSbJTOiEDQcMVlLwU5NOBMYe7ZqPyw';
     this.openai = new OpenAI({
       apiKey,
       baseURL: process.env.OPENAI_BASE_URL || 'https://htmustc.id.vn/v1',
+      defaultHeaders: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      },
     });
   }
 
-  private parseJson<T>(text: string, fallback: T): T {
-    try {
-      const match = text.match(/\{[\s\S]*\}/) || text.match(/\[[\s\S]*\]/);
-      const jsonString = match ? match[0] : text;
-      return JSON.parse(jsonString) as T;
-    } catch (err: any) {
-      this.logger.warn(`Failed to parse JSON response from LLM: ${err.message}. Raw text: ${text}`);
-      return fallback;
+  private parseJson<T>(text: string): T {
+    const match = text.match(/\{[\s\S]*\}/) || text.match(/\[[\s\S]*\]/);
+    if (!match) {
+      throw new Error(`AI response does not contain valid JSON format. Raw text: "${text}"`);
     }
+    return JSON.parse(match[0]) as T;
   }
 
   async detectItem(imageUrl: string): Promise<ItemInfo> {
-    try {
-      this.logger.log(`Detecting item from image: ${imageUrl}`);
-      
-      const prompt = `Phan tich hinh anh nay va tra ve ket qua duoi dang JSON hop le (khong chua blockcode markdown) voi cac truong sau:
-- name: Ten mon do (ngan gon, vi du: Ao somi nam)
-- categoryId: Chon 1 trong cac ID sau (clothing, books, electronics, furniture, others)
-- condition: Chon 1 trong cac trang thai sau (New, Good, Fair, Poor)
-- suggestedDescription: Mo ta ngan gon ve tinh trang mon do thay duoc trong anh.`;
+    this.logger.log(`Detecting item from image: ${imageUrl}`);
 
-      let responseText = '';
+    const prompt = `Phân tích hình ảnh này và trả về kết quả dưới dạng JSON hợp lệ (không chứa khối mã markdown) với các trường sau:
+- name: Tên món đồ (viết bằng tiếng Việt CÓ DẤU ĐẦY ĐỦ, ngắn gọn và chính xác, ví dụ: "Mô hình nhân vật", "Áo sơ mi nam")
+- categoryId: Chọn 1 trong các ID sau phù hợp nhất: (clothing, books, electronics, furniture, others)
+- condition: Chọn 1 trong các trạng thái sau: (New, Good, Fair, Poor)
+- suggestedDescription: Viết một đoạn mô tả chi tiết, tự nhiên và sinh động bằng TIẾNG VIỆT CÓ DẤU ĐẦY ĐỦ (từ 3 đến 5 câu) về kiểu dáng, màu sắc, chi tiết nổi bật và tình trạng món đồ quan sát được trong ảnh.`;
+
+    const modelsToTry = [this.modelName, 'gpt-5.6-sol', 'gpt-4o', 'gpt-4o-mini'];
+
+    const imageCandidates: string[] = [imageUrl];
+
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
       try {
-        // Thu dung gpt-5.6-sol cho Vision
-        const response = await this.openai.chat.completions.create({
-          model: 'gpt-5.6-sol',
-          messages: [
-            {
-              role: 'user',
-              content: [
-                { type: 'text', text: prompt },
-                { type: 'image_url', image_url: { url: imageUrl } },
-              ],
-            },
-          ],
+        const imageRes = await fetch(imageUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          },
         });
-        responseText = response.choices[0].message.content || '';
-      } catch (err: any) {
-        this.logger.warn(`gpt-5.6-sol vision failed, trying fallback model ${this.modelName}: ${err.message}`);
-        const response = await this.openai.chat.completions.create({
-          model: this.modelName,
-          messages: [
-            {
-              role: 'user',
-              content: [
-                { type: 'text', text: prompt },
-                { type: 'image_url', image_url: { url: imageUrl } },
-              ],
-            },
-          ],
-        });
-        responseText = response.choices[0].message.content || '';
+        if (imageRes.ok) {
+          const arrayBuffer = await imageRes.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
+          const contentType = imageRes.headers.get('content-type') || 'image/jpeg';
+          imageCandidates.push(`data:${contentType};base64,${buffer.toString('base64')}`);
+        }
+      } catch (fetchErr: any) {
+        this.logger.warn(`Could not fetch image to base64: ${fetchErr.message}`);
       }
-
-      return this.parseJson<ItemInfo>(responseText, {
-        name: 'Áo sơ mi nam',
-        categoryId: 'clothing',
-        condition: 'Good',
-        suggestedDescription: 'Áo sơ mi nam màu xanh nhạt còn rất tốt.',
-      });
-    } catch (error: any) {
-      this.logger.error(`Error detecting item: ${error.message}`, error.stack);
-      return {
-        name: 'Đồ dùng quyên góp',
-        categoryId: 'clothing',
-        condition: 'Good',
-        suggestedDescription: 'Món đồ quyên góp còn dùng tốt.',
-      };
     }
+
+    let responseText = '';
+    let lastError: any = null;
+
+    for (const targetUrl of imageCandidates) {
+      for (const model of modelsToTry) {
+        try {
+          const response = await this.openai.chat.completions.create({
+            model,
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  { type: 'text', text: prompt },
+                  { type: 'image_url', image_url: { url: targetUrl } },
+                ],
+              },
+            ],
+          });
+          responseText = response.choices[0]?.message?.content || '';
+          if (responseText) break;
+        } catch (err: any) {
+          lastError = err;
+          this.logger.warn(`Model ${model} attempt failed: ${err.message}`);
+        }
+      }
+      if (responseText) break;
+    }
+
+    if (!responseText && lastError) {
+      throw lastError;
+    }
+
+    return this.parseJson<ItemInfo>(responseText);
   }
 
   async generateDescription(name: string, condition: string): Promise<string> {
-    try {
-      const prompt = `Ban la mot nguoi tinh nguyen vien tren ung dung quyen gop tu thien. 
-Hay viet 1 doan mo ta (khoang 3-4 cau) that am ap, lich su va chan thanh de tang mon do sau:
-- Ten mon do: ${name}
-- Tinh trang: ${condition}
-Mo ta nen khuyen khich nhung nguoi dang gap kho khan manh dan dang ky nhan do. Khong can them tieu de.`;
+    const prompt = `Bạn là một tình nguyện viên thân thiện trên ứng dụng quyên góp từ thiện. 
+Hãy viết một đoạn mô tả chi tiết và ấm áp (từ 3 đến 5 câu) bằng TIẾNG VIỆT CÓ DẤU ĐẦY ĐỦ để tặng món đồ sau:
+- Tên món đồ: ${name}
+- Tình trạng: ${condition}
+Mô tả nên thể hiện sự chân thành, động viên những người đang gặp khó khăn mạnh dạn đăng ký nhận đồ. Không thêm tiêu đề.`;
 
-      const response = await this.openai.chat.completions.create({
-        model: this.modelName,
-        messages: [{ role: 'user', content: prompt }],
-      });
+    const response = await this.openai.chat.completions.create({
+      model: this.modelName,
+      messages: [{ role: 'user', content: prompt }],
+    });
 
-      return response.choices[0].message.content?.trim() || `Món đồ ${name} tình trạng ${condition} sẵn sàng trao tặng tới ai cần.`;
-    } catch (error: any) {
-      this.logger.error(`Error generating description: ${error.message}`, error.stack);
-      return `Món đồ ${name} tình trạng ${condition} sẵn sàng trao tặng.`;
+    const content = response.choices[0]?.message?.content?.trim();
+    if (!content) {
+      throw new Error('AI failed to generate description');
     }
+    return content;
   }
 
   async moderateContent(content: string, type: 'post' | 'message' | 'listing'): Promise<ModerationResult> {
-    try {
-      const prompt = `Kiem duyet noi dung sau (loai: ${type}):
+    const prompt = `Kiểm duyệt nội dung sau (loại: ${type}):
 "${content}"
 
-Yeu cau kiem tra xem noi dung co vi pham cac loi sau khong:
-1. Tu ngu phan cam, chui bay, xuc pham.
-2. Lua dao, spam, quang cao rac.
-3. Mua ban thuong mai (ung dung nay chi cho tang tu thien).
+Yêu cầu kiểm tra xem nội dung có vi phạm các lỗi sau không:
+1. Từ ngữ phản cảm, chửi bậy, xúc phạm.
+2. Lừa đảo, spam, quảng cáo rác.
+3. Mua bán thương mại (ứng dụng này chỉ cho tặng từ thiện).
 
-Tra ve JSON (khong co blockcode markdown) voi dinh dang:
+Trả về JSON (không có khối mã markdown) với định dạng:
 {
-  "isBlocked": true hoac false,
-  "reason": "Ly do ngan gon neu bi block, hoac rong"
+  "isBlocked": true hoặc false,
+  "reason": "Lý do ngắn gọn nếu bị block (bằng tiếng Việt có dấu), hoặc rỗng"
 }`;
 
-      const response = await this.openai.chat.completions.create({
-        model: this.modelName,
-        messages: [{ role: 'user', content: prompt }],
-      });
+    const response = await this.openai.chat.completions.create({
+      model: this.modelName,
+      messages: [{ role: 'user', content: prompt }],
+    });
 
-      const responseText = response.choices[0].message.content || '';
-      return this.parseJson<ModerationResult>(responseText, { isBlocked: false });
-    } catch (error: any) {
-      this.logger.error(`Error moderating content: ${error.message}`, error.stack);
-      return { isBlocked: false };
-    }
+    const responseText = response.choices[0]?.message?.content || '';
+    return this.parseJson<ModerationResult>(responseText);
   }
 
   async suggestGroups(description: string, province: string, activeGroups: any[]): Promise<any[]> {
-    try {
-      const prompt = `Toi co mot mon do muon quyen gop voi mo ta: "${description}", o khu vuc: "${province}".
-Duoi day la danh sach cac nhom thien nguyen dang hoat dong:
+    const prompt = `Tôi có một món đồ muốn quyên góp với mô tả: "${description}", ở khu vực: "${province}".
+Dưới đây là danh sách các nhóm thiện nguyện đang hoạt động:
 ${JSON.stringify(activeGroups, null, 2)}
 
-Hay chon ra top 3 nhom phu hop nhat de nhan mon do nay. 
-Tra ve mang JSON (khong co blockcode markdown) dinh dang:
+Hãy chọn ra top 3 nhóm phù hợp nhất để nhận món đồ này. 
+Trả về mảng JSON (không có khối mã markdown) định dạng:
 [
-  { "groupId": "id cua nhom", "reason": "Ly do tai sao nhom nay phu hop (1 cau)" }
+  { "groupId": "id của nhóm", "reason": "Lý do tại sao nhóm này phù hợp (viết bằng tiếng Việt có dấu)" }
 ]`;
 
-      const response = await this.openai.chat.completions.create({
-        model: this.modelName,
-        messages: [{ role: 'user', content: prompt }],
-      });
+    const response = await this.openai.chat.completions.create({
+      model: this.modelName,
+      messages: [{ role: 'user', content: prompt }],
+    });
 
-      const responseText = response.choices[0].message.content || '[]';
-      return this.parseJson<any[]>(responseText, []);
-    } catch (error: any) {
-      this.logger.error(`Error suggesting groups: ${error.message}`, error.stack);
-      return [];
-    }
+    const responseText = response.choices[0]?.message?.content || '';
+    return this.parseJson<any[]>(responseText);
   }
 
   async generateImage(prompt: string): Promise<string> {
-    try {
-      this.logger.log(`Generating image for prompt: ${prompt}`);
-      const response = await this.openai.images.generate({
-        model: 'gpt-image-2',
-        prompt: prompt,
-        n: 1,
-        size: '1024x1024',
-        quality: 'standard',
-      });
-      return response.data?.[0]?.url || 'https://via.placeholder.com/1024';
-    } catch (error: any) {
-      this.logger.error(`Error generating image: ${error.message}`, error.stack);
-      return 'https://via.placeholder.com/1024';
+    this.logger.log(`Generating image for prompt: ${prompt}`);
+    const response = await this.openai.images.generate({
+      model: 'gpt-image-2',
+      prompt: prompt,
+      n: 1,
+      size: '1024x1024',
+      quality: 'standard',
+    });
+    const url = response.data?.[0]?.url;
+    if (!url) {
+      throw new Error('AI failed to generate image');
     }
+    return url;
   }
 }
