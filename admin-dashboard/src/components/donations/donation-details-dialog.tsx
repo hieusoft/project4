@@ -129,7 +129,7 @@ export function DonationDetailsDialog({
                       <TableRow key={item.id}>
                         <TableCell className="font-medium">{item.name}</TableCell>
                         <TableCell className="tabular-nums">{item.quantity}</TableCell>
-                        <TableCell>{getConditionText(item.condition_declared)}</TableCell>
+                        <TableCell>{item.condition_declared?.toUpperCase() || 'N/A'}</TableCell>
                         <TableCell>
                           <Badge variant="outline" className="mt-1">
                             {item.status.toUpperCase()}
