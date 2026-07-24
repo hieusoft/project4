@@ -35,10 +35,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           })
           const refreshData = await refreshRes.json()
           if (refreshRes.ok && refreshData.data?.access_token) {
-            token = refreshData.data.access_token
+            token = refreshData.data.access_token as string
             localStorage.setItem("admin_token", token)
             if (refreshData.data.refresh_token) {
-              localStorage.setItem("admin_refresh_token", refreshData.data.refresh_token)
+              localStorage.setItem("admin_refresh_token", refreshData.data.refresh_token as string)
             }
           }
         } catch (e) {
