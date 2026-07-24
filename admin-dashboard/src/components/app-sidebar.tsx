@@ -70,7 +70,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     if (roles && roles.includes("GROUP_LEADER")) return "Chủ nhóm"
     if (roles && roles.includes("MODERATOR")) return "Người kiểm duyệt"
     if (roles && roles.length > 0) return roles[0]
-    return currentUser?.email || "Admin"
   }
 
   return (

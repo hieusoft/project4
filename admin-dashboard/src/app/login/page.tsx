@@ -83,7 +83,9 @@ export default function LoginPage() {
       }
 
       const roles = userData.roles || []
-      // Removed PLATFORM_ADMIN role restriction as requested
+      if (!roles.some((r: string) => ["PLATFORM_ADMIN", "ADMIN", "admin"].includes(r))) {
+        throw new Error("Tài khoản của bạn không có quyền truy cập trang quản trị")
+      }
 
       setCurrentUser(userData)
       toast.success("Đăng nhập thành công!")
