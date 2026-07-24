@@ -13,13 +13,13 @@ import { Donation } from "@/types"
 import { Eye, PackageIcon } from "lucide-react"
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  pending: { label: "Chờ duyệt", variant: "secondary" },
-  accepted: { label: "Đã chấp nhận", variant: "default" },
-  scheduled: { label: "Đã hẹn lịch", variant: "secondary" },
-  received: { label: "Đã nhận", variant: "default" },
-  completed: { label: "Hoàn thành", variant: "default" },
-  rejected: { label: "Bị từ chối", variant: "destructive" },
-  cancelled: { label: "Đã hủy", variant: "outline" },
+  pending: { label: "PENDING", variant: "outline" },
+  accepted: { label: "ACCEPTED", variant: "default" },
+  scheduled: { label: "SCHEDULED", variant: "secondary" },
+  received: { label: "RECEIVED", variant: "default" },
+  completed: { label: "COMPLETED", variant: "default" },
+  rejected: { label: "REJECTED", variant: "destructive" },
+  cancelled: { label: "CANCELLED", variant: "destructive" },
 }
 
 interface DonationTableProps {

@@ -316,12 +316,14 @@ export const marketplaceApi = {
   getListings: (params?: {
     status?: string;
     group_id?: string;
+    search?: string;
     page?: number;
     limit?: number;
   }) => {
     const searchParams = new URLSearchParams();
     if (params?.status) searchParams.set("status", params.status);
     if (params?.group_id) searchParams.set("group_id", params.group_id);
+    if (params?.search) searchParams.set("search", params.search);
     if (params?.page) searchParams.set("page", String(params.page));
     if (params?.limit) searchParams.set("limit", String(params.limit));
     const qs = searchParams.toString();

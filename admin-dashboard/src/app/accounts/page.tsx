@@ -136,7 +136,7 @@ export default function AccountsPage() {
                 <SelectValue placeholder="Trạng thái" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tất cả</SelectItem>
+                <SelectItem value="all">All</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="unverified">Unverified</SelectItem>
                 <SelectItem value="locked">Locked</SelectItem>

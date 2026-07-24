@@ -19,12 +19,14 @@ interface RequestTableProps {
 export function RequestTable({ requests, loading, page, limit, onPageChange }: RequestTableProps) {
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "pending": return <Badge variant="outline" className="text-yellow-500">Chờ duyệt</Badge>
-      case "approved": return <Badge variant="default" className="bg-blue-500">Đã duyệt</Badge>
-      case "completed": return <Badge variant="default" className="bg-emerald-500">Hoàn thành</Badge>
-      case "rejected": return <Badge variant="destructive">Từ chối</Badge>
-      case "cancelled": return <Badge variant="secondary">Đã hủy</Badge>
-      default: return <Badge variant="outline">{status}</Badge>
+      case "pending": return <Badge variant="outline" className="text-yellow-500">PENDING</Badge>
+      case "approved": return <Badge variant="default" className="bg-blue-500">APPROVED</Badge>
+      case "scheduled": return <Badge variant="secondary">SCHEDULED</Badge>
+      case "completed": return <Badge variant="default" className="bg-emerald-500">COMPLETED</Badge>
+      case "rejected": return <Badge variant="destructive">REJECTED</Badge>
+      case "cancelled": return <Badge variant="secondary">CANCELLED</Badge>
+      case "no_show": return <Badge variant="destructive">NO_SHOW</Badge>
+      default: return <Badge variant="outline">{status.toUpperCase()}</Badge>
     }
   }
 

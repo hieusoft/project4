@@ -13,10 +13,10 @@ import { Group } from "@/types"
 import { CheckCircle, XCircle, HeartHandshakeIcon, EyeIcon } from "lucide-react"
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  active: { label: "Active", variant: "default" },
-  pending: { label: "Pending", variant: "secondary" },
-  suspended: { label: "Suspended", variant: "destructive" },
-  closed: { label: "Closed", variant: "outline" },
+  active: { label: "ACTIVE", variant: "default" },
+  pending: { label: "PENDING", variant: "secondary" },
+  suspended: { label: "SUSPENDED", variant: "destructive" },
+  closed: { label: "CLOSED", variant: "outline" },
 }
 
 interface GroupTableProps {

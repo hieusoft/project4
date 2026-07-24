@@ -90,24 +90,33 @@ export default function RequestsPage() {
               <Badge variant="secondary">{total}</Badge>
             </div>
             <div className="flex items-center gap-2">
-              <Select
-                value={statusFilter}
-                onValueChange={(v) => {
-                  setStatusFilter(v ?? "all")
-                  setPage(1)
-                }}
-              >
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="Trạng thái" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tất cả</SelectItem>
-                  <SelectItem value="pending">Chờ duyệt</SelectItem>
-                  <SelectItem value="approved">Đã duyệt</SelectItem>
-                  <SelectItem value="completed">Hoàn thành</SelectItem>
-                  <SelectItem value="rejected">Từ chối</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="w-[180px]">
+                <Select
+                  value={statusFilter}
+                  onValueChange={(v) => {
+                    setStatusFilter(v ?? "all")
+                    setPage(1)
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Trạng thái" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    {Object.entries({
+                      pending: "PENDING",
+                      approved: "APPROVED",
+                      scheduled: "SCHEDULED",
+                      completed: "COMPLETED",
+                      rejected: "REJECTED",
+                      cancelled: "CANCELLED",
+                      no_show: "NO_SHOW"
+                    }).map(([val, label]) => (
+                      <SelectItem key={val} value={val}>{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </CardHeader>
           <CardContent>

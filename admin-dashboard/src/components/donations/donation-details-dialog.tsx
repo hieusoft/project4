@@ -129,10 +129,10 @@ export function DonationDetailsDialog({
                       <TableRow key={item.id}>
                         <TableCell className="font-medium">{item.name}</TableCell>
                         <TableCell className="tabular-nums">{item.quantity}</TableCell>
-                        <TableCell>{item.condition_declared}</TableCell>
+                        <TableCell>{getConditionText(item.condition_declared)}</TableCell>
                         <TableCell>
-                          <Badge variant={statusConfig[item.status]?.variant || "secondary"}>
-                            {item.status}
+                          <Badge variant="outline" className="mt-1">
+                            {item.status.toUpperCase()}
                           </Badge>
                         </TableCell>
                       </TableRow>

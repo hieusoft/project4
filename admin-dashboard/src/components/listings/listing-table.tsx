@@ -12,10 +12,10 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Eye, ShoppingBagIcon, ImageIcon } from "lucide-react"
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  active: { label: "Active", variant: "default" },
-  reserved: { label: "Reserved", variant: "secondary" },
-  closed: { label: "Closed", variant: "outline" },
-  blocked: { label: "Blocked", variant: "destructive" },
+  active: { label: "ACTIVE", variant: "default" },
+  reserved: { label: "RESERVED", variant: "secondary" },
+  closed: { label: "CLOSED", variant: "outline" },
+  blocked: { label: "BLOCKED", variant: "destructive" },
 }
 
 interface ListingTableProps {

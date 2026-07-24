@@ -135,13 +135,13 @@ export default function DonationsPage() {
                 <SelectValue placeholder="Trạng thái" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tất cả</SelectItem>
-                <SelectItem value="pending">Chờ duyệt</SelectItem>
-                <SelectItem value="accepted">Đã chấp nhận</SelectItem>
-                <SelectItem value="scheduled">Đã hẹn lịch</SelectItem>
-                <SelectItem value="completed">Hoàn thành</SelectItem>
-                <SelectItem value="rejected">Bị từ chối</SelectItem>
-                <SelectItem value="cancelled">Đã hủy</SelectItem>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="pending">PENDING</SelectItem>
+                  <SelectItem value="accepted">ACCEPTED</SelectItem>
+                  <SelectItem value="scheduled">SCHEDULED</SelectItem>
+                  <SelectItem value="received">RECEIVED</SelectItem>
+                  <SelectItem value="rejected">REJECTED</SelectItem>
+                  <SelectItem value="cancelled">CANCELLED</SelectItem>
               </SelectContent>
             </Select>
           </CardHeader>

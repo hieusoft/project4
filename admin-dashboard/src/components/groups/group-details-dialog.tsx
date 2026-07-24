@@ -80,8 +80,8 @@ export function GroupDetailsDialog({
                   </div>
                   <div>
                     <p className="font-semibold text-muted-foreground">Trạng thái</p>
-                    <Badge variant={groupDetails.status === 'active' ? 'default' : 'secondary'}>
-                      {groupDetails.status}
+                    <Badge variant={groupDetails.status === 'active' ? 'default' : groupDetails.status === 'pending' ? 'secondary' : 'destructive'}>
+                      {groupDetails.status.toUpperCase()}
                     </Badge>
                   </div>
                   <div>

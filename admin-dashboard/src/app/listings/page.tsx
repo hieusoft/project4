@@ -146,10 +146,12 @@ export default function ListingsPage() {
                   <SelectValue placeholder="Trạng thái" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tất cả</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="reserved">Reserved</SelectItem>
-                  <SelectItem value="closed">Closed</SelectItem>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="active">ACTIVE</SelectItem>
+                  <SelectItem value="inactive">INACTIVE</SelectItem>
+                  <SelectItem value="reserved">RESERVED</SelectItem>
+                  <SelectItem value="given">GIVEN</SelectItem>
+                  <SelectItem value="expired">EXPIRED</SelectItem>
                 </SelectContent>
               </Select>
             </div>

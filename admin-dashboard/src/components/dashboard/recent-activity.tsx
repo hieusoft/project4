@@ -31,15 +31,27 @@ export function RecentActivity({ recentDonations, recentGroups, loading }: Recen
           )}
           {loading && <div className="space-y-3"><Skeleton className="h-10 w-full"/><Skeleton className="h-10 w-full"/></div>}
           <div className="space-y-4">
-            {recentDonations.map(donation => (
+            {recentDonations.map(donation => {
+              const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+                pending: { label: "PENDING", variant: "outline" },
+                accepted: { label: "ACCEPTED", variant: "default" },
+                scheduled: { label: "SCHEDULED", variant: "secondary" },
+                received: { label: "RECEIVED", variant: "default" },
+                rejected: { label: "REJECTED", variant: "destructive" },
+                cancelled: { label: "CANCELLED", variant: "destructive" },
+              }
+              const status = statusMap[donation.status] || { label: donation.status?.toUpperCase() || "PENDING", variant: "outline" }
+              return (
               <div key={donation.id} className="flex justify-between items-center border-b pb-2 last:border-0 last:pb-0">
                 <div className="overflow-hidden mr-2">
                   <p className="text-sm font-medium truncate">{donation.title || "Vật phẩm quyên góp"}</p>
                   <p className="text-xs text-muted-foreground">{new Date(donation.created_at).toLocaleDateString("vi-VN")}</p>
                 </div>
-                <Badge variant="outline" className="whitespace-nowrap">{donation.status || "PENDING"}</Badge>
+                <Badge variant={status.variant} className="whitespace-nowrap">
+                  {status.label}
+                </Badge>
               </div>
-            ))}
+            )})}
           </div>
         </CardContent>
       </Card>

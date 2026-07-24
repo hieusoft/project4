@@ -165,10 +165,10 @@ export default function GroupsPage() {
                   <SelectValue placeholder="Trạng thái" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tất cả</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="suspended">Suspended</SelectItem>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="pending">PENDING</SelectItem>
+                  <SelectItem value="active">ACTIVE</SelectItem>
+                  <SelectItem value="suspended">SUSPENDED</SelectItem>
                   <SelectItem value="closed">Closed</SelectItem>
                 </SelectContent>
               </Select>
