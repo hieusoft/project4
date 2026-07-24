@@ -39,6 +39,8 @@ async function request<T>(
   if (res.status === 401 && typeof window !== "undefined" && !path.includes("/auth/refresh") && !path.includes("/auth/login")) {
     const refreshToken = localStorage.getItem("admin_refresh_token");
     if (refreshToken) {
+      let newAccessToken = "";
+
       if (!isRefreshing) {
         isRefreshing = true;
         try {
@@ -49,7 +51,7 @@ async function request<T>(
           });
           const refreshData = await refreshRes.json();
           if (refreshRes.ok && refreshData.data?.access_token) {
-            const newAccessToken = refreshData.data.access_token;
+            newAccessToken = refreshData.data.access_token;
             localStorage.setItem("admin_token", newAccessToken);
             if (refreshData.data.refresh_token) {
               localStorage.setItem("admin_refresh_token", refreshData.data.refresh_token);
@@ -64,12 +66,12 @@ async function request<T>(
         } finally {
           isRefreshing = false;
         }
+      } else {
+        // Đợi token mới (nếu đang có request khác làm mới)
+        newAccessToken = await new Promise<string>((resolve) => {
+          addRefreshSubscriber((token) => resolve(token));
+        });
       }
-
-      // Đợi token mới (nếu đang có request khác làm mới)
-      const newAccessToken = await new Promise<string>((resolve) => {
-        addRefreshSubscriber((token) => resolve(token));
-      });
 
       // Thử lại request gốc với token mới
       if (newAccessToken) {

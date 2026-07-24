@@ -55,30 +55,50 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return
       }
 
+      // 1. Giải mã token đồng bộ để kiểm tra quyền lập tức (không chờ API)
+      let parsedRoles: string[] = []
+      let parsedEmail = ""
       try {
+        const base64Url = token.split('.')[1]
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+        const paddedBase64 = base64.padEnd(base64.length + (4 - (base64.length % 4)) % 4, '=')
+        const jsonPayload = decodeURIComponent(window.atob(paddedBase64).split('').map(function(c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+        }).join(''))
+        
+        const payload = JSON.parse(jsonPayload)
+        if (payload) {
+          parsedRoles = payload.roles || []
+          parsedEmail = payload.email || ""
+        }
+        
+        if (!parsedRoles.some(r => ["PLATFORM_ADMIN", "ADMIN", "admin"].includes(r))) {
+          throw new Error("unauthorized_role")
+        }
+      } catch (error: any) {
+        if (error.message === "unauthorized_role") {
+          import("sonner").then((mod) => mod.toast.error("Tài khoản của bạn không có quyền truy cập trang quản trị"));
+        } else {
+          console.error("Lỗi khi parse token payload:", error)
+        }
+        localStorage.removeItem("admin_token")
+        localStorage.removeItem("admin_refresh_token")
+        setCurrentUser(null)
+        setIsAuthLoading(false)
+        if (pathname !== "/login") {
+          router.replace("/login")
+        }
+        return
+      }
+
+      try {
+        // 2. Gọi API để lấy thêm thông tin chi tiết
         const response = await identityApi.getMe()
         const userData = response.data || response
 
-        // Parse roles and email from JWT token payload safely
-        try {
-          const base64Url = token.split('.')[1];
-          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-          // Pad string with trailing '=' to make its length a multiple of 4
-          const paddedBase64 = base64.padEnd(base64.length + (4 - (base64.length % 4)) % 4, '=');
-          
-          // Use a safe decoding approach for unicode characters
-          const jsonPayload = decodeURIComponent(window.atob(paddedBase64).split('').map(function(c) {
-            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-          }).join(''));
-          
-          const payload = JSON.parse(jsonPayload)
-          if (payload) {
-            if (payload.roles) userData.roles = payload.roles
-            if (payload.email) userData.email = payload.email
-          }
-        } catch (e) {
-          console.error("Lỗi khi parse token payload:", e)
-        }
+        // Cập nhật role/email từ JWT vào userData
+        userData.roles = parsedRoles
+        if (parsedEmail) userData.email = parsedEmail
 
         setCurrentUser(userData)
         if (pathname === "/login") {
@@ -87,6 +107,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } catch (error: any) {
         if (error?.message?.includes("expired") || error?.message?.includes("Invalid token")) {
           console.warn("Phiên đăng nhập đã hết hạn. Đang chuyển hướng về trang đăng nhập...");
+        } else if (error?.message === "unauthorized_role") {
+          import("sonner").then((mod) => mod.toast.error("Tài khoản của bạn không có quyền truy cập trang quản trị"));
         } else {
           console.warn("Lỗi xác thực token:", error?.message || error)
         }

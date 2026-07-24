@@ -3,8 +3,15 @@
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
+import { useAuth } from "@/context/auth-context"
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
+  const { isAuthLoading, currentUser } = useAuth()
+
+  if (isAuthLoading || !currentUser) {
+    return null
+  }
+
   return (
     <SidebarProvider
       style={
