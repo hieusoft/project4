@@ -9,7 +9,7 @@ from fastapi import HTTPException, status
 from app.core.config import settings
 from app.models.domain import Account
 from app.repositories.account import AccountRepository
-from app.schemas.two_factor import TwoFactorSetupResponse
+from app.schemas.two_factor import TwoFactorSetupResponse, TwoFactorStatusResponse
 
 
 class TwoFactorService:
@@ -18,6 +18,11 @@ class TwoFactorService:
 
     async def setup(self, account: Account) -> TwoFactorSetupResponse:
         """Generate a fresh secret and provisioning URI (not yet enabled)."""
+        if account.totp_enabled:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="2FA is already enabled",
+            )
         secret = pyotp.random_base32()
         await self._accounts.set_totp_secret(account.id, secret)
         label = account.email or account.phone or str(account.id)
@@ -29,6 +34,10 @@ class TwoFactorService:
     async def setup_by_id(self, account_id: uuid.UUID) -> TwoFactorSetupResponse:
         account = await self._require_account(account_id)
         return await self.setup(account)
+
+    async def status(self, account_id: uuid.UUID) -> TwoFactorStatusResponse:
+        account = await self._require_account(account_id)
+        return TwoFactorStatusResponse(enabled=account.totp_enabled)
 
     async def enable(self, account_id: uuid.UUID, code: str) -> None:
         account = await self._require_account(account_id)

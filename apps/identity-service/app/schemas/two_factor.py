@@ -9,5 +9,9 @@ class TwoFactorSetupResponse(BaseModel):
     otpauth_url: str
 
 
+class TwoFactorStatusResponse(BaseModel):
+    enabled: bool
+
+
 class TwoFactorCodeRequest(BaseModel):
     code: str = Field(min_length=6, max_length=10)

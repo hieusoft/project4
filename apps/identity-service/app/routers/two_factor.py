@@ -7,10 +7,23 @@ from fastapi import APIRouter
 
 from app.core.deps import CurrentUserDep
 from app.schemas.common import DataEnvelope, MessageResponse
-from app.schemas.two_factor import TwoFactorCodeRequest, TwoFactorSetupResponse
+from app.schemas.two_factor import (
+    TwoFactorCodeRequest,
+    TwoFactorSetupResponse,
+    TwoFactorStatusResponse,
+)
 from app.services.providers import TwoFactorServiceDep
 
 router = APIRouter(prefix="/auth/2fa", tags=["two-factor"])
+
+
+@router.get("/status", response_model=DataEnvelope[TwoFactorStatusResponse])
+async def get_status(
+    user: CurrentUserDep,
+    two_factor: TwoFactorServiceDep,
+):
+    result = await two_factor.status(uuid.UUID(user.id))
+    return DataEnvelope(data=result)
 
 
 @router.post("/setup", response_model=DataEnvelope[TwoFactorSetupResponse])
