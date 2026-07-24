@@ -46,11 +46,18 @@ class InventoryRepository:
 
     async def next_code(self) -> str:
         year = datetime.utcnow().year
-        n = await self._conn.fetchval(
-            "SELECT COUNT(*) + 1 FROM inventory_items WHERE EXTRACT(YEAR FROM imported_at) = $1",
-            year,
+        pattern = f"ITM-{year}-%"
+        max_code = await self._conn.fetchval(
+            "SELECT MAX(code) FROM inventory_items WHERE code LIKE $1",
+            pattern,
         )
-        return f"ITM-{year}-{int(n):05d}"
+        n = 1
+        if max_code:
+            try:
+                n = int(str(max_code).rsplit("-", 1)[-1]) + 1
+            except ValueError:
+                n = 1
+        return f"ITM-{year}-{n:05d}"
 
     async def create(
         self,

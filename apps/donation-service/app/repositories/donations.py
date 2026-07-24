@@ -62,11 +62,21 @@ class DonationRepository:
 
     async def next_code(self, prefix: str = "DON") -> str:
         year = datetime.utcnow().year
-        n = await self._conn.fetchval(
-            "SELECT COUNT(*) + 1 FROM donations WHERE EXTRACT(YEAR FROM created_at) = $1",
-            year,
+        pattern = f"{prefix}-{year}-%"
+        max_code = await self._conn.fetchval(
+            """
+            SELECT MAX(code) FROM donations
+            WHERE code LIKE $1
+            """,
+            pattern,
         )
-        return f"{prefix}-{year}-{int(n):05d}"
+        n = 1
+        if max_code:
+            try:
+                n = int(str(max_code).rsplit("-", 1)[-1]) + 1
+            except ValueError:
+                n = 1
+        return f"{prefix}-{year}-{n:05d}"
 
     async def create(
         self,
