@@ -82,13 +82,13 @@ export default function DonationsPage() {
     }
   }
 
-  async function handleAction(action: "accept" | "reject" | "schedule" | "cancel", payload?: any) {
+  async function handleAction(action: "accepted" | "rejected" | "schedule" | "cancel", payload?: any) {
     if (!detailDonation) return
     
     try {
-      if (action === "accept" || action === "reject") {
-        await donationApi.reviewDonation(detailDonation.id, action)
-        toast.success(`Đã ${action === "accept" ? "chấp nhận" : "từ chối"} đơn quyên góp!`)
+      if (action === "accepted" || action === "rejected") {
+        await donationApi.reviewDonation(detailDonation.id, action, payload?.note)
+        toast.success(`Đã ${action === "accepted" ? "chấp nhận" : "từ chối"} đơn quyên góp!`)
       } else if (action === "schedule") {
         await donationApi.scheduleDonation(detailDonation.id, payload.scheduled_at)
         toast.success(`Đã hẹn lịch thành công!`)

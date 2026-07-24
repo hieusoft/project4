@@ -250,7 +250,7 @@ export const donationApi = {
   getInventoryItem: (id: string) =>
     request<DataEnvelope<any>>(`/donation/inventory/${id}`),
 
-  reviewDonation: (id: string, action: "accept" | "reject", note?: string) =>
+  reviewDonation: (id: string, action: "accepted" | "rejected", note?: string) =>
     request<DataEnvelope<any>>(`/donation/donations/${id}/review`, {
       method: "PUT",
       body: JSON.stringify({ action, review_note: note }),

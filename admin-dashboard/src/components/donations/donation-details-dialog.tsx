@@ -34,7 +34,7 @@ const statusConfig: Record<string, { label: string; variant: "default" | "second
 interface DonationDetailsDialogProps {
   detailDonation: any | null
   onClose: () => void
-  onAction: (action: "accept" | "reject" | "schedule" | "cancel", payload?: any) => void
+  onAction: (action: "accepted" | "rejected" | "schedule" | "cancel", payload?: any) => void
 }
 
 export function DonationDetailsDialog({
@@ -148,11 +148,11 @@ export function DonationDetailsDialog({
           <div className="flex items-center gap-2">
             {isPending && (
               <>
-                <Button variant="default" onClick={() => onAction("accept")} className="bg-emerald-600 hover:bg-emerald-700">
-                  <Check className="w-4 h-4 mr-2" /> Duyệt đơn
+                <Button variant="outline" onClick={() => onAction("rejected")} className="text-destructive hover:text-destructive">
+                  Từ chối
                 </Button>
-                <Button variant="destructive" onClick={() => onAction("reject")}>
-                  <X className="w-4 h-4 mr-2" /> Từ chối
+                <Button variant="default" onClick={() => onAction("accepted")} className="bg-emerald-600 hover:bg-emerald-700">
+                  Chấp nhận
                 </Button>
               </>
             )}

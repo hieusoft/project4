@@ -1,3 +1,4 @@
+import Link from "next/link"
 import {
   Card,
   CardContent,
@@ -69,13 +70,15 @@ export function ActivityChart({ chartData, pendingGroups, loading }: ActivityCha
           {loading && <div className="space-y-3"><Skeleton className="h-10 w-full"/><Skeleton className="h-10 w-full"/></div>}
           <div className="space-y-4">
             {pendingGroups.map(group => (
-              <div key={group.id} className="flex justify-between items-center border-b pb-2 last:border-0 last:pb-0">
-                <div className="overflow-hidden mr-2">
-                  <p className="text-sm font-medium truncate">{group.name}</p>
-                  <p className="text-xs text-muted-foreground">Nhóm thiện nguyện</p>
+              <Link href="/groups" key={group.id}>
+                <div className="flex justify-between items-center border-b pb-2 last:border-0 last:pb-0 hover:bg-muted/50 p-2 rounded-md transition-colors cursor-pointer">
+                  <div className="overflow-hidden mr-2">
+                    <p className="text-sm font-medium truncate">{group.name}</p>
+                    <p className="text-xs text-muted-foreground">Nhóm thiện nguyện</p>
+                  </div>
+                  <Badge variant="destructive" className="whitespace-nowrap">Chờ duyệt</Badge>
                 </div>
-                <Badge variant="destructive" className="whitespace-nowrap">Chờ duyệt</Badge>
-              </div>
+              </Link>
             ))}
           </div>
         </CardContent>
