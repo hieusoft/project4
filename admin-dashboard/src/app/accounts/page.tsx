@@ -32,7 +32,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
 import { identityApi } from "@/lib/api/client"
 import { Account } from "@/types"
-import { Shield, ShieldOff, UsersIcon, SearchIcon } from "lucide-react"
+import { Shield, ShieldOff, UsersIcon, EyeIcon } from "lucide-react"
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   active: { label: "Active", variant: "default" },
@@ -48,7 +48,9 @@ export default function AccountsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [loading, setLoading] = useState(true)
   const [dialogAccount, setDialogAccount] = useState<Account | null>(null)
-  const [dialogAction, setDialogAction] = useState<"lock" | "unlock">("lock")
+  const [dialogAction, setDialogAction] = useState<"lock" | "unlock" | "view">("lock")
+  const [profileData, setProfileData] = useState<any>(null)
+  const [loadingProfile, setLoadingProfile] = useState(false)
   const limit = 20
 
   const fetchAccounts = useCallback(async () => {
@@ -84,6 +86,21 @@ export default function AccountsPage() {
       fetchAccounts()
     } catch (err: any) {
       toast.error("Thao tác thất bại: " + err.message)
+    }
+  }
+
+  async function handleViewProfile(account: Account) {
+    setDialogAccount(account)
+    setDialogAction("view")
+    setLoadingProfile(true)
+    setProfileData(null)
+    try {
+      const res = await identityApi.getProfile(account.id)
+      setProfileData(res.data)
+    } catch (err: any) {
+      toast.error("Lỗi tải thông tin chi tiết: " + err.message)
+    } finally {
+      setLoadingProfile(false)
     }
   }
 
@@ -188,31 +205,39 @@ export default function AccountsPage() {
                         {new Date(account.created_at).toLocaleDateString("vi-VN")}
                       </TableCell>
                       <TableCell className="text-right">
-                        {account.status === "locked" ? (
+                        <div className="flex justify-end gap-2">
                           <Button
-                            variant="outline"
+                            variant="secondary"
                             size="sm"
-                            onClick={() => {
-                              setDialogAccount(account)
-                              setDialogAction("unlock")
-                            }}
+                            onClick={() => handleViewProfile(account)}
                           >
-                            <ShieldOff className="h-4 w-4 mr-1" />
-                            Mở khóa
+                            <EyeIcon className="h-4 w-4" />
                           </Button>
-                        ) : account.status !== "deleted" ? (
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => {
-                              setDialogAccount(account)
-                              setDialogAction("lock")
-                            }}
-                          >
-                            <Shield className="h-4 w-4 mr-1" />
-                            Khóa
-                          </Button>
-                        ) : null}
+                          
+                          {account.status === "locked" ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setDialogAccount(account)
+                                setDialogAction("unlock")
+                              }}
+                            >
+                              <ShieldOff className="h-4 w-4" />
+                            </Button>
+                          ) : account.status !== "deleted" ? (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => {
+                                setDialogAccount(account)
+                                setDialogAction("lock")
+                              }}
+                            >
+                              <Shield className="h-4 w-4" />
+                            </Button>
+                          ) : null}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -256,24 +281,84 @@ export default function AccountsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {dialogAction === "lock" ? "Khóa tài khoản" : "Mở khóa tài khoản"}
+              {dialogAction === "lock" ? "Khóa tài khoản" : 
+               dialogAction === "unlock" ? "Mở khóa tài khoản" : 
+               "Hồ sơ người dùng"}
             </DialogTitle>
             <DialogDescription>
               {dialogAction === "lock"
                 ? `Bạn có chắc muốn khóa tài khoản "${dialogAccount?.username}"? Tất cả session sẽ bị đăng xuất.`
-                : `Bạn có chắc muốn mở khóa tài khoản "${dialogAccount?.username}"?`}
+                : dialogAction === "unlock" 
+                ? `Bạn có chắc muốn mở khóa tài khoản "${dialogAccount?.username}"?`
+                : "Chi tiết hoạt động và danh tiếng trên hệ thống"}
             </DialogDescription>
           </DialogHeader>
+          
+          {dialogAction === "view" && (
+            <div className="py-4">
+              {loadingProfile ? (
+                <div className="space-y-4">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-20 w-full" />
+                </div>
+              ) : profileData ? (
+                <div className="space-y-4 text-sm">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-muted-foreground mb-1">Họ và tên</p>
+                      <p className="font-medium">{profileData.full_name || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground mb-1">Username</p>
+                      <p className="font-medium">@{profileData.username}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground mb-1">Điểm uy tín</p>
+                      <p className="font-medium text-emerald-600">{profileData.reputation_score}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground mb-1">Khu vực</p>
+                      <p className="font-medium">{profileData.province_code ? profileData.province_code + (profileData.district_code ? ` - ${profileData.district_code}` : "") : "—"}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-muted p-4 rounded-lg flex items-center justify-around text-center mt-4">
+                    <div>
+                      <p className="text-2xl font-semibold">{profileData.donation_count || 0}</p>
+                      <p className="text-xs text-muted-foreground">Đã quyên góp</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-semibold">{profileData.received_count || 0}</p>
+                      <p className="text-xs text-muted-foreground">Đã nhận</p>
+                    </div>
+                  </div>
+                  
+                  {profileData.bio && (
+                    <div className="mt-4">
+                      <p className="text-muted-foreground mb-1">Tiểu sử</p>
+                      <p className="bg-secondary p-3 rounded text-secondary-foreground">{profileData.bio}</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-center text-muted-foreground">Không tải được thông tin.</p>
+              )}
+            </div>
+          )}
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogAccount(null)}>
-              Hủy
+              Đóng
             </Button>
-            <Button
-              variant={dialogAction === "lock" ? "destructive" : "default"}
-              onClick={handleLockUnlock}
-            >
-              {dialogAction === "lock" ? "Khóa" : "Mở khóa"}
-            </Button>
+            {dialogAction !== "view" && (
+              <Button
+                variant={dialogAction === "lock" ? "destructive" : "default"}
+                onClick={handleLockUnlock}
+              >
+                {dialogAction === "lock" ? "Khóa" : "Mở khóa"}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
