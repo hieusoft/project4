@@ -6,6 +6,7 @@ from fastapi import APIRouter, status
 
 from app.schemas.account import MeResponse
 from app.schemas.auth import (
+    ChangePasswordRequest,
     ForgotPasswordRequest,
     LoginRequest,
     LogoutRequest,
@@ -20,6 +21,7 @@ from app.schemas.auth import (
 )
 from app.schemas.common import DataEnvelope, MessageResponse
 from app.schemas.token import TokenPair, TwoFactorChallenge
+from app.core.deps import CurrentUserDep
 from app.services.providers import AuthServiceDep
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -120,3 +122,16 @@ async def reset_password(body: ResetPasswordRequest, service: AuthServiceDep):
     """Step 3 — set new password (prefer reset_token from step 2)."""
     await service.reset_password(body)
     return DataEnvelope(data=MessageResponse(message="Password reset successful"))
+
+
+@router.post("/change-password", response_model=DataEnvelope[MessageResponse])
+async def change_password(
+    body: ChangePasswordRequest, service: AuthServiceDep, user: CurrentUserDep
+):
+    import uuid
+    await service.change_password(
+        account_id=uuid.UUID(user.id),
+        old_password=body.old_password,
+        new_password=body.new_password,
+    )
+    return DataEnvelope(data=MessageResponse(message="Password changed successfully"))

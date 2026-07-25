@@ -60,10 +60,16 @@ class TokenService:
         device_info: str | None,
     ) -> TokenPair | None:
         """Verify + rotate a refresh token. Returns None if invalid/expired."""
-        existing = await self._refresh_tokens.get_active_by_hash(
+        existing = await self._refresh_tokens.get_by_hash(
             hash_token(raw_refresh_token)
         )
         if existing is None:
+            return None
+        
+        # Token reuse detection
+        if existing.revoked_at is not None:
+            # Token was already revoked but someone tried to use it again!
+            await self._refresh_tokens.revoke_all_for_account(existing.account_id)
             return None
         expires_at = existing.expires_at
         if expires_at.tzinfo is None:

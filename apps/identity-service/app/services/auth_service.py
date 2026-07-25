@@ -83,6 +83,15 @@ class AuthService:
         register with the same email overwrites password + profile and resends
         the OTP — no 24h purge required. Verified emails still return 409.
         """
+        if not data.username:
+            import re
+            base = data.email.split("@")[0] if data.email else "user"
+            base = re.sub(r'[^a-zA-Z0-9_]', '', base)
+            if len(base) < 3:
+                base = base.ljust(3, '0')
+            suffix = uuid.uuid4().hex[:6]
+            data.username = f"{base}_{suffix}"[:30]
+
         existing = await self._find_reclaimable(data)
         if existing is not None:
             return await self._reclaim_unverified(existing, data)
@@ -201,6 +210,15 @@ class AuthService:
 
     async def _issue_email_verification(self, account: Account) -> str:
         """Issue a 6-digit email OTP (hash stored; plain code emailed via event)."""
+        existing = await self._otps.get_active_for_account(account.id, OtpPurpose.verify_account)
+        if existing:
+            created_at = existing.created_at if existing.created_at.tzinfo else existing.created_at.replace(tzinfo=timezone.utc)
+            if (datetime.now(timezone.utc) - created_at).total_seconds() < 60:
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail="Please wait 60 seconds before requesting a new verification code",
+                )
+
         code = generate_otp_code(6)
         expires_at = datetime.now(timezone.utc) + timedelta(
             hours=settings.email_verification_expiry_hours
@@ -237,6 +255,13 @@ class AuthService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid or expired verification code",
             )
+        
+        if account.status in (AccountStatus.locked, AccountStatus.deleted):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Account is locked or deleted",
+            )
+
         if account.email_verified:
             return account
 
@@ -335,6 +360,15 @@ class AuthService:
     async def refresh(
         self, *, raw_refresh_token: str, device_info: str | None
     ) -> TokenPair:
+        existing_token = await self._refresh_tokens.get_by_hash(hash_token(raw_refresh_token))
+        if existing_token and existing_token.revoked_at is None:
+            account = await self._accounts.get_by_id(existing_token.account_id)
+            if account and account.status in (AccountStatus.locked, AccountStatus.deleted):
+                await self._refresh_tokens.revoke_all_for_account(account.id)
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN, detail="Account is locked or deleted"
+                )
+
         pair = await self._tokens.rotate(
             raw_refresh_token=raw_refresh_token,
             email=None,
@@ -360,6 +394,16 @@ class AuthService:
         account = await self._accounts.get_by_email(email)
         if account is None:
             return  # do not leak account existence
+            
+        existing = await self._otps.get_active_for_account(account.id, OtpPurpose.reset_password)
+        if existing:
+            created_at = existing.created_at if existing.created_at.tzinfo else existing.created_at.replace(tzinfo=timezone.utc)
+            if (datetime.now(timezone.utc) - created_at).total_seconds() < 60:
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail="Please wait 60 seconds before requesting a new reset code",
+                )
+
         code = generate_otp_code(6)
         expires_at = datetime.now(timezone.utc) + timedelta(
             hours=settings.password_reset_expiry_hours
@@ -417,6 +461,27 @@ class AuthService:
                 email=account.email,
             ),
         )
+
+    async def change_password(
+        self, account_id: uuid.UUID, old_password: str, new_password: str
+    ) -> None:
+        """Change password for an authenticated user."""
+        account = await self._accounts.get_by_id(account_id)
+        if account is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Account not found"
+            )
+        self._assert_account_usable(account)
+        if not verify_password(old_password, account.password_hash):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid old password"
+            )
+
+        await self._accounts.update_password(
+            account.id, hash_password(new_password)
+        )
+        await self._refresh_tokens.revoke_all_for_account(account.id)
+        await self._activity.log(user_id=account.id, action="change_password")
 
     async def _load_valid_reset_otp(
         self, *, email: str, code: str

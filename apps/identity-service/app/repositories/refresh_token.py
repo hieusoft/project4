@@ -50,6 +50,18 @@ class RefreshTokenRepository:
             RefreshToken.model_validate(dict(record)) if record is not None else None
         )
 
+    async def get_by_hash(self, token_hash: str) -> RefreshToken | None:
+        record = await self._conn.fetchrow(
+            f"""
+            SELECT {_COLUMNS} FROM refresh_tokens
+            WHERE token_hash = $1
+            """,
+            token_hash,
+        )
+        return (
+            RefreshToken.model_validate(dict(record)) if record is not None else None
+        )
+
     async def revoke(self, token_id: uuid.UUID) -> None:
         await self._conn.execute(
             "UPDATE refresh_tokens SET revoked_at = now() WHERE id = $1 AND revoked_at IS NULL",
