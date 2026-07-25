@@ -5,9 +5,9 @@ from pydantic import BaseModel, EmailStr, Field, model_validator
 
 
 class RegisterRequest(BaseModel):
-    username: str = Field(min_length=3, max_length=30, pattern=r"^[a-zA-Z0-9_]+$")
     email: EmailStr | None = None
     phone: str | None = Field(default=None, max_length=20)
+    username: str | None = Field(default=None, min_length=3, max_length=30, pattern=r"^[a-zA-Z0-9_]+$")
     password: str = Field(min_length=8, max_length=128)
     full_name: str = Field(min_length=1, max_length=100)
 
@@ -96,3 +96,8 @@ class ResetPasswordRequest(BaseModel):
         if self.email and self.code:
             return self
         raise ValueError("Provide reset_token, or email + code")
+
+
+class ChangePasswordRequest(BaseModel):
+    old_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
