@@ -48,6 +48,7 @@ INVENTORY: in_stock → listed → reserved → delivered | discarded
 |---|---|---|
 | POST | `/donations` | Tạo đơn + items + images |
 | GET | `/donations` | List (`group_id`, `status`, `mine`) |
+| GET | `/donations/by-code/{code}` | Moderator tra chính xác mã đơn trong `group_id` |
 | GET | `/donations/{id}` | Chi tiết |
 | PUT | `/donations/{id}/review` | `{ action: accepted\|rejected, reason? }` |
 | PUT | `/donations/{id}/schedule` | `{ scheduled_at }` |

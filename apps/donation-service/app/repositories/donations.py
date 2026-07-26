@@ -159,6 +159,16 @@ class DonationRepository:
         items = await self.list_items(donation_id)
         return _donation(row, items)
 
+    async def get_by_code(self, code: str) -> Donation | None:
+        row = await self._conn.fetchrow(
+            "SELECT * FROM donations WHERE code = $1",
+            code.strip().upper(),
+        )
+        if row is None:
+            return None
+        items = await self.list_items(row["id"])
+        return _donation(row, items)
+
     async def list_items(self, donation_id: uuid.UUID) -> list[DonationItem]:
         rows = await self._conn.fetch(
             "SELECT * FROM donation_items WHERE donation_id = $1 ORDER BY id",

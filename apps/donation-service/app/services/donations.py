@@ -90,6 +90,20 @@ class DonationService:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Donation not found")
         return donation
 
+    async def get_by_code(
+        self, code: str, group_id: uuid.UUID, user: CurrentUser
+    ) -> Donation:
+        normalized_code = code.strip().upper()
+        if not normalized_code:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Donation code required")
+
+        donation = await self._donations.get_by_code(normalized_code)
+        if donation is None or donation.group_id != group_id:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Donation not found")
+
+        await self._require_moderator(donation, user)
+        return donation
+
     async def list(
         self,
         user: CurrentUser,

@@ -113,6 +113,20 @@ async def list_donations(
     )
 
 
+@router.get(
+    "/donations/by-code/{code}",
+    response_model=DataEnvelope[DonationOut],
+)
+async def get_donation_by_code(
+    code: str,
+    group_id: uuid.UUID,
+    user: CurrentUserDep,
+    service: DonationServiceDep,
+):
+    donation = await service.get_by_code(code, group_id, user)
+    return DataEnvelope(data=_donation_out(donation))
+
+
 @router.get("/donations/{donation_id}", response_model=DataEnvelope[DonationOut])
 async def get_donation(
     donation_id: uuid.UUID,
