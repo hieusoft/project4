@@ -43,6 +43,9 @@ class MemListingRepo {
   async findAll(filters = {}) {
     let rows = [...this.items.values()];
     if (filters.status) rows = rows.filter((r) => r.status === filters.status);
+    if (filters.available_only) {
+      rows = rows.filter((r) => r.quantity_available > 0);
+    }
     return { data: rows, meta: { page: 1, limit: 20, total: rows.length, total_pages: 1 } };
   }
   async find(f) {
@@ -72,7 +75,8 @@ class MemListingRepo {
 }
 
 class MemRequestRepo {
-  constructor() {
+  constructor(listingRepository) {
+    this.listingRepository = listingRepository;
     this.items = new Map();
     this.confirmations = [];
   }
@@ -92,6 +96,15 @@ class MemRequestRepo {
     this.items.set(request.id, new ItemRequest({ ...request }));
     return this.items.get(request.id);
   }
+  async approveWithListing(request) {
+    const listing = await this.listingRepository.findById(request.listing_id);
+    if (!listing || !listing.isAvailable(request.quantity)) {
+      throw new Error('Listing does not have enough available quantity');
+    }
+    listing.reserve(request.quantity);
+    this.items.set(request.id, new ItemRequest({ ...request }));
+    return { request: this.items.get(request.id), listing };
+  }
   async updateWithListing(request, listing) {
     this.items.set(request.id, new ItemRequest({ ...request }));
     return this.items.get(request.id);
@@ -99,7 +112,13 @@ class MemRequestRepo {
   async completeWithTransaction(request, listing, completionData) {
     this.items.set(request.id, new ItemRequest({ ...request }));
     this.confirmations.push({ request_id: request.id, ...completionData });
-    return { request: this.items.get(request.id) };
+    const hasOpenReservations = [...this.items.values()].some(
+      (item) =>
+        item.listing_id === request.listing_id &&
+        ['approved', 'scheduled'].includes(item.status)
+    );
+    listing.finalizeDelivery(hasOpenReservations);
+    return { request: this.items.get(request.id), listing };
   }
 }
 
@@ -167,18 +186,23 @@ class FakeDonation {
 
 const MOD_ID = uuid();
 const RECEIVER_ID = uuid();
+const SECOND_RECEIVER_ID = uuid();
 const GROUP_ID = uuid();
 const CAT_ID = uuid();
 const INV_ID = uuid();
 
 function setup(extra = {}) {
   const listingRepository = new MemListingRepo();
-  const requestRepository = new MemRequestRepo();
+  const requestRepository = new MemRequestRepo(listingRepository);
   const messagePublisher = new CapturingPublisher();
   const communityClient =
     extra.community ||
     new FakeCommunity({
-      members: { [`${GROUP_ID}:${RECEIVER_ID}`]: 'member', [`${GROUP_ID}:${MOD_ID}`]: 'owner' },
+      members: {
+        [`${GROUP_ID}:${RECEIVER_ID}`]: 'member',
+        [`${GROUP_ID}:${SECOND_RECEIVER_ID}`]: 'member',
+        [`${GROUP_ID}:${MOD_ID}`]: 'owner',
+      },
       mods: { [`${GROUP_ID}:${MOD_ID}`]: true },
     });
   const donationClient =
@@ -224,6 +248,29 @@ async function main() {
     l.release(1);
     assert.strictEqual(l.quantity_available, 1);
     assert.strictEqual(l.status, 'active');
+    l.reserve(1);
+    l.finalizeDelivery();
+    assert.strictEqual(l.status, 'closed');
+  });
+
+  await test('Catalog hides legacy active listings with zero quantity', async () => {
+    const ctx = setup();
+    const listing = await ctx.listingRepository.save(
+      new Listing({
+        inventory_item_id: INV_ID,
+        group_id: GROUP_ID,
+        title: 'Legacy sold out',
+        category_id: CAT_ID,
+        condition: 'good',
+        quantity_total: 1,
+        quantity_available: 0,
+        status: 'active',
+        created_by: MOD_ID,
+      })
+    );
+    assert.strictEqual(listing.status, 'active');
+    const catalog = await ctx.listingUseCases.getCatalog({});
+    assert.strictEqual(catalog.data.length, 0);
   });
 
   await test('Domain: cancel / no_show state', () => {
@@ -302,9 +349,22 @@ async function main() {
 
     await test('Schedule + complete without double-reserve', async () => {
       await ctx.requestUseCases.scheduleRequest(requestId, MOD_ID, '2026-08-20T10:00:00Z');
+      await assert.rejects(
+        () =>
+          ctx.requestUseCases.completeRequest(
+            requestId,
+            new CompleteRequestDTO({
+              confirmed_by: MOD_ID,
+              qr_token: 'REQ-WRONG',
+            }),
+            { userId: MOD_ID }
+          ),
+        /QR code does not match/
+      );
+      const scheduledRequest = await ctx.requestRepository.findById(requestId);
       const completion = new CompleteRequestDTO({
         confirmed_by: MOD_ID,
-        qr_token: 'qr-1',
+        qr_token: scheduledRequest.code,
       });
       const req = await ctx.requestUseCases.completeRequest(requestId, completion, {
         userId: MOD_ID,
@@ -312,7 +372,103 @@ async function main() {
       assert.strictEqual(req.status, 'completed');
       const listing = await ctx.listingRepository.findById(listingId);
       assert.strictEqual(listing.quantity_available, 0);
+      assert.strictEqual(listing.status, 'closed');
       assert.ok(ctx.donationClient.updates.some((u) => u.status === 'delivered'));
+    });
+  }
+
+  {
+    const ctx = setup();
+    await test('Partial delivery keeps remaining stock active and listed', async () => {
+      const listing = await ctx.listingUseCases.createListing(
+        new CreateListingDTO({
+          inventory_item_id: INV_ID,
+          group_id: GROUP_ID,
+          title: 'Ao so luong nhieu',
+          category_id: CAT_ID,
+          condition: 'good',
+          quantity_total: 3,
+          created_by: MOD_ID,
+        }),
+        { userId: MOD_ID }
+      );
+      const request = await ctx.requestUseCases.createRequest(
+        new CreateRequestDTO({
+          listing_id: listing.id,
+          receiver_id: RECEIVER_ID,
+          quantity: 1,
+        }),
+        { userId: RECEIVER_ID }
+      );
+      await ctx.requestUseCases.approveRequest(request.id, MOD_ID);
+      let current = await ctx.listingRepository.findById(listing.id);
+      assert.strictEqual(current.quantity_available, 2);
+      assert.strictEqual(current.status, 'active');
+
+      await ctx.requestUseCases.completeRequest(
+        request.id,
+        new CompleteRequestDTO({ confirmed_by: MOD_ID, qr_token: request.code }),
+        { userId: MOD_ID }
+      );
+      current = await ctx.listingRepository.findById(listing.id);
+      assert.strictEqual(current.quantity_available, 2);
+      assert.strictEqual(current.status, 'active');
+      assert.strictEqual(ctx.donationClient.updates.at(-1).status, 'listed');
+    });
+  }
+
+  {
+    const ctx = setup();
+    await test('Last open reservation closes a sold-out listing', async () => {
+      const listing = await ctx.listingUseCases.createListing(
+        new CreateListingDTO({
+          inventory_item_id: INV_ID,
+          group_id: GROUP_ID,
+          title: 'Hai ao',
+          category_id: CAT_ID,
+          condition: 'good',
+          quantity_total: 2,
+          created_by: MOD_ID,
+        }),
+        { userId: MOD_ID }
+      );
+      const first = await ctx.requestUseCases.createRequest(
+        new CreateRequestDTO({
+          listing_id: listing.id,
+          receiver_id: RECEIVER_ID,
+          quantity: 1,
+        }),
+        { userId: RECEIVER_ID }
+      );
+      const second = await ctx.requestUseCases.createRequest(
+        new CreateRequestDTO({
+          listing_id: listing.id,
+          receiver_id: SECOND_RECEIVER_ID,
+          quantity: 1,
+        }),
+        { userId: SECOND_RECEIVER_ID }
+      );
+      await ctx.requestUseCases.approveRequest(first.id, MOD_ID);
+      await ctx.requestUseCases.approveRequest(second.id, MOD_ID);
+
+      await ctx.requestUseCases.completeRequest(
+        first.id,
+        new CompleteRequestDTO({ confirmed_by: MOD_ID, qr_token: first.code }),
+        { userId: MOD_ID }
+      );
+      let current = await ctx.listingRepository.findById(listing.id);
+      assert.strictEqual(current.quantity_available, 0);
+      assert.strictEqual(current.status, 'reserved');
+      assert.strictEqual(ctx.donationClient.updates.at(-1).status, 'reserved');
+
+      await ctx.requestUseCases.completeRequest(
+        second.id,
+        new CompleteRequestDTO({ confirmed_by: MOD_ID, qr_token: second.code }),
+        { userId: MOD_ID }
+      );
+      current = await ctx.listingRepository.findById(listing.id);
+      assert.strictEqual(current.status, 'closed');
+      assert.strictEqual(ctx.donationClient.updates.at(-1).status, 'delivered');
     });
   }
 

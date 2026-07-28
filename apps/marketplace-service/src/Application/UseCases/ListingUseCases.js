@@ -110,6 +110,7 @@ class ListingUseCases {
 
   async getCatalog(filters = {}) {
     filters.status = 'active';
+    filters.available_only = true;
     return await this.listingRepository.find(filters);
   }
 

@@ -18,6 +18,11 @@ class ListingRepository extends IListingRepository {
       queryText += ` AND status = $${params.length}`;
       countQueryText += ` AND status = $${params.length}`;
     }
+
+    if (filters.available_only) {
+      queryText += ' AND quantity_available > 0';
+      countQueryText += ' AND quantity_available > 0';
+    }
     
     if (filters.group_id) {
       params.push(filters.group_id);
