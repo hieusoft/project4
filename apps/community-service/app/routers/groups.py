@@ -109,8 +109,8 @@ async def list_my_groups(
 
 @router.get("/groups/batch", response_model=DataEnvelope[list[GroupOut]])
 async def get_groups_batch(
-    ids: str = Query(..., description="Comma-separated group IDs"),
     service: GroupServiceDep,
+    ids: str = Query(..., description="Comma-separated group IDs"),
 ):
     id_list = [uuid.UUID(i.strip()) for i in ids.split(",") if i.strip()]
     groups = await service.get_batch(id_list)
