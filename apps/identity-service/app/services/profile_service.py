@@ -37,6 +37,12 @@ class ProfileService:
             )
         return data
 
+    async def get_public_batch(
+        self, account_ids: list[uuid.UUID]
+    ) -> list[dict]:
+        """Batch get profiles with username for public view."""
+        return await self._profiles.get_public_batch_with_username(account_ids)
+
     async def update(
         self, account_id: uuid.UUID, data: ProfileUpdateRequest
     ) -> UserProfile:

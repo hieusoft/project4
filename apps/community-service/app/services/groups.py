@@ -78,6 +78,13 @@ class GroupService:
                     raise HTTPException(status.HTTP_404_NOT_FOUND, "Group not found")
         return group
 
+    async def get_batch(
+        self, group_ids: list[uuid.UUID]
+    ) -> list[Group]:
+        """Batch fetch active groups for public display info."""
+        groups = await self._groups.get_batch(group_ids)
+        return [g for g in groups if g.status == GroupStatus.active]
+
     async def get_with_membership(
         self, group_id: uuid.UUID, user: CurrentUser | None
     ) -> tuple[Group, MemberRole | None, MemberStatus | None]:

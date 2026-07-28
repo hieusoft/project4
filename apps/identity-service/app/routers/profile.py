@@ -54,6 +54,16 @@ async def list_my_activities(
     )
 
 
+@router.get("/batch", response_model=DataEnvelope[list[ProfilePublic]])
+async def get_public_profiles_batch(
+    ids: str = Query(..., description="Comma-separated account IDs"),
+    service: ProfileServiceDep,
+):
+    id_list = [uuid.UUID(i.strip()) for i in ids.split(",") if i.strip()]
+    rows = await service.get_public_batch(id_list)
+    return DataEnvelope(data=[ProfilePublic.model_validate(r) for r in rows])
+
+
 @router.get("/{account_id}", response_model=DataEnvelope[ProfilePublic])
 async def get_public_profile(account_id: uuid.UUID, service: ProfileServiceDep):
     data = await service.get_public(account_id)

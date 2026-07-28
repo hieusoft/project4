@@ -104,6 +104,15 @@ class GroupRepository:
         )
         return Group.model_validate(dict(record)) if record else None
 
+    async def get_batch(self, group_ids: list[uuid.UUID]) -> list[Group]:
+        if not group_ids:
+            return []
+        records = await self._conn.fetch(
+            f"SELECT {_COLS} FROM groups WHERE id = ANY($1::uuid[])",
+            group_ids,
+        )
+        return [Group.model_validate(dict(r)) for r in records]
+
     async def get_by_slug(self, slug: str) -> Group | None:
         record = await self._conn.fetchrow(
             f"SELECT {_COLS} FROM groups WHERE slug = $1", slug

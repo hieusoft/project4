@@ -72,6 +72,26 @@ class ProfileRepository:
         )
         return dict(record) if record is not None else None
 
+    async def get_public_batch_with_username(
+        self, account_ids: list[uuid.UUID]
+    ) -> list[dict]:
+        """Batch fetch profiles joined with account username."""
+        if not account_ids:
+            return []
+        records = await self._conn.fetch(
+            """
+            SELECT p.id, p.full_name, p.avatar_url, p.date_of_birth, p.gender,
+                   p.address, p.province_code, p.district_code, p.bio,
+                   p.reputation_score, p.donation_count, p.received_count,
+                   p.created_at, p.updated_at, a.username
+            FROM user_profiles p
+            JOIN accounts a ON a.id = p.id
+            WHERE p.id = ANY($1::uuid[])
+            """,
+            account_ids,
+        )
+        return [dict(r) for r in records]
+
     async def update(
         self, account_id: uuid.UUID, fields: dict[str, object]
     ) -> UserProfile | None:
