@@ -41,7 +41,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               localStorage.setItem("admin_refresh_token", refreshData.data.refresh_token as string)
             }
           }
-        } catch (e) {
+        } catch {
           console.warn("Không thể tự động làm mới token lúc khởi tạo")
         }
       }

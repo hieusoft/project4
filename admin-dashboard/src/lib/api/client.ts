@@ -59,9 +59,15 @@ async function request<T>(
             onRefreshed(newAccessToken);
           } else {
             // Lỗi làm mới, có thể refresh_token cũng đã hết hạn
+            localStorage.removeItem("admin_token");
+            localStorage.removeItem("admin_refresh_token");
+            window.location.href = "/login";
             onRefreshed("");
           }
-        } catch (e) {
+        } catch {
+          localStorage.removeItem("admin_token");
+          localStorage.removeItem("admin_refresh_token");
+          window.location.href = "/login";
           onRefreshed("");
         } finally {
           isRefreshing = false;
@@ -116,6 +122,12 @@ export const identityApi = {
 
   login: (payload: { username?: string; email?: string; phone?: string; password?: string }) =>
     request<any>("/identity/auth/login", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  verify2FA: (payload: { challenge_token: string; code: string }) =>
+    request<any>("/identity/auth/login/2fa", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
@@ -355,6 +367,9 @@ export const marketplaceApi = {
     const qs = searchParams.toString();
     return request<DataEnvelope<Paginated<any>>>("/marketplace/requests" + (qs ? `?${qs}` : ""));
   },
+
+  getRequestConfirmation: (id: string) =>
+    request<DataEnvelope<any>>(`/marketplace/requests/${id}/confirmation`),
 
   getStats: (params?: { stat_date?: string; group_id?: string; limit?: number }) => {
     const searchParams = new URLSearchParams();

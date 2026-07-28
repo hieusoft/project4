@@ -42,7 +42,7 @@ export function GroupDetailsDialog({
       open={!!dialogGroup && dialogAction === "view"}
       onOpenChange={(open) => !open && onClose()}
     >
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Chi tiết Nhóm</DialogTitle>
           <DialogDescription>

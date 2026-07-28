@@ -13,7 +13,7 @@ import { ServerIcon, GiftIcon, PackageCheck, ExternalLinkIcon } from "lucide-rea
 interface OverviewStats {
   totalRequests: number
   totalItemsDelivered: number
-  [key: string]: any
+  [key: string]: unknown
 }
 
 interface SystemStatusProps {

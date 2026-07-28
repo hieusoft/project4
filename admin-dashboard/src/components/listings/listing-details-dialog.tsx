@@ -18,15 +18,17 @@ const statusConfig: Record<string, { label: string; variant: "default" | "second
 }
 
 interface ListingDetailsDialogProps {
-  detailListing: any | null
+  detailListing: Record<string, any> | null
   onClose: () => void
   onCloseListing: () => void
+  currentUser: Record<string, any> | null
 }
 
 export function ListingDetailsDialog({
   detailListing,
   onClose,
   onCloseListing,
+  currentUser,
 }: ListingDetailsDialogProps) {
   if (!detailListing) return null
 
@@ -34,7 +36,7 @@ export function ListingDetailsDialog({
 
   return (
     <Dialog open={!!detailListing} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShoppingBagIcon className="h-5 w-5" />
@@ -94,7 +96,7 @@ export function ListingDetailsDialog({
                   <div key={img.id} className="relative min-w-[150px] h-[150px] rounded-md overflow-hidden border">
                     {/* Fallback styling for images if URLs are broken */}
                     <img 
-                      src={img.url} 
+                      src={img.image_url} 
                       alt="Listing Image" 
                       className="object-cover w-full h-full"
                       onError={(e) => { (e.target as any).src = 'https://via.placeholder.com/150?text=No+Image' }}
@@ -108,7 +110,7 @@ export function ListingDetailsDialog({
 
         <DialogFooter className="mt-6 flex sm:justify-between items-center border-t pt-4">
           <div>
-            {isActive && (
+            {isActive && (!currentUser?.roles || !(currentUser.roles as string[]).includes("PLATFORM_ADMIN")) && (
               <Button variant="destructive" onClick={onCloseListing}>
                 <Ban className="w-4 h-4 mr-2" /> Đóng tin đăng
               </Button>

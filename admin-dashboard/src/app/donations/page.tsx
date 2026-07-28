@@ -18,14 +18,16 @@ import { PackageIcon } from "lucide-react"
 
 import { DonationTable } from "@/components/donations/donation-table"
 import { DonationDetailsDialog } from "@/components/donations/donation-details-dialog"
+import { useAuth } from "@/context/auth-context"
 
 export default function DonationsPage() {
+  const { currentUser } = useAuth()
   const [donations, setDonations] = useState<any[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [loading, setLoading] = useState(true)
-  const [detailDonation, setDetailDonation] = useState<any | null>(null)
+  const [detailDonation, setDetailDonation] = useState<Record<string, any> | null>(null)
   const limit = 20
 
   const fetchDonations = useCallback(async () => {
@@ -33,25 +35,26 @@ export default function DonationsPage() {
     try {
       const params: Record<string, any> = { page, limit }
       if (statusFilter !== "all") params.status = statusFilter
-      const res = await donationApi.listDonations(params)
+      const res = await donationApi.listDonations(params) as Record<string, any>
       
-      const items = res.data.items || []
+      const items = (res.data as any)?.items as any[] || []
       
       // Fetch donor profiles
       const itemsWithProfiles = await Promise.all(
         items.map(async (donation: any) => {
+          const d = donation as Record<string, any>;
           try {
-             if (!donation.donor_id) return donation;
-             const profileRes = await identityApi.getProfile(donation.donor_id)
-             return { ...donation, donorProfile: profileRes.data }
-          } catch (e) {
-             return donation
+             if (!d.donor_id) return d;
+             const profileRes = await identityApi.getProfile(d.donor_id as string) as Record<string, any>
+             return { ...d, donorProfile: profileRes.data }
+          } catch {
+             return d
           }
         })
       )
       
       setDonations(itemsWithProfiles)
-      setTotal(res.data.meta.total)
+      setTotal(((res.data as any)?.meta as any)?.total as number)
     } catch (err: any) {
       toast.error("Lỗi tải danh sách quyên góp: " + err.message)
     } finally {
@@ -60,20 +63,21 @@ export default function DonationsPage() {
   }, [page, statusFilter])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchDonations()
   }, [fetchDonations])
 
   async function viewDetail(donation: Donation) {
     try {
-      const res = await donationApi.getDonation(donation.id)
-      const data = res.data
+      const res = await donationApi.getDonation(donation.id) as Record<string, any>
+      const data = res.data as Record<string, any>
       
       // Fetch donor profile for detail
       if (data.donor_id) {
          try {
-           const profileRes = await identityApi.getProfile(data.donor_id)
+           const profileRes = await identityApi.getProfile(data.donor_id as string) as Record<string, any>
            data.donorProfile = profileRes.data
-         } catch(e) {}
+         } catch {}
       }
       
       setDetailDonation(data)
@@ -82,18 +86,18 @@ export default function DonationsPage() {
     }
   }
 
-  async function handleAction(action: "accepted" | "rejected" | "schedule" | "cancel", payload?: any) {
+  async function handleAction(action: "accepted" | "rejected" | "schedule" | "cancel", payload?: Record<string, any>) {
     if (!detailDonation) return
     
     try {
       if (action === "accepted" || action === "rejected") {
-        await donationApi.reviewDonation(detailDonation.id, action, payload?.note)
+        await donationApi.reviewDonation(detailDonation.id as string, action, payload?.note as string | undefined)
         toast.success(`Đã ${action === "accepted" ? "chấp nhận" : "từ chối"} đơn quyên góp!`)
       } else if (action === "schedule") {
-        await donationApi.scheduleDonation(detailDonation.id, payload.scheduled_at)
+        await donationApi.scheduleDonation(detailDonation.id as string, payload?.scheduled_at as string)
         toast.success(`Đã hẹn lịch thành công!`)
       } else if (action === "cancel") {
-        await donationApi.cancelDonation(detailDonation.id)
+        await donationApi.cancelDonation(detailDonation.id as string)
         toast.success(`Đã hủy đơn quyên góp!`)
       }
       
@@ -163,6 +167,7 @@ export default function DonationsPage() {
         detailDonation={detailDonation}
         onClose={() => setDetailDonation(null)}
         onAction={handleAction}
+        currentUser={currentUser as Record<string, any> | null}
       />
     </AdminLayout>
   )

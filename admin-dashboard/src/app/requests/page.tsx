@@ -16,6 +16,7 @@ import { marketplaceApi, identityApi, communityApi } from "@/lib/api/client"
 import { HandHeartIcon } from "lucide-react"
 
 import { RequestTable } from "@/components/requests/request-table"
+import { RequestDetailsDialog } from "@/components/requests/request-details-dialog"
 
 export default function RequestsPage() {
   const [requests, setRequests] = useState<any[]>([])
@@ -23,6 +24,8 @@ export default function RequestsPage() {
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [loading, setLoading] = useState(true)
+  const [detailRequest, setDetailRequest] = useState<Record<string, any> | null>(null)
+  const [confirmation, setConfirmation] = useState<Record<string, any> | null>(null)
   const limit = 20
 
   const fetchRequests = useCallback(async () => {
@@ -43,14 +46,14 @@ export default function RequestsPage() {
                const pRes = await identityApi.getProfile(req.receiver_id)
                receiverProfile = pRes.data
             }
-          } catch (e) {}
+          } catch {}
 
           try {
             if (req.group_id) {
                const gRes = await communityApi.getGroup(req.group_id)
                groupProfile = gRes.data
             }
-          } catch (e) {}
+          } catch {}
 
           return { ...req, receiverProfile, groupProfile }
         })
@@ -67,8 +70,24 @@ export default function RequestsPage() {
   }, [page, statusFilter])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchRequests()
   }, [fetchRequests])
+
+  async function handleViewRequest(req: any) {
+    setDetailRequest(req)
+    setConfirmation(null)
+    try {
+      if (req.status === "completed" || req.status === "scheduled") {
+        const confRes = await marketplaceApi.getRequestConfirmation(req.id)
+        if (confRes.data) {
+          setConfirmation(confRes.data as any)
+        }
+      }
+    } catch (err: any) {
+      console.warn("Could not fetch delivery confirmation", err)
+    }
+  }
 
   return (
     <AdminLayout>
@@ -126,10 +145,17 @@ export default function RequestsPage() {
                page={page}
                limit={limit}
                onPageChange={setPage}
+               onViewClick={handleViewRequest}
              />
           </CardContent>
         </Card>
       </div>
+
+      <RequestDetailsDialog
+        detailRequest={detailRequest}
+        confirmation={confirmation}
+        onClose={() => setDetailRequest(null)}
+      />
     </AdminLayout>
   )
 }

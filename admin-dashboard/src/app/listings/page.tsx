@@ -15,18 +15,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
 import { marketplaceApi, identityApi, communityApi } from "@/lib/api/client"
 import { Search, ShoppingBagIcon } from "lucide-react"
+import { useAuth } from "@/context/auth-context"
 
 import { ListingTable } from "@/components/listings/listing-table"
 import { ListingDetailsDialog } from "@/components/listings/listing-details-dialog"
 
 export default function ListingsPage() {
+  const { currentUser } = useAuth()
   const [listings, setListings] = useState<any[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [loading, setLoading] = useState(true)
-  const [detailListing, setDetailListing] = useState<any | null>(null)
+  const [detailListing, setDetailListing] = useState<Record<string, any> | null>(null)
   const limit = 20
 
   const fetchListings = useCallback(async () => {
@@ -35,8 +37,8 @@ export default function ListingsPage() {
       const params: Record<string, any> = { page, limit }
       if (statusFilter !== "all") params.status = statusFilter
       if (searchQuery) params.search = searchQuery
-      const res = await marketplaceApi.getListings(params) as any
-      const items = Array.isArray(res.data) ? res.data : (res.data?.items || [])
+      const res = await marketplaceApi.getListings(params) as Record<string, any>
+      const items = Array.isArray(res.data) ? res.data : ((res.data as any)?.items as any[] || [])
       
       // Fetch owner profiles (users or groups)
       const itemsWithProfiles = await Promise.all(
@@ -50,15 +52,15 @@ export default function ListingsPage() {
                return { ...listing, ownerProfile: profileRes.data }
             }
             return listing
-          } catch (e) {
+          } catch {
              return listing
           }
         })
       )
 
-      const totalCount = res.meta?.total ?? res.data?.meta?.total ?? 0
+      const totalCount = (res.meta as any)?.total ?? (res.data as any)?.meta?.total ?? 0
       setListings(itemsWithProfiles)
-      setTotal(totalCount)
+      setTotal(totalCount as number)
     } catch (err: any) {
       toast.error("Lỗi tải danh sách gian hàng: " + err.message)
     } finally {
@@ -67,17 +69,18 @@ export default function ListingsPage() {
   }, [page, statusFilter, searchQuery])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchListings()
   }, [fetchListings])
 
-  async function viewDetail(listing: any) {
+  async function viewDetail(listing: Record<string, any>) {
     try {
       // First try to get from getListing for full details including images
       let data = { ...listing }
       try {
         const res = await marketplaceApi.getListing(listing.id)
-        if (res.data) {
-           data = { ...data, ...res.data }
+        if ((res as any).data) {
+           data = { ...data, ...(res as any).data as Record<string, any> }
         }
       } catch (e) {
         console.warn("Could not fetch full listing details", e)
@@ -94,7 +97,7 @@ export default function ListingsPage() {
     if (!confirm("Bạn có chắc chắn muốn đóng (khóa) tin đăng này?")) return
     
     try {
-      await marketplaceApi.closeListing(detailListing.id, "Bị khóa bởi Admin")
+      await marketplaceApi.closeListing(detailListing.id as string, "Bị khóa bởi Admin")
       toast.success("Đã đóng tin đăng thành công!")
       setDetailListing(null)
       fetchListings()
@@ -148,10 +151,9 @@ export default function ListingsPage() {
                 <SelectContent>
                   <SelectItem value="all">All</SelectItem>
                   <SelectItem value="active">ACTIVE</SelectItem>
-                  <SelectItem value="inactive">INACTIVE</SelectItem>
                   <SelectItem value="reserved">RESERVED</SelectItem>
-                  <SelectItem value="given">GIVEN</SelectItem>
-                  <SelectItem value="expired">EXPIRED</SelectItem>
+                  <SelectItem value="closed">CLOSED</SelectItem>
+                  <SelectItem value="blocked">BLOCKED</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -174,6 +176,7 @@ export default function ListingsPage() {
          detailListing={detailListing}
          onClose={() => setDetailListing(null)}
          onCloseListing={handleCloseListing}
+         currentUser={currentUser as Record<string, any> | null}
       />
     </AdminLayout>
   )

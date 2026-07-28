@@ -20,19 +20,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
 import { identityApi } from "@/lib/api/client"
 import { Account } from "@/types"
-import { Shield, ShieldOff, UsersIcon, EyeIcon } from "lucide-react"
+import { Shield, ShieldOff, UsersIcon, EyeIcon, UserX, MailWarning } from "lucide-react"
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   active: { label: "Active", variant: "default" },
@@ -45,7 +39,7 @@ export default function AccountsPage() {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
-  const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [statusFilter, setStatusFilter] = useState<string>("active")
   const [loading, setLoading] = useState(true)
   const [dialogAccount, setDialogAccount] = useState<Account | null>(null)
   const [dialogAction, setDialogAction] = useState<"lock" | "unlock" | "view">("lock")
@@ -69,6 +63,7 @@ export default function AccountsPage() {
   }, [page, statusFilter])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchAccounts()
   }, [fetchAccounts])
 
@@ -119,31 +114,38 @@ export default function AccountsPage() {
           </p>
         </div>
 
+        <Tabs
+          value={statusFilter}
+          onValueChange={(v) => {
+            setStatusFilter(v)
+            setPage(1)
+          }}
+          className="mb-4"
+        >
+          <div className="flex items-center justify-between">
+            <TabsList>
+              <TabsTrigger value="active" className="gap-1.5">
+                <UsersIcon className="h-3.5 w-3.5" />
+                Hoạt động
+              </TabsTrigger>
+              <TabsTrigger value="unverified" className="gap-1.5">
+                <MailWarning className="h-3.5 w-3.5" />
+                Chưa xác minh
+              </TabsTrigger>
+              <TabsTrigger value="locked" className="gap-1.5">
+                <Shield className="h-3.5 w-3.5" />
+                Bị khóa
+              </TabsTrigger>
+              <TabsTrigger value="deleted" className="gap-1.5">
+                <UserX className="h-3.5 w-3.5" />
+                Đã xóa
+              </TabsTrigger>
+            </TabsList>
+            <Badge variant="secondary">{total} tài khoản</Badge>
+          </div>
+        </Tabs>
+
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div className="flex items-center gap-2">
-              <CardTitle>Danh sách</CardTitle>
-              <Badge variant="secondary">{total}</Badge>
-            </div>
-            <Select
-              value={statusFilter}
-              onValueChange={(v) => {
-                setStatusFilter(v ?? "all")
-                setPage(1)
-              }}
-            >
-              <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="Trạng thái" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="unverified">Unverified</SelectItem>
-                <SelectItem value="locked">Locked</SelectItem>
-                <SelectItem value="deleted">Deleted</SelectItem>
-              </SelectContent>
-            </Select>
-          </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>

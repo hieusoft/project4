@@ -17,9 +17,11 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Donation } from "@/types"
-import { Package, Check, X, Calendar, Ban } from "lucide-react"
-import { useState } from "react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Package, Calendar, Ban, Clock } from "lucide-react"
+import { useState, useEffect } from "react"
+import { donationApi } from "@/lib/api/client"
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   pending: { label: "Chờ duyệt", variant: "secondary" },
@@ -32,18 +34,32 @@ const statusConfig: Record<string, { label: string; variant: "default" | "second
 }
 
 interface DonationDetailsDialogProps {
-  detailDonation: any | null
+  detailDonation: Record<string, any> | null
   onClose: () => void
-  onAction: (action: "accepted" | "rejected" | "schedule" | "cancel", payload?: any) => void
+  onAction: (action: "accepted" | "rejected" | "schedule" | "cancel", payload?: Record<string, any>) => void
+  currentUser: Record<string, any> | null
 }
 
 export function DonationDetailsDialog({
   detailDonation,
   onClose,
   onAction,
+  currentUser,
 }: DonationDetailsDialogProps) {
   const [scheduleDate, setScheduleDate] = useState("")
   const [showScheduleInput, setShowScheduleInput] = useState(false)
+  const [timeline, setTimeline] = useState<any[]>([])
+  const [loadingTimeline, setLoadingTimeline] = useState(false)
+
+  useEffect(() => {
+    if (detailDonation?.id) {
+      setLoadingTimeline(true)
+      donationApi.getDonationTimeline(detailDonation.id)
+        .then(res => setTimeline(res.data || []))
+        .catch(err => console.error("Failed to fetch timeline:", err))
+        .finally(() => setLoadingTimeline(false))
+    }
+  }, [detailDonation?.id])
 
   if (!detailDonation) return null
 
@@ -51,6 +67,7 @@ export function DonationDetailsDialog({
   const isAccepted = detailDonation.status === "accepted"
   const isScheduled = detailDonation.status === "scheduled"
   const canCancel = isAccepted || isScheduled
+  const isPlatformAdmin = !!(currentUser?.roles as string[] | undefined)?.includes("PLATFORM_ADMIN")
 
   const handleSchedule = () => {
     if (!showScheduleInput) {
@@ -65,7 +82,7 @@ export function DonationDetailsDialog({
 
   return (
     <Dialog open={!!detailDonation} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
@@ -74,8 +91,14 @@ export function DonationDetailsDialog({
           <DialogDescription>Chi tiết đơn quyên góp</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4 text-sm bg-muted/50 p-4 rounded-lg">
+        <Tabs defaultValue="details" className="w-full">
+          <TabsList className="mb-4">
+            <TabsTrigger value="details">Chi tiết</TabsTrigger>
+            <TabsTrigger value="timeline">Lịch sử</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="details" className="space-y-4">
+            <div className="grid grid-cols-2 gap-4 text-sm bg-muted/50 p-4 rounded-lg">
             <div>
               <span className="text-muted-foreground block mb-1">Người quyên góp:</span>
               <span className="font-medium">
@@ -142,46 +165,92 @@ export function DonationDetailsDialog({
               </div>
             </div>
           )}
-        </div>
+        </TabsContent>
+
+          <TabsContent value="timeline">
+            {loadingTimeline ? (
+              <div className="space-y-4 p-4">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="h-4 w-2/3" />
+              </div>
+            ) : timeline.length === 0 ? (
+              <div className="py-8 text-center text-muted-foreground">
+                Không có lịch sử nào
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {timeline.map((entry, i) => (
+                  <div key={i} className="flex gap-4">
+                    <div className="mt-1">
+                      <div className="rounded-full bg-primary/10 p-2">
+                        <Clock className="h-4 w-4 text-primary" />
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">
+                        {entry.from_status ? (
+                          <>Đổi trạng thái: <span className="line-through text-muted-foreground mr-1">{entry.from_status}</span> &rarr; {entry.to_status}</>
+                        ) : (
+                          <>Chuyển sang: {entry.to_status}</>
+                        )}
+                      </p>
+                      <p className="text-xs text-muted-foreground mb-1">
+                        {new Date(entry.created_at).toLocaleString("vi-VN")}
+                      </p>
+                      {entry.note && (
+                        <p className="text-sm bg-muted/50 p-2 rounded">{entry.note}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
 
         <DialogFooter className="mt-6 flex sm:justify-between items-center border-t pt-4">
           <div className="flex items-center gap-2">
-            {isPending && (
+            {!isPlatformAdmin && (
               <>
-                <Button variant="outline" onClick={() => onAction("rejected")} className="text-destructive hover:text-destructive">
-                  Từ chối
-                </Button>
-                <Button variant="default" onClick={() => onAction("accepted")} className="bg-emerald-600 hover:bg-emerald-700">
-                  Chấp nhận
-                </Button>
-              </>
-            )}
+                {isPending && (
+                  <>
+                    <Button variant="outline" onClick={() => onAction("rejected")} className="text-destructive hover:text-destructive">
+                      Từ chối
+                    </Button>
+                    <Button variant="default" onClick={() => onAction("accepted")} className="bg-emerald-600 hover:bg-emerald-700">
+                      Chấp nhận
+                    </Button>
+                  </>
+                )}
 
-            {isAccepted && detailDonation.pickup_method === "pickup" && (
-              <div className="flex items-center gap-2">
-                {showScheduleInput ? (
+                {isAccepted && detailDonation.pickup_method === "pickup" && (
                   <div className="flex items-center gap-2">
-                    <Input 
-                      type="datetime-local" 
-                      value={scheduleDate}
-                      onChange={(e) => setScheduleDate(e.target.value)}
-                      className="w-auto h-9"
-                    />
-                    <Button variant="default" size="sm" onClick={handleSchedule}>Lưu</Button>
-                    <Button variant="ghost" size="sm" onClick={() => setShowScheduleInput(false)}>Hủy</Button>
+                    {showScheduleInput ? (
+                      <div className="flex items-center gap-2">
+                        <Input 
+                          type="datetime-local" 
+                          value={scheduleDate}
+                          onChange={(e) => setScheduleDate(e.target.value)}
+                          className="w-auto h-9"
+                        />
+                        <Button variant="default" size="sm" onClick={handleSchedule}>Lưu</Button>
+                        <Button variant="ghost" size="sm" onClick={() => setShowScheduleInput(false)}>Hủy</Button>
+                      </div>
+                    ) : (
+                      <Button variant="secondary" onClick={handleSchedule}>
+                        <Calendar className="w-4 h-4 mr-2" /> Hẹn lịch
+                      </Button>
+                    )}
                   </div>
-                ) : (
-                  <Button variant="secondary" onClick={handleSchedule}>
-                    <Calendar className="w-4 h-4 mr-2" /> Hẹn lịch
+                )}
+
+                {canCancel && (
+                  <Button variant="outline" className="text-red-500 hover:text-red-600" onClick={() => onAction("cancel")}>
+                    <Ban className="w-4 h-4 mr-2" /> Hủy đơn
                   </Button>
                 )}
-              </div>
-            )}
-
-            {canCancel && (
-              <Button variant="outline" className="text-red-500 hover:text-red-600" onClick={() => onAction("cancel")}>
-                <Ban className="w-4 h-4 mr-2" /> Hủy đơn
-              </Button>
+              </>
             )}
           </div>
           

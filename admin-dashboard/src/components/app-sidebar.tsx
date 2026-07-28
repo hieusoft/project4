@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { usePathname } from "next/navigation"
+import Link from "next/link"
 import {
   Sidebar,
   SidebarContent,
@@ -24,7 +25,7 @@ import {
   HandHeartIcon,
   LogOutIcon,
   PackageOpenIcon,
-  ShieldAlertIcon,
+  
 } from "lucide-react"
 import { useAuth } from "@/context/auth-context"
 
@@ -49,7 +50,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
+  
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
@@ -79,7 +80,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <SidebarMenuButton
               className="data-[slot=sidebar-menu-button]:p-1.5!"
-              render={<a href="/dashboard" />}
+              render={<Link href="/dashboard" />}
             >
               <HandHeartIcon className="size-5! text-primary" />
               <span className="text-base font-semibold">Kết nối Thiện nguyện</span>
@@ -97,7 +98,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <SidebarMenuButton
                   tooltip={item.title}
                   isActive={isActive(item.url)}
-                  render={<a href={item.url} />}
+                  render={<Link href={item.url} />}
                 >
                   <item.icon />
                   <span>{item.title}</span>
@@ -115,7 +116,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <SidebarMenuButton
                   tooltip={item.title}
                   isActive={isActive(item.url)}
-                  render={<a href={item.url} />}
+                  render={<Link href={item.url} />}
                 >
                   <item.icon />
                   <span>{item.title}</span>
@@ -133,7 +134,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <SidebarMenuButton
                   tooltip={item.title}
                   isActive={isActive(item.url)}
-                  render={<a href={item.url} />}
+                  render={<Link href={item.url} />}
                 >
                   <item.icon />
                   <span>{item.title}</span>
