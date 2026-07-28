@@ -15,8 +15,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
-import { identityApi } from "@/lib/api/client" // Note: we'll use a hack to get the donationApi from client.ts
-// Wait, donationApi is exported from client.ts, we should import it directly.
 import { donationApi } from "@/lib/api/client"
 import { QRCodeSVG } from "qrcode.react"
 import {
@@ -57,6 +55,7 @@ export default function InventoryPage() {
   }, [page])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchInventory()
   }, [fetchInventory])
 

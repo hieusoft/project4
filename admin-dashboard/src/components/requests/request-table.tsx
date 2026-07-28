@@ -1,4 +1,6 @@
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Eye } from "lucide-react"
 import {
   Table,
   TableBody,
@@ -14,9 +16,10 @@ interface RequestTableProps {
   page: number
   limit: number
   onPageChange: (page: number) => void
+  onViewClick: (request: any) => void
 }
 
-export function RequestTable({ requests, loading, page, limit, onPageChange }: RequestTableProps) {
+export function RequestTable({ requests, loading, page, limit, onPageChange, onViewClick }: RequestTableProps) {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "pending": return <Badge variant="outline" className="text-yellow-500">PENDING</Badge>
@@ -43,16 +46,17 @@ export function RequestTable({ requests, loading, page, limit, onPageChange }: R
               <TableHead>Số lượng</TableHead>
               <TableHead>Trạng thái</TableHead>
               <TableHead>Ngày tạo</TableHead>
+              <TableHead className="text-right">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">Đang tải...</TableCell>
+                <TableCell colSpan={8} className="h-24 text-center">Đang tải...</TableCell>
               </TableRow>
             ) : requests.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">Không có yêu cầu nào.</TableCell>
+                <TableCell colSpan={8} className="h-24 text-center">Không có yêu cầu nào.</TableCell>
               </TableRow>
             ) : (
               requests.map((r) => (
@@ -78,6 +82,12 @@ export function RequestTable({ requests, loading, page, limit, onPageChange }: R
                   <TableCell>{getStatusBadge(r.status)}</TableCell>
                   <TableCell className="text-muted-foreground text-sm">
                     {new Date(r.created_at).toLocaleDateString("vi-VN")}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="outline" size="sm" onClick={() => onViewClick(r)}>
+                      <Eye className="h-4 w-4 mr-1" />
+                      Chi tiết
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))

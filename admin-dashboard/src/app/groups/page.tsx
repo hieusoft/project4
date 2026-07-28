@@ -56,6 +56,7 @@ export default function GroupsPage() {
   }, [page, statusFilter, searchQuery])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchGroups()
   }, [fetchGroups])
 
@@ -98,7 +99,7 @@ export default function GroupsPage() {
             try {
               const profileRes = await identityApi.getProfile(m.user_id)
               return { ...m, profile: profileRes.data }
-            } catch (e) {
+            } catch {
               return m
             }
           })

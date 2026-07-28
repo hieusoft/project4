@@ -31,7 +31,6 @@ export default function DashboardPage() {
           identityApi.listAccounts({ limit: 1 }),
           communityApi.listGroups({ limit: 5 }),
           marketplaceApi.getOverview(),
-          // @ts-ignore
           typeof donationApi.listDonations === 'function' ? donationApi.listDonations({ limit: 5 }) : Promise.resolve({ data: { meta: { total: 0 }, items: [] } }),
           marketplaceApi.getListings({ limit: 1 }),
           marketplaceApi.getStats({ limit: 7 }),
