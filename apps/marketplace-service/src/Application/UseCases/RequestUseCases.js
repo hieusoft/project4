@@ -73,22 +73,21 @@ class RequestUseCases {
       if (!ok) throw new ForbiddenError('Moderator required');
     }
 
-    const listing = await this.listingRepository.findById(request.listing_id);
-    if (!listing) throw new NotFoundError('Listing not found');
-    if (!listing.isAvailable(request.quantity)) {
-      throw new DomainError('Listing does not have enough available quantity');
-    }
-
     request.approve(reviewerId);
-    // Design: decrease quantity on approve
-    listing.reserve(request.quantity);
-
-    const updatedRequest = await this.requestRepository.updateWithListing(request, listing);
+    // Reserve in a row-locked transaction so concurrent approvals cannot oversell.
+    let approval;
+    try {
+      approval = await this.requestRepository.approveWithListing(request);
+    } catch (error) {
+      throw new DomainError(error.message);
+    }
+    const updatedRequest = approval.request;
+    const listing = approval.listing;
 
     if (this.donationClient && listing.inventory_item_id) {
       await this.donationClient.updateItemStatus(
         listing.inventory_item_id,
-        'reserved',
+        listing.quantity_available === 0 ? 'reserved' : 'listed',
         { refType: 'request', refId: request.id },
         token
       );
@@ -160,6 +159,11 @@ class RequestUseCases {
     const request = await this.requestRepository.findById(requestId);
     if (!request) throw new NotFoundError('Request not found');
 
+    const qrCode = String(completionData.qr_token || '').trim().toUpperCase();
+    if (!qrCode || qrCode !== String(request.code || '').trim().toUpperCase()) {
+      throw new DomainError('QR code does not match this request');
+    }
+
     const reviewerId = completionData.confirmed_by || userId;
     if (this.communityClient && reviewerId) {
       const ok = await this.communityClient.isModerator(
@@ -172,18 +176,23 @@ class RequestUseCases {
 
     request.complete();
     const listing = await this.listingRepository.findById(request.listing_id);
-    // qty already decreased on approve — do not reserve again
+    if (!listing) throw new NotFoundError('Listing not found');
 
     const result = await this.requestRepository.completeWithTransaction(
       request,
       listing,
       completionData
     );
+    const updatedListing = result.listing;
 
-    if (this.donationClient && listing && listing.inventory_item_id) {
+    if (this.donationClient && updatedListing.inventory_item_id) {
       await this.donationClient.updateItemStatus(
-        listing.inventory_item_id,
-        'delivered',
+        updatedListing.inventory_item_id,
+        updatedListing.status === 'closed'
+          ? 'delivered'
+          : updatedListing.status === 'reserved'
+            ? 'reserved'
+            : 'listed',
         { refType: 'request', refId: request.id },
         token
       );
@@ -193,7 +202,7 @@ class RequestUseCases {
       requestId: result.request.id,
       listingId: result.request.listing_id,
       receiverId: result.request.receiver_id,
-      donorId: listing ? listing.created_by : null,
+      donorId: updatedListing.created_by,
       groupId: result.request.group_id,
     });
 

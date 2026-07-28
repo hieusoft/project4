@@ -1,4 +1,5 @@
 const ItemRequest = require('../../../Domain/Entities/ItemRequest');
+const Listing = require('../../../Domain/Entities/Listing');
 const IRequestRepository = require('../../../Application/Interfaces/IRequestRepository');
 
 class RequestRepository extends IRequestRepository {
@@ -100,6 +101,59 @@ class RequestRepository extends IRequestRepository {
     return new ItemRequest(rows[0]);
   }
 
+  /** Atomically reserve stock and approve a request. */
+  async approveWithListing(request) {
+    const client = await this.db.getClient();
+    try {
+      await client.query('BEGIN');
+      const { rows: listingRows } = await client.query(
+        'SELECT * FROM listings WHERE id = $1 FOR UPDATE',
+        [request.listing_id]
+      );
+      if (!listingRows.length) throw new Error('Listing not found');
+
+      const listing = listingRows[0];
+      if (
+        listing.status !== 'active' ||
+        Number(listing.quantity_available) < request.quantity
+      ) {
+        throw new Error('Listing does not have enough available quantity');
+      }
+
+      const nextQuantity = Number(listing.quantity_available) - request.quantity;
+      const nextStatus = nextQuantity === 0 ? 'reserved' : 'active';
+      await client.query(
+        `UPDATE listings
+         SET quantity_available = $1, status = $2, updated_at = NOW()
+         WHERE id = $3`,
+        [nextQuantity, nextStatus, request.listing_id]
+      );
+      const { rows: requestRows } = await client.query(
+        `UPDATE item_requests
+         SET status = $1, reviewed_by = $2, reviewed_at = $3, updated_at = NOW()
+         WHERE id = $4 AND status = 'pending'
+         RETURNING *`,
+        [request.status, request.reviewed_by, request.reviewed_at, request.id]
+      );
+      if (!requestRows.length) throw new Error('Request is no longer pending');
+
+      await client.query('COMMIT');
+      return {
+        request: new ItemRequest(requestRows[0]),
+        listing: new Listing({
+          ...listing,
+          quantity_available: nextQuantity,
+          status: nextStatus,
+        }),
+      };
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
+  }
+
   async completeWithTransaction(request, listing, completionData) {
     const client = await this.db.getClient();
     try {
@@ -118,6 +172,21 @@ class RequestRepository extends IRequestRepository {
       ]);
       const updatedRequest = new ItemRequest(reqRows[0]);
 
+      const { rows: listingRows } = await client.query(
+        'SELECT * FROM listings WHERE id = $1 FOR UPDATE',
+        [request.listing_id]
+      );
+      if (!listingRows.length) throw new Error('Listing not found');
+      const updatedListing = new Listing(listingRows[0]);
+
+      const { rows: reservationRows } = await client.query(
+        `SELECT COUNT(*)::int AS count
+         FROM item_requests
+         WHERE listing_id = $1 AND status IN ('approved', 'scheduled')`,
+        [request.listing_id]
+      );
+      updatedListing.finalizeDelivery(reservationRows[0].count > 0);
+
       const confQuery = `
         INSERT INTO delivery_confirmations (request_id, confirmed_by, qr_token, photo_url, note)
         VALUES ($1, $2, $3, $4, $5)
@@ -130,19 +199,15 @@ class RequestRepository extends IRequestRepository {
         completionData.note,
       ]);
 
-      if (listing) {
-        await client.query(
-          `
-          UPDATE listings
-          SET quantity_available = $1, status = $2, updated_at = NOW()
-          WHERE id = $3
-          `,
-          [listing.quantity_available, listing.status, listing.id]
-        );
-      }
+      await client.query(
+        `UPDATE listings
+         SET status = $1, updated_at = NOW()
+         WHERE id = $2`,
+        [updatedListing.status, updatedListing.id]
+      );
 
       await client.query('COMMIT');
-      return { request: updatedRequest };
+      return { request: updatedRequest, listing: updatedListing };
     } catch (e) {
       await client.query('ROLLBACK');
       throw e;

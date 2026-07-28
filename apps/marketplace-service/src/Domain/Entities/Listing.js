@@ -51,6 +51,16 @@ class Listing {
     }
   }
 
+  /** Finalize a delivery after quantity was reserved on approval. */
+  finalizeDelivery(hasOpenReservations = false) {
+    this.status =
+      this.quantity_available > 0
+        ? 'active'
+        : hasOpenReservations
+          ? 'reserved'
+          : 'closed';
+  }
+
   /** Restore qty (cancel / no_show / reject after approve). */
   release(quantity) {
     this.quantity_available += quantity;
