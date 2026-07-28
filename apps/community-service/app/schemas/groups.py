@@ -51,6 +51,11 @@ class GroupOut(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    # Membership of the caller on this group. Null when anonymous or no
+    # relation. `my_status` is 'pending' while a join request awaits review.
+    my_role: MemberRole | None = None
+    my_status: MemberStatus | None = None
+
 
 class MyGroupOut(GroupOut):
     """Group plus the current user's membership on that group."""

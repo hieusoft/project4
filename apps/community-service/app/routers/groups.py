@@ -24,8 +24,11 @@ from app.services.providers import GroupServiceDep
 router = APIRouter(tags=["groups"])
 
 
-def _group_out(g) -> GroupOut:
-    return GroupOut.model_validate(g, from_attributes=True)
+def _group_out(g, my_role=None, my_status=None) -> GroupOut:
+    out = GroupOut.model_validate(g, from_attributes=True)
+    if my_role is not None or my_status is not None:
+        out = out.model_copy(update={"my_role": my_role, "my_status": my_status})
+    return out
 
 
 @router.post(
@@ -51,7 +54,7 @@ async def list_groups(
     offset: int = Query(default=0, ge=0),
 ):
     """Public catalog of groups (default: active only). Not membership-filtered."""
-    items, total = await service.list(
+    rows, total = await service.list(
         status=status_filter,
         province_code=province_code,
         q=q,
@@ -61,7 +64,10 @@ async def list_groups(
     )
     return DataEnvelope(
         data=Page(
-            items=[_group_out(g) for g in items],
+            items=[
+                _group_out(g, my_role=role, my_status=mstatus)
+                for g, role, mstatus in rows
+            ],
             meta=PageMeta(total=total, limit=limit, offset=offset),
         )
     )
@@ -85,9 +91,11 @@ async def list_my_groups(
     )
     items = [
         MyGroupOut(
-            **_group_out(g).model_dump(),
-            my_role=role,
-            my_status=mstatus,
+            **{
+                **_group_out(g).model_dump(),
+                "my_role": role,
+                "my_status": mstatus,
+            }
         )
         for g, role, mstatus in rows
     ]
@@ -103,8 +111,8 @@ async def list_my_groups(
 async def get_group(
     group_id: uuid.UUID, service: GroupServiceDep, user: OptionalUserDep
 ):
-    g = await service.get(group_id, user)
-    return DataEnvelope(data=_group_out(g))
+    g, role, mstatus = await service.get_with_membership(group_id, user)
+    return DataEnvelope(data=_group_out(g, my_role=role, my_status=mstatus))
 
 
 @router.patch("/groups/{group_id}", response_model=DataEnvelope[GroupOut])

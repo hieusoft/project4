@@ -78,6 +78,20 @@ class GroupService:
                     raise HTTPException(status.HTTP_404_NOT_FOUND, "Group not found")
         return group
 
+    async def get_with_membership(
+        self, group_id: uuid.UUID, user: CurrentUser | None
+    ) -> tuple[Group, MemberRole | None, MemberStatus | None]:
+        """Same as :meth:`get`, plus the caller's role/status on that group."""
+        group = await self.get(group_id, user)
+        if user is None:
+            return group, None, None
+        role, mstatus = await self._groups.get_membership(group_id, user.uuid)
+        return (
+            group,
+            MemberRole(role) if role else None,
+            MemberStatus(mstatus) if mstatus else None,
+        )
+
     async def list(
         self,
         *,
@@ -87,16 +101,28 @@ class GroupService:
         limit: int,
         offset: int,
         user: CurrentUser | None,
-    ) -> tuple[list[Group], int]:
+    ) -> tuple[list[tuple[Group, MemberRole | None, MemberStatus | None]], int]:
+        """Public catalog, annotated with the caller's membership when signed in."""
         if status is None and (user is None or not user.is_admin):
             status = GroupStatus.active
-        return await self._groups.list(
+        rows, total = await self._groups.list(
             status=status,
             province_code=province_code,
             q=q,
             limit=limit,
             offset=offset,
+            user_id=user.uuid if user else None,
         )
+        out: list[tuple[Group, MemberRole | None, MemberStatus | None]] = []
+        for group, role, mstatus in rows:
+            out.append(
+                (
+                    group,
+                    MemberRole(role) if role else None,
+                    MemberStatus(mstatus) if mstatus else None,
+                )
+            )
+        return out, total
 
     async def list_mine(
         self,

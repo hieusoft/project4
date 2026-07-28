@@ -16,6 +16,35 @@ _COLS = (
 )
 _G = ", ".join(f"g.{c.strip()}" for c in _COLS.split(","))
 
+# Resolves the caller's relation to a group. A pending join request wins over a
+# stale membership row (e.g. the user left and asked to come back); otherwise
+# the membership row is the source of truth.
+_MEMBERSHIP_SELECT = """
+                   gm.role::text AS member_role,
+                   COALESCE(
+                     CASE WHEN jr.status = 'pending' THEN 'pending' END,
+                     gm.status::text,
+                     jr.status::text
+                   ) AS member_status"""
+
+_NO_MEMBERSHIP_SELECT = """
+                   NULL::text AS member_role,
+                   NULL::text AS member_status"""
+
+
+def _membership_joins(uid: str) -> str:
+    """Joins for _MEMBERSHIP_SELECT. ``uid`` is an internal placeholder like '$4'."""
+    return f"""
+            LEFT JOIN group_members gm
+                   ON gm.group_id = g.id AND gm.user_id = {uid}
+            LEFT JOIN LATERAL (
+                SELECT status
+                FROM group_join_requests
+                WHERE group_id = g.id AND user_id = {uid}
+                ORDER BY created_at DESC
+                LIMIT 1
+            ) jr ON TRUE"""
+
 
 def _slugify(name: str) -> str:
     s = name.strip().lower()
@@ -81,6 +110,23 @@ class GroupRepository:
         )
         return Group.model_validate(dict(record)) if record else None
 
+    async def get_membership(
+        self, group_id: uuid.UUID, user_id: uuid.UUID
+    ) -> tuple[str | None, str | None]:
+        """The caller's (role, status) on one group; 'pending' while under review."""
+        record = await self._conn.fetchrow(
+            f"""
+            SELECT {_MEMBERSHIP_SELECT}
+            FROM groups g{_membership_joins("$2")}
+            WHERE g.id = $1
+            """,
+            group_id,
+            user_id,
+        )
+        if record is None:
+            return None, None
+        return record["member_role"], record["member_status"]
+
     async def list(
         self,
         *,
@@ -89,33 +135,58 @@ class GroupRepository:
         q: str | None,
         limit: int,
         offset: int,
-    ) -> tuple[list[Group], int]:
+        user_id: uuid.UUID | None = None,
+    ) -> tuple[list[tuple[Group, str | None, str | None]], int]:
+        """Public catalog. Returns (group, my_role, my_status) per row.
+
+        When ``user_id`` is given, the caller's membership is resolved from
+        ``group_members`` and falls back to the latest ``group_join_requests``
+        row, so a group awaiting review reports ``pending``.
+        """
         clauses: list[str] = []
         args: list[Any] = []
         if status is not None:
             args.append(status.value)
             # asyncpg sends str as text; PG needs explicit cast to enum for =
-            clauses.append(f"status = ${len(args)}::group_status")
+            clauses.append(f"g.status = ${len(args)}::group_status")
         if province_code:
             args.append(province_code)
-            clauses.append(f"province_code = ${len(args)}")
+            clauses.append(f"g.province_code = ${len(args)}")
         if q:
             args.append(f"%{q}%")
-            clauses.append(f"name ILIKE ${len(args)}")
+            clauses.append(f"g.name ILIKE ${len(args)}")
         where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
         total = await self._conn.fetchval(
-            f"SELECT count(*) FROM groups {where}", *args
+            f"SELECT count(*) FROM groups g {where}", *args
         )
+
+        if user_id is not None:
+            args.append(user_id)
+            member_select = _MEMBERSHIP_SELECT
+            joins = _membership_joins(f"${len(args)}")
+        else:
+            member_select = _NO_MEMBERSHIP_SELECT
+            joins = ""
+
         args.extend([limit, offset])
         rows = await self._conn.fetch(
             f"""
-            SELECT {_COLS} FROM groups {where}
-            ORDER BY created_at DESC
+            SELECT {_G},
+            {member_select}
+            FROM groups g{joins}
+            {where}
+            ORDER BY g.created_at DESC
             LIMIT ${len(args) - 1} OFFSET ${len(args)}
             """,
             *args,
         )
-        return [Group.model_validate(dict(r)) for r in rows], int(total or 0)
+        out: list[tuple[Group, str | None, str | None]] = []
+        for r in rows:
+            d = dict(r)
+            role = d.pop("member_role")
+            mstatus = d.pop("member_status")
+            out.append((Group.model_validate(d), role, mstatus))
+        return out, int(total or 0)
 
     async def list_for_user(
         self,
