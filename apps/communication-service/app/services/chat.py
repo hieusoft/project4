@@ -40,9 +40,12 @@ async def ensure_conversation(
 
 
 async def list_conversations(
-    conn: asyncpg.Connection, user_id: str, group_id: str | None = None
+    conn: asyncpg.Connection,
+    user_id: str,
+    group_id: str | None = None,
+    group_ids: list[str] | None = None,
 ) -> list[dict[str, Any]]:
-    return await ChatRepository(conn).list_for_user(user_id, group_id)
+    return await ChatRepository(conn).list_for_user(user_id, group_id, group_ids)
 
 
 async def list_messages(

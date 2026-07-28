@@ -37,8 +37,14 @@ async def list_conversations(
     user: CurrentUserDep,
     conn: DbConn,
     group_id: str | None = Query(None, alias="groupId"),
+    group_ids: str | None = Query(None, alias="groupIds"),
 ):
-    rows = await chat_service.list_conversations(conn, user.id, group_id)
+    ids: list[str] | None = None
+    if group_ids:
+        ids = [s.strip() for s in group_ids.split(",") if s.strip()]
+    rows = await chat_service.list_conversations(
+        conn, user.id, group_id, ids
+    )
     return [_serialize(r) for r in rows]
 
 

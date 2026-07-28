@@ -108,7 +108,10 @@ class ChatRepository:
         return dict(row) if row else None
 
     async def list_for_user(
-        self, user_id: str, group_id: str | None = None
+        self,
+        user_id: str,
+        group_id: str | None = None,
+        group_ids: list[str] | None = None,
     ) -> list[dict[str, Any]]:
         if group_id:
             rows = await self._conn.fetch(
@@ -120,6 +123,18 @@ class ChatRepository:
                 ORDER BY last_message_at DESC NULLS LAST, created_at DESC
                 """,
                 group_id,
+            )
+        elif group_ids:
+            rows = await self._conn.fetch(
+                """
+                SELECT id, type, group_id, user_id, context_type, context_id,
+                       last_message_at, last_message_preview, created_at
+                FROM conversations
+                WHERE user_id = $1::uuid OR group_id = ANY($2::uuid[])
+                ORDER BY last_message_at DESC NULLS LAST, created_at DESC
+                """,
+                user_id,
+                group_ids,
             )
         else:
             rows = await self._conn.fetch(
