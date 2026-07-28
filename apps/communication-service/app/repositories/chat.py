@@ -23,20 +23,38 @@ class ChatRepository:
             SELECT id, type, group_id, user_id, context_type, context_id,
                    last_message_at, last_message_preview, created_at
             FROM conversations
-            WHERE context_type = $1 AND context_id = $2::uuid
+            WHERE group_id = $1::uuid AND user_id = $2::uuid
             """,
-            context_type,
-            context_id,
+            group_id,
+            user_id,
         )
         if existing:
-            return dict(existing)
+            row = await self._conn.fetchrow(
+                """
+                UPDATE conversations
+                SET type = $3::conversation_type,
+                    context_type = $4,
+                    context_id = $5::uuid
+                WHERE group_id = $1::uuid AND user_id = $2::uuid
+                RETURNING id, type, group_id, user_id, context_type, context_id,
+                          last_message_at, last_message_preview, created_at
+                """,
+                group_id,
+                user_id,
+                type_,
+                context_type,
+                context_id,
+            )
+            return dict(row) if row else dict(existing)
 
         row = await self._conn.fetchrow(
             """
             INSERT INTO conversations (type, group_id, user_id, context_type, context_id)
             VALUES ($1::conversation_type, $2::uuid, $3::uuid, $4, $5::uuid)
-            ON CONFLICT (context_type, context_id) DO UPDATE
-              SET group_id = EXCLUDED.group_id
+            ON CONFLICT (group_id, user_id) DO UPDATE
+              SET type = EXCLUDED.type,
+                  context_type = EXCLUDED.context_type,
+                  context_id = EXCLUDED.context_id
             RETURNING id, type, group_id, user_id, context_type, context_id,
                       last_message_at, last_message_preview, created_at
             """,
@@ -74,6 +92,21 @@ class ChatRepository:
         )
         return dict(row) if row else None
 
+    async def get_conversation_by_participants(
+        self, group_id: str, user_id: str
+    ) -> dict[str, Any] | None:
+        row = await self._conn.fetchrow(
+            """
+            SELECT id, type, group_id, user_id, context_type, context_id,
+                   last_message_at, last_message_preview, created_at
+            FROM conversations
+            WHERE group_id = $1::uuid AND user_id = $2::uuid
+            """,
+            group_id,
+            user_id,
+        )
+        return dict(row) if row else None
+
     async def list_for_user(
         self, user_id: str, group_id: str | None = None
     ) -> list[dict[str, Any]]:
@@ -83,11 +116,10 @@ class ChatRepository:
                 SELECT id, type, group_id, user_id, context_type, context_id,
                        last_message_at, last_message_preview, created_at
                 FROM conversations
-                WHERE group_id = $1::uuid OR user_id = $2::uuid
+                WHERE group_id = $1::uuid
                 ORDER BY last_message_at DESC NULLS LAST, created_at DESC
                 """,
                 group_id,
-                user_id,
             )
         else:
             rows = await self._conn.fetch(

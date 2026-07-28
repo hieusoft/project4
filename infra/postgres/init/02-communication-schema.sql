@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS conversations (
   last_message_at      timestamptz,
   last_message_preview varchar(200),
   created_at           timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (context_type, context_id)
+  UNIQUE (group_id, user_id)
 );
 CREATE INDEX IF NOT EXISTS idx_conv_user ON conversations(user_id, last_message_at DESC NULLS LAST);
 CREATE INDEX IF NOT EXISTS idx_conv_group ON conversations(group_id, last_message_at DESC NULLS LAST);

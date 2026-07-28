@@ -20,10 +20,6 @@ async def ensure_conversation(
     system_message: str | None = None,
 ) -> dict[str, Any]:
     repo = ChatRepository(conn)
-    existing = await repo.get_conversation_by_context(context_type, context_id)
-    if existing:
-        return existing
-
     conv = await repo.find_or_create_conversation(
         type_=type_,
         group_id=group_id,
@@ -31,6 +27,7 @@ async def ensure_conversation(
         context_type=context_type,
         context_id=context_id,
     )
+    # Mỗi nghiệp vụ mới là một mốc trong cùng thread group-user.
     if system_message and conv.get("id"):
         await repo.insert_message(
             conversation_id=str(conv["id"]),
