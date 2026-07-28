@@ -214,6 +214,21 @@ class GroupService:
         )
         return req
 
+    async def cancel_join(self, group_id: uuid.UUID, user: CurrentUser) -> None:
+        """Withdraw the caller's own pending join request."""
+        await self._require_group(group_id)
+        existing = await self._members.get(group_id, user.uuid)
+        if existing and existing.status == MemberStatus.approved:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "Already a member; leave the group instead",
+            )
+        removed = await self._members.delete_pending_join_request(group_id, user.uuid)
+        if not removed:
+            raise HTTPException(
+                status.HTTP_404_NOT_FOUND, "No pending join request to cancel"
+            )
+
     async def list_join_requests(
         self,
         group_id: uuid.UUID,

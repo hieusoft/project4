@@ -216,6 +216,26 @@ class MemberRepository:
             )
         return [JoinRequest.model_validate(dict(r)) for r in rows], int(total or 0)
 
+    async def delete_pending_join_request(
+        self, group_id: uuid.UUID, user_id: uuid.UUID
+    ) -> bool:
+        """Withdraw the caller's own pending request. True when one was removed.
+
+        The row is deleted rather than marked, so the partial unique index
+        ``uq_join_req_pending`` frees up and the user can ask to join again.
+        Reviewed requests are left untouched as an audit trail.
+        """
+        result = await self._conn.execute(
+            """
+            DELETE FROM group_join_requests
+            WHERE group_id = $1 AND user_id = $2 AND status = 'pending'
+            """,
+            group_id,
+            user_id,
+        )
+        # asyncpg returns a command tag like 'DELETE 1'
+        return result.rsplit(" ", 1)[-1] != "0"
+
     async def review_join_request(
         self,
         request_id: uuid.UUID,

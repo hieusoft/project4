@@ -165,6 +165,19 @@ async def join_group(
     return DataEnvelope(data=JoinRequestOut.model_validate(req, from_attributes=True))
 
 
+@router.delete(
+    "/groups/{group_id}/join",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def cancel_join_request(
+    group_id: uuid.UUID,
+    user: CurrentUserDep,
+    service: GroupServiceDep,
+):
+    """Withdraw the caller's own pending join request."""
+    await service.cancel_join(group_id, user)
+
+
 @router.get(
     "/groups/{group_id}/join-requests",
     response_model=DataEnvelope[Page[JoinRequestOut]],
