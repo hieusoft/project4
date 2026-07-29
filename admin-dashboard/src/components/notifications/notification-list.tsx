@@ -27,8 +27,8 @@ export function NotificationList({
   const unreadCount = notifications.filter(n => !n.is_read).length
 
   return (
-    <Card className="mt-6">
-      <CardHeader className="flex flex-row items-center justify-between pb-4">
+    <Card className="admin-surface">
+      <CardHeader className="flex flex-col gap-3 border-b pb-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <CardTitle>Hộp thư thông báo</CardTitle>
           {unreadCount > 0 && (
@@ -67,11 +67,11 @@ export function NotificationList({
             {notifications.map((notif) => (
               <div 
                 key={notif.id} 
-                className={`flex gap-4 p-4 rounded-lg border transition-colors ${
-                  notif.is_read ? 'bg-background' : 'bg-muted/30 border-primary/20'
+                className={`flex gap-3 rounded-2xl border p-4 transition-colors ${
+                  notif.is_read ? 'bg-background/55' : 'border-primary/20 bg-primary/5 shadow-sm'
                 }`}
               >
-                <div className={`mt-1 p-2 rounded-full flex-shrink-0 ${notif.is_read ? 'bg-muted' : 'bg-primary/10'}`}>
+                <div className={`mt-1 flex size-10 shrink-0 items-center justify-center rounded-2xl ${notif.is_read ? 'bg-muted' : 'bg-primary/10'}`}>
                   {getIcon(notif.type)}
                 </div>
                 

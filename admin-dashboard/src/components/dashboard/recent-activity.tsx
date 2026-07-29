@@ -16,9 +16,9 @@ interface RecentActivityProps {
 
 export function RecentActivity({ recentDonations, recentGroups, loading }: RecentActivityProps) {
   return (
-    <div className="mt-6 grid gap-4 md:grid-cols-2">
+    <div className="grid gap-4 md:grid-cols-2">
       {/* Recent Donations */}
-      <Card>
+      <Card className="admin-surface">
         <CardHeader>
           <div className="flex items-center gap-2">
             <Package className="h-4 w-4 text-muted-foreground" />
@@ -42,7 +42,7 @@ export function RecentActivity({ recentDonations, recentGroups, loading }: Recen
               }
               const status = statusMap[donation.status] || { label: donation.status?.toUpperCase() || "PENDING", variant: "outline" }
               return (
-              <div key={donation.id} className="flex justify-between items-center border-b pb-2 last:border-0 last:pb-0">
+              <div key={donation.id} className="flex items-center justify-between rounded-2xl border bg-background/45 p-3 transition-colors hover:bg-muted/50">
                 <div className="overflow-hidden mr-2">
                   <p className="text-sm font-medium truncate">{donation.title || "Vật phẩm quyên góp"}</p>
                   <p className="text-xs text-muted-foreground">{new Date(donation.created_at).toLocaleDateString("vi-VN")}</p>
@@ -57,7 +57,7 @@ export function RecentActivity({ recentDonations, recentGroups, loading }: Recen
       </Card>
 
       {/* Recent Groups */}
-      <Card>
+      <Card className="admin-surface">
         <CardHeader>
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-muted-foreground" />
@@ -71,7 +71,7 @@ export function RecentActivity({ recentDonations, recentGroups, loading }: Recen
           {loading && <div className="space-y-3"><Skeleton className="h-10 w-full"/><Skeleton className="h-10 w-full"/></div>}
           <div className="space-y-4">
             {recentGroups.map(group => (
-              <div key={group.id} className="flex justify-between items-center border-b pb-2 last:border-0 last:pb-0">
+              <div key={group.id} className="flex items-center justify-between rounded-2xl border bg-background/45 p-3 transition-colors hover:bg-muted/50">
                 <div className="overflow-hidden mr-2">
                   <p className="text-sm font-medium truncate">{group.name}</p>
                   <p className="text-xs text-muted-foreground">{new Date(group.created_at).toLocaleDateString("vi-VN")}</p>

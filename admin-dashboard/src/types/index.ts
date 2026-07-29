@@ -30,13 +30,44 @@ export interface Group {
   updated_at: string;
 }
 
+export interface GroupMember {
+  id: string;
+  group_id: string;
+  user_id: string;
+  role: "member" | "moderator" | "owner";
+  status: "pending" | "approved" | "rejected" | "blocked";
+  joined_at: string | null;
+  created_at: string;
+  profile?: Profile;
+}
+
+export interface GroupPost {
+  id: string;
+  group_id: string;
+  author_id: string;
+  content: string;
+  type: string;
+  ref_id: string | null;
+  status: string;
+  is_pinned: boolean;
+  like_count: number;
+  comment_count: number;
+  images: Array<{
+    id: string;
+    image_url: string;
+    sort_order: number;
+  }>;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Donation {
   id: string;
   code: string;
   donor_id: string;
   group_id: string;
   title: string;
-  description: string;
+  description: string | null;
   status:
     | "pending"
     | "accepted"
@@ -68,16 +99,33 @@ export interface DonationItem {
   checked_at: string | null;
   status: "pending" | "accepted" | "rejected";
   reject_reason: string | null;
+  images: DonationImage[];
+}
+
+export interface DonationImage {
+  id: string;
+  donation_item_id: string;
+  image_url: string;
+  type: "declared" | "actual_check";
+}
+
+export interface DonationTimelineEntry {
+  at: string;
+  event: string;
+  note: string | null;
+  actor_id: string | null;
+  ref_type: string | null;
+  ref_id: string | null;
 }
 
 export interface InventoryItem {
   id: string;
   code: string;
   group_id: string;
-  donation_item_id: string;
-  donor_id: string;
+  donation_item_id: string | null;
+  donor_id: string | null;
   name: string;
-  category_id: string;
+  category_id: string | null;
   quantity: number;
   condition: string;
   status: "in_stock" | "listed" | "reserved" | "delivered" | "discarded";
@@ -91,7 +139,7 @@ export interface Listing {
   inventory_item_id: string;
   group_id: string;
   title: string;
-  description: string;
+  description: string | null;
   category_id: string;
   condition: string;
   quantity_total: number;
@@ -154,6 +202,58 @@ export interface Profile {
   received_count: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface DeliveryConfirmation {
+  id: string;
+  request_id: string;
+  confirmed_by: string;
+  qr_token: string;
+  photo_url: string | null;
+  note: string | null;
+  confirmed_at: string;
+}
+
+export interface ItemRequestWithRelations extends ItemRequest {
+  receiverProfile?: Profile;
+  group?: Group;
+  listing?: Listing;
+}
+
+export interface ListingWithRelations extends Listing {
+  group?: Group;
+  creatorProfile?: Profile;
+  category?: InventoryCategory;
+}
+
+export interface InventoryHistoryEntry {
+  id: number;
+  inventory_item_id: string;
+  from_status: InventoryItem["status"] | null;
+  to_status: InventoryItem["status"];
+  actor_id: string | null;
+  ref_type: string | null;
+  ref_id: string | null;
+  note: string | null;
+  created_at: string;
+}
+
+export interface InventoryCategory {
+  id: string;
+  name: string;
+  slug: string;
+  parent_id: string | null;
+  icon_url: string | null;
+  is_active: boolean;
+  sort_order: number;
+}
+
+export interface InventoryItemWithDonor extends InventoryItem {
+  donorProfile?: Profile;
+}
+
+export interface DonationWithDonor extends Donation {
+  donorProfile?: Profile;
 }
 
 export interface Notification {

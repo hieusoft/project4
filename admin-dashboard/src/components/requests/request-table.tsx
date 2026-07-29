@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Eye } from "lucide-react"
+import { Eye, HandHeartIcon, ImageIcon } from "lucide-react"
 import {
   Table,
   TableBody,
@@ -9,39 +9,42 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { ItemRequestWithRelations } from "@/types"
+import { SafeImage } from "@/components/ui/safe-image"
 
 interface RequestTableProps {
-  requests: any[]
+  requests: ItemRequestWithRelations[]
   loading: boolean
   page: number
   limit: number
+  total: number
   onPageChange: (page: number) => void
-  onViewClick: (request: any) => void
+  onViewClick: (request: ItemRequestWithRelations) => void
 }
 
-export function RequestTable({ requests, loading, page, limit, onPageChange, onViewClick }: RequestTableProps) {
+export function RequestTable({ requests, loading, page, limit, total, onPageChange, onViewClick }: RequestTableProps) {
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "pending": return <Badge variant="outline" className="text-yellow-500">PENDING</Badge>
-      case "approved": return <Badge variant="default" className="bg-blue-500">APPROVED</Badge>
-      case "scheduled": return <Badge variant="secondary">SCHEDULED</Badge>
-      case "completed": return <Badge variant="default" className="bg-emerald-500">COMPLETED</Badge>
-      case "rejected": return <Badge variant="destructive">REJECTED</Badge>
-      case "cancelled": return <Badge variant="secondary">CANCELLED</Badge>
-      case "no_show": return <Badge variant="destructive">NO_SHOW</Badge>
+      case "pending": return <Badge variant="outline" className="text-yellow-600">Chờ duyệt</Badge>
+      case "approved": return <Badge variant="default" className="bg-blue-500">Đã duyệt</Badge>
+      case "scheduled": return <Badge variant="secondary">Đã hẹn lịch</Badge>
+      case "completed": return <Badge variant="default" className="bg-emerald-500">Đã bàn giao</Badge>
+      case "rejected": return <Badge variant="destructive">Đã từ chối</Badge>
+      case "cancelled": return <Badge variant="secondary">Đã hủy</Badge>
+      case "no_show": return <Badge variant="destructive">Không đến nhận</Badge>
       default: return <Badge variant="outline">{status.toUpperCase()}</Badge>
     }
   }
 
   return (
     <>
-      <div className="border rounded-md">
+      <div className="admin-table-wrap">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Mã YC</TableHead>
               <TableHead>Người nhận</TableHead>
-              <TableHead>Lý do</TableHead>
+              <TableHead>Vật phẩm</TableHead>
               <TableHead>Nhóm xử lý</TableHead>
               <TableHead>Số lượng</TableHead>
               <TableHead>Trạng thái</TableHead>
@@ -61,22 +64,13 @@ export function RequestTable({ requests, loading, page, limit, onPageChange, onV
             ) : (
               requests.map((r) => (
                 <TableRow key={r.id}>
-                  <TableCell className="font-medium">{r.code || "N/A"}</TableCell>
+                  <TableCell className="font-mono font-medium">{r.code || "N/A"}</TableCell>
                   <TableCell>
-                    {r.receiverProfile ? (
-                      <div>
-                        <p className="font-medium">{r.receiverProfile.full_name}</p>
-                        <p className="text-xs text-muted-foreground">{r.receiverProfile.email || r.receiverProfile.phone || r.receiver_id}</p>
-                      </div>
-                    ) : (
-                      <span className="text-xs">{r.receiver_id}</span>
-                    )}
+                    <div className="flex min-w-40 items-center gap-2.5"><div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-xs font-bold text-primary"><SafeImage src={r.receiverProfile?.avatar_url} alt="" className="size-full object-cover" fallback={(r.receiverProfile?.full_name || r.receiverProfile?.username || "?").charAt(0).toUpperCase()} /></div><div className="min-w-0"><p className="truncate font-medium">{r.receiverProfile?.full_name || r.receiverProfile?.username || "Chưa có thông tin"}</p><p className="truncate text-xs text-muted-foreground">@{r.receiverProfile?.username || r.receiver_id.slice(0, 8)}</p></div></div>
                   </TableCell>
-                  <TableCell className="max-w-[200px] truncate" title={r.reason}>
-                    {r.reason || "—"}
-                  </TableCell>
+                  <TableCell><div className="flex min-w-48 items-center gap-3"><div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-muted text-muted-foreground"><SafeImage src={r.listing?.images?.[0]?.image_url} alt="" className="size-full object-cover" fallback={<ImageIcon className="size-4" />} /></div><div className="min-w-0"><p className="max-w-48 truncate font-medium">{r.listing?.title || "Không rõ vật phẩm"}</p><p className="max-w-48 truncate text-xs text-muted-foreground" title={r.reason}>{r.reason || "Không có lý do"}</p></div></div></TableCell>
                   <TableCell>
-                    {r.groupProfile ? r.groupProfile.name : "N/A"}
+                    {r.group?.name || "Không rõ nhóm"}
                   </TableCell>
                   <TableCell>{r.quantity}</TableCell>
                   <TableCell>{getStatusBadge(r.status)}</TableCell>
@@ -95,23 +89,25 @@ export function RequestTable({ requests, loading, page, limit, onPageChange, onV
           </TableBody>
         </Table>
       </div>
-      <div className="flex items-center justify-end space-x-2 mt-4">
+      {total > 0 && <div className="mt-4 flex items-center justify-between border-t pt-4">
+        <p className="text-sm text-muted-foreground">Hiển thị {(page - 1) * limit + 1}–{Math.min(page * limit, total)} / {total}</p>
+        <div className="flex items-center gap-2">
         <button
-          className="px-3 py-1 text-sm border rounded hover:bg-muted disabled:opacity-50"
+          className="rounded border px-3 py-1 text-sm hover:bg-muted disabled:opacity-50"
           disabled={page === 1}
           onClick={() => onPageChange(page - 1)}
         >
           Trước
         </button>
-        <span className="text-sm">Trang {page}</span>
         <button
-          className="px-3 py-1 text-sm border rounded hover:bg-muted disabled:opacity-50"
-          disabled={requests.length < limit}
+          className="rounded border px-3 py-1 text-sm hover:bg-muted disabled:opacity-50"
+          disabled={page >= Math.ceil(total / limit)}
           onClick={() => onPageChange(page + 1)}
         >
           Sau
         </button>
-      </div>
+        </div>
+      </div>}
     </>
   )
 }

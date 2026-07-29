@@ -1,12 +1,14 @@
 import type { NextConfig } from "next";
 
+const apiInternalBaseUrl = process.env.API_INTERNAL_BASE_URL || "http://localhost:8000";
+
 const nextConfig: NextConfig = {
   output: "standalone",
   async rewrites() {
     return [
       {
         source: "/api/:path*",
-        destination: "http://kong:8000/api/:path*", // Proxy to Kong API Gateway
+        destination: `${apiInternalBaseUrl.replace(/\/$/, "")}/api/:path*`,
       },
     ];
   },

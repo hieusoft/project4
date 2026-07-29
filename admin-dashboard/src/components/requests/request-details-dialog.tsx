@@ -8,21 +8,23 @@ import {
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { HandHeartIcon } from "lucide-react"
+import { CheckCircle2, HandHeartIcon, ImageIcon, Package, UserRound } from "lucide-react"
+import { DeliveryConfirmation, ItemRequestWithRelations } from "@/types"
+import { SafeImage } from "@/components/ui/safe-image"
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  pending: { label: "PENDING", variant: "outline" },
-  approved: { label: "APPROVED", variant: "default" },
-  scheduled: { label: "SCHEDULED", variant: "secondary" },
-  completed: { label: "COMPLETED", variant: "default" },
-  rejected: { label: "REJECTED", variant: "destructive" },
-  cancelled: { label: "CANCELLED", variant: "secondary" },
-  no_show: { label: "NO_SHOW", variant: "destructive" },
+  pending: { label: "Chờ duyệt", variant: "outline" },
+  approved: { label: "Đã duyệt", variant: "default" },
+  scheduled: { label: "Đã hẹn lịch", variant: "secondary" },
+  completed: { label: "Đã bàn giao", variant: "default" },
+  rejected: { label: "Đã từ chối", variant: "destructive" },
+  cancelled: { label: "Đã hủy", variant: "secondary" },
+  no_show: { label: "Không đến nhận", variant: "destructive" },
 }
 
 interface RequestDetailsDialogProps {
-  detailRequest: Record<string, any> | null
-  confirmation: Record<string, any> | null
+  detailRequest: ItemRequestWithRelations | null
+  confirmation: DeliveryConfirmation | null
   onClose: () => void
 }
 
@@ -37,7 +39,7 @@ export function RequestDetailsDialog({
 
   return (
     <Dialog open={!!detailRequest} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-5xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <HandHeartIcon className="h-5 w-5" />
@@ -47,43 +49,8 @@ export function RequestDetailsDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Main Info */}
-          <div className="grid grid-cols-2 gap-4 text-sm bg-muted/50 p-4 rounded-lg">
-            <div>
-              <span className="text-muted-foreground block mb-1">Người nhận:</span>
-              <span className="font-medium">
-                {detailRequest.receiverProfile 
-                  ? ((detailRequest.receiverProfile as any).full_name || (detailRequest.receiverProfile as any).username)
-                  : ((detailRequest.receiver_id as string)?.substring(0, 8) + "...")}
-              </span>
-            </div>
-            <div>
-              <span className="text-muted-foreground block mb-1">Trạng thái:</span>
-              <Badge variant={statusConfig[statusStr]?.variant || "secondary"} className={statusStr === "completed" ? "bg-emerald-500" : statusStr === "approved" ? "bg-blue-500" : ""}>
-                {statusConfig[statusStr]?.label || statusStr.toUpperCase()}
-              </Badge>
-            </div>
-            <div>
-              <span className="text-muted-foreground block mb-1">Nhóm xử lý:</span>
-              <span className="font-medium">
-                {detailRequest.groupProfile ? (detailRequest.groupProfile as any).name : "N/A"}
-              </span>
-            </div>
-            <div>
-              <span className="text-muted-foreground block mb-1">Số lượng yêu cầu:</span>
-              <span className="font-medium">{detailRequest.quantity as number}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground block mb-1">Listing/Item ID:</span>
-              <span className="font-medium">{(detailRequest.listing_id as string) || "N/A"}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground block mb-1">Ngày tạo:</span>
-              <span className="font-medium">
-                {detailRequest.created_at ? new Date(detailRequest.created_at as string).toLocaleString("vi-VN") : "N/A"}
-              </span>
-            </div>
-          </div>
+          <div className="grid gap-4 lg:grid-cols-[1.05fr_.95fr]"><div className="flex min-h-64 items-center justify-center overflow-hidden rounded-3xl border bg-muted text-muted-foreground"><SafeImage src={detailRequest.listing?.images?.[0]?.image_url} alt="" className="size-full object-cover" fallback={<ImageIcon className="size-12" />} /></div><div className="space-y-4 rounded-3xl border bg-muted/30 p-5"><div className="flex flex-wrap items-center gap-2"><Badge variant={statusConfig[statusStr]?.variant || "secondary"}>{statusConfig[statusStr]?.label || statusStr}</Badge><Badge variant="outline">Số lượng {detailRequest.quantity}</Badge></div><div><p className="flex items-center gap-1 text-xs text-muted-foreground"><Package className="size-3.5" />Vật phẩm</p><p className="mt-1 font-semibold">{detailRequest.listing?.title || "Không rõ vật phẩm"}</p></div><div><p className="flex items-center gap-1 text-xs text-muted-foreground"><UserRound className="size-3.5" />Người nhận</p><p className="mt-1 font-semibold">{detailRequest.receiverProfile?.full_name || detailRequest.receiverProfile?.username || detailRequest.receiver_id.slice(0, 8)}</p></div><div><p className="text-xs text-muted-foreground">Nhóm xử lý</p><p className="mt-1 font-semibold">{detailRequest.group?.name || "Không rõ nhóm"}</p></div><p className="text-xs text-muted-foreground">Tạo lúc {new Date(detailRequest.created_at).toLocaleString("vi-VN")}</p></div></div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{[{ label: "Ngày duyệt", value: detailRequest.reviewed_at ? new Date(detailRequest.reviewed_at).toLocaleString("vi-VN") : "Chưa duyệt" }, { label: "Lịch nhận", value: detailRequest.scheduled_at ? new Date(detailRequest.scheduled_at).toLocaleString("vi-VN") : "Chưa hẹn" }, { label: "Hoàn thành", value: detailRequest.completed_at ? new Date(detailRequest.completed_at).toLocaleString("vi-VN") : "Chưa hoàn thành" }, { label: "Cập nhật", value: new Date(detailRequest.updated_at).toLocaleString("vi-VN") }].map((item) => <div key={item.label} className="rounded-2xl border p-3"><p className="text-xs text-muted-foreground">{item.label}</p><p className="mt-1 text-sm font-semibold">{item.value}</p></div>)}</div>
 
           {/* Reason */}
           {detailRequest.reason && (
@@ -96,18 +63,18 @@ export function RequestDetailsDialog({
           {/* Delivery Confirmation */}
           {confirmation && (
             <div className="mt-6 border-t pt-4">
-              <h3 className="text-md font-semibold mb-3">Xác nhận giao hàng (Delivery Confirmation)</h3>
-              <div className="grid grid-cols-2 gap-4 text-sm bg-muted/50 p-4 rounded-lg">
+              <h3 className="mb-3 flex items-center gap-2 font-semibold"><CheckCircle2 className="size-4 text-primary" />Xác nhận bàn giao</h3>
+              <div className="grid gap-4 rounded-2xl bg-muted/50 p-4 text-sm sm:grid-cols-2">
                 <div>
-                  <span className="text-muted-foreground block mb-1">Lịch hẹn (Scheduled At):</span>
+                   <span className="text-muted-foreground block mb-1">Thời gian xác nhận:</span>
                   <span className="font-medium">
-                    {confirmation.scheduled_at ? new Date(confirmation.scheduled_at as string).toLocaleString("vi-VN") : "Chưa có"}
+                     {new Date(confirmation.confirmed_at).toLocaleString("vi-VN")}
                   </span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground block mb-1">Hoàn thành lúc:</span>
+                   <span className="text-muted-foreground block mb-1">Người xác nhận:</span>
                   <span className="font-medium">
-                    {confirmation.completed_at ? new Date(confirmation.completed_at as string).toLocaleString("vi-VN") : "Chưa hoàn thành"}
+                     {confirmation.confirmed_by.slice(0, 8)}
                   </span>
                 </div>
                 <div className="col-span-2">
@@ -118,37 +85,8 @@ export function RequestDetailsDialog({
 
               {/* Photos */}
               <div className="mt-4 flex gap-4 overflow-x-auto">
-                {(confirmation.moderator_photo_url || confirmation.receiver_photo_url) ? (
-                  <>
-                    {confirmation.moderator_photo_url && (
-                      <div className="flex-1">
-                        <span className="text-sm font-medium block mb-2">Ảnh người giao (Moderator):</span>
-                        <div className="relative h-[200px] rounded-md overflow-hidden border">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img 
-                            src={confirmation.moderator_photo_url as string} 
-                            alt="Moderator Photo" 
-                            className="object-cover w-full h-full"
-                            onError={(e) => { (e.target as any).src = 'https://via.placeholder.com/200?text=No+Image' }}
-                          />
-                        </div>
-                      </div>
-                    )}
-                    {confirmation.receiver_photo_url && (
-                      <div className="flex-1">
-                        <span className="text-sm font-medium block mb-2">Ảnh người nhận (Receiver):</span>
-                        <div className="relative h-[200px] rounded-md overflow-hidden border">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img 
-                            src={confirmation.receiver_photo_url as string} 
-                            alt="Receiver Photo" 
-                            className="object-cover w-full h-full"
-                            onError={(e) => { (e.target as any).src = 'https://via.placeholder.com/200?text=No+Image' }}
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </>
+                {confirmation.photo_url ? (
+                  <div className="flex-1"><span className="mb-2 block text-sm font-medium">Ảnh bàn giao:</span><div className="relative flex h-[240px] items-center justify-center overflow-hidden rounded-2xl border bg-muted text-muted-foreground"><SafeImage src={confirmation.photo_url} alt="Ảnh bàn giao" className="size-full object-cover" fallback={<ImageIcon className="size-8" />} /></div></div>
                 ) : (
                   <p className="text-sm text-muted-foreground italic">Chưa có ảnh xác nhận</p>
                 )}

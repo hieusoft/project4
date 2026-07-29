@@ -9,21 +9,22 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Donation } from "@/types"
-import { Eye, PackageIcon } from "lucide-react"
+import { Donation, DonationWithDonor } from "@/types"
+import { Eye, PackageIcon, Truck } from "lucide-react"
+import { SafeImage } from "@/components/ui/safe-image"
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  pending: { label: "PENDING", variant: "outline" },
-  accepted: { label: "ACCEPTED", variant: "default" },
-  scheduled: { label: "SCHEDULED", variant: "secondary" },
-  received: { label: "RECEIVED", variant: "default" },
-  completed: { label: "COMPLETED", variant: "default" },
-  rejected: { label: "REJECTED", variant: "destructive" },
-  cancelled: { label: "CANCELLED", variant: "destructive" },
+  pending: { label: "Chờ duyệt", variant: "outline" },
+  accepted: { label: "Đã chấp nhận", variant: "default" },
+  scheduled: { label: "Đã hẹn lịch", variant: "secondary" },
+  received: { label: "Đã nhận", variant: "default" },
+  completed: { label: "Hoàn thành", variant: "default" },
+  rejected: { label: "Đã từ chối", variant: "destructive" },
+  cancelled: { label: "Đã hủy", variant: "outline" },
 }
 
 interface DonationTableProps {
-  donations: any[]
+  donations: DonationWithDonor[]
   loading: boolean
   total: number
   page: number
@@ -45,6 +46,7 @@ export function DonationTable({
 
   return (
     <>
+      <div className="admin-table-wrap">
       <Table>
         <TableHeader>
           <TableRow>
@@ -78,19 +80,18 @@ export function DonationTable({
               </TableCell>
             </TableRow>
           ) : (
-            donations.map((donation) => (
+            donations.map((donation) => {
+              const previewImage = donation.items?.flatMap((item) => item.images || [])[0]?.image_url
+              return (
               <TableRow key={donation.id}>
                 <TableCell className="font-mono text-sm">
                   {donation.code}
                 </TableCell>
-                <TableCell className="font-medium max-w-[200px] truncate">
-                  {donation.title}
+                <TableCell>
+                  <div className="flex min-w-48 items-center gap-3"><div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-muted text-muted-foreground"><SafeImage src={previewImage} alt="" className="size-full object-cover" fallback={<PackageIcon className="size-4" />} /></div><div className="min-w-0"><p className="max-w-52 truncate font-semibold">{donation.title}</p><p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground"><Truck className="size-3" />{donation.pickup_method === "pickup" ? "Đến lấy" : "Mang đến nhóm"}</p></div></div>
                 </TableCell>
                 <TableCell>
-                  <div className="flex items-center">
-                    <span className="font-medium">
-                      {donation.donorProfile ? (donation.donorProfile.full_name || `@${donation.donorProfile.username}`) : donation.donor_id.substring(0, 8) + "..."}
-                    </span>
+                  <div className="flex min-w-40 items-center gap-2.5"><div className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-xs font-bold text-primary"><SafeImage src={donation.donorProfile?.avatar_url} alt="" className="size-full object-cover" fallback={(donation.donorProfile?.full_name || donation.donorProfile?.username || "?").charAt(0).toUpperCase()} /></div><div className="min-w-0"><p className="truncate font-medium">{donation.donorProfile?.full_name || donation.donorProfile?.username || "Chưa có thông tin"}</p><p className="truncate text-xs text-muted-foreground">@{donation.donorProfile?.username || donation.donor_id.substring(0, 8)}</p></div>
                   </div>
                 </TableCell>
                 <TableCell>
@@ -113,10 +114,11 @@ export function DonationTable({
                   </Button>
                 </TableCell>
               </TableRow>
-            ))
+            )})
           )}
         </TableBody>
       </Table>
+      </div>
 
       {total > 0 && (
         <div className="flex items-center justify-between mt-4 pt-4 border-t">

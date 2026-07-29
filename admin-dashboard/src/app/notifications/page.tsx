@@ -68,7 +68,7 @@ function ChannelStatus({ slug }: { slug: string }) {
 
   useEffect(() => {
     const checkStatus = () => {
-      const base = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api"
+      const base = process.env.NEXT_PUBLIC_API_BASE_URL || "/api"
       fetch(`${base}/${slug}/health`, { signal: AbortSignal.timeout(5000) })
         .then((r) => (r.ok ? setStatus("ok") : setStatus("error")))
         .catch(() => setStatus("error"))
@@ -109,8 +109,8 @@ function ChannelStatus({ slug }: { slug: string }) {
 export default function NotificationsPage() {
   return (
     <AdminLayout>
-      <div className="px-4 lg:px-6">
-        <div className="mb-6">
+      <div className="admin-page">
+        <div className="rounded-[1.75rem] border bg-card/80 p-5 shadow-sm backdrop-blur">
           <div className="flex items-center gap-2">
             <Bell className="h-5 w-5 text-muted-foreground" />
             <h2 className="text-2xl font-bold tracking-tight">Thông báo & Liên lạc</h2>
@@ -122,10 +122,10 @@ export default function NotificationsPage() {
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {channels.map((ch) => (
-            <Card key={ch.title} className="@container/card">
+            <Card key={ch.title} className="admin-surface group transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-red-950/8">
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <div className={`rounded-lg p-2 ${ch.bg}`}>
+                    <div className={`rounded-2xl border bg-gradient-to-br p-3 ${ch.bg}`}>
                     <ch.icon className={`h-4 w-4 ${ch.color}`} />
                   </div>
                   <ChannelStatus slug={ch.slug} />

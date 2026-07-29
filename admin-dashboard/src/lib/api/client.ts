@@ -1,6 +1,6 @@
 import { DataEnvelope, Paginated } from "@/types";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api";
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "/api";
 
 let isRefreshing = false;
 let refreshSubscribers: ((token: string) => void)[] = [];
@@ -162,6 +162,11 @@ export const identityApi = {
 
   getProfile: (id: string) =>
     request<DataEnvelope<any>>(`/identity/profile/${id}`),
+
+  getProfilesBatch: (ids: string[]) =>
+    request<DataEnvelope<any[]>>(
+      `/identity/profile/batch?ids=${encodeURIComponent(ids.join(","))}`
+    ),
 };
 
 // ─── Community Service ───
@@ -263,6 +268,9 @@ export const donationApi = {
     
   getInventoryItem: (id: string) =>
     request<DataEnvelope<any>>(`/donation/inventory/${id}`),
+
+  getInventoryHistory: (id: string) =>
+    request<DataEnvelope<any[]>>(`/donation/inventory/${id}/history`),
 
   reviewDonation: (id: string, action: "accepted" | "rejected", note?: string) =>
     request<DataEnvelope<any>>(`/donation/donations/${id}/review`, {

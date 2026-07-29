@@ -23,17 +23,38 @@ import {
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 import { identityApi } from "@/lib/api/client"
-import { Account } from "@/types"
-import { Shield, ShieldOff, UsersIcon, EyeIcon, UserX, MailWarning } from "lucide-react"
+import { Account, Profile } from "@/types"
+import {
+  Shield,
+  ShieldOff,
+  UsersIcon,
+  EyeIcon,
+  UserX,
+  MailWarning,
+  Search,
+  MailCheck,
+  KeyRound,
+  Clock3,
+  CalendarDays,
+  MapPin,
+  HeartHandshake,
+  Gift,
+  Phone,
+  Mail,
+  BadgeCheck,
+} from "lucide-react"
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  active: { label: "Active", variant: "default" },
-  unverified: { label: "Unverified", variant: "secondary" },
-  locked: { label: "Locked", variant: "destructive" },
-  deleted: { label: "Deleted", variant: "outline" },
+  active: { label: "Hoạt động", variant: "default" },
+  unverified: { label: "Chưa xác minh", variant: "secondary" },
+  locked: { label: "Bị khóa", variant: "destructive" },
+  deleted: { label: "Đã xóa", variant: "outline" },
 }
+
+const accountStatuses = ["active", "unverified", "locked", "deleted"] as const
 
 export default function AccountsPage() {
   const [accounts, setAccounts] = useState<Account[]>([])
@@ -44,6 +65,9 @@ export default function AccountsPage() {
   const [dialogAccount, setDialogAccount] = useState<Account | null>(null)
   const [dialogAction, setDialogAction] = useState<"lock" | "unlock" | "view">("lock")
   const [profileData, setProfileData] = useState<any>(null)
+  const [profiles, setProfiles] = useState<Record<string, Profile>>({})
+  const [searchQuery, setSearchQuery] = useState("")
+  const [statusTotals, setStatusTotals] = useState<Record<string, number>>({})
   const [loadingProfile, setLoadingProfile] = useState(false)
   const limit = 20
 
@@ -53,8 +77,17 @@ export default function AccountsPage() {
       const params: Record<string, any> = { page, limit }
       if (statusFilter !== "all") params.status = statusFilter
       const res = await identityApi.listAccounts(params as any)
-      setAccounts(res.data.items)
+      const items = res.data.items
+      setAccounts(items)
       setTotal(res.data.meta.total)
+      if (items.length > 0) {
+        const profileRes = await identityApi.getProfilesBatch(items.map((item) => item.id))
+        setProfiles(
+          Object.fromEntries(profileRes.data.map((profile) => [profile.id, profile]))
+        )
+      } else {
+        setProfiles({})
+      }
     } catch (err: any) {
       toast.error("Lỗi tải danh sách tài khoản: " + err.message)
     } finally {
@@ -62,10 +95,25 @@ export default function AccountsPage() {
     }
   }, [page, statusFilter])
 
+  const fetchStatusTotals = useCallback(async () => {
+    const results = await Promise.allSettled(
+      accountStatuses.map((status) => identityApi.listAccounts({ status, limit: 1 }))
+    )
+    setStatusTotals(
+      Object.fromEntries(
+        accountStatuses.map((status, index) => [
+          status,
+          results[index].status === "fulfilled" ? results[index].value.data.meta.total : 0,
+        ])
+      )
+    )
+  }, [])
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchAccounts()
-  }, [fetchAccounts])
+    fetchStatusTotals()
+  }, [fetchAccounts, fetchStatusTotals])
 
   async function handleLockUnlock() {
     if (!dialogAccount) return
@@ -79,6 +127,7 @@ export default function AccountsPage() {
       }
       setDialogAccount(null)
       fetchAccounts()
+      fetchStatusTotals()
     } catch (err: any) {
       toast.error("Thao tác thất bại: " + err.message)
     }
@@ -100,18 +149,55 @@ export default function AccountsPage() {
   }
 
   const totalPages = Math.ceil(total / limit)
+  const normalizedSearch = searchQuery.trim().toLowerCase()
+  const visibleAccounts = normalizedSearch
+    ? accounts.filter((account) => {
+        const profile = profiles[account.id]
+        return [
+          account.username,
+          account.email,
+          account.phone,
+          profile?.full_name,
+        ].some((value) => value?.toLowerCase().includes(normalizedSearch))
+      })
+    : accounts
 
   return (
     <AdminLayout>
-      <div className="px-4 lg:px-6">
-        <div className="mb-6">
+      <div className="admin-page">
+        <div className="rounded-[1.75rem] border bg-card/80 p-5 shadow-sm backdrop-blur">
           <div className="flex items-center gap-2">
             <UsersIcon className="h-5 w-5 text-muted-foreground" />
             <h2 className="text-2xl font-bold tracking-tight">Quản lý Tài khoản</h2>
           </div>
-          <p className="text-muted-foreground mt-1">
-            Xem và quản lý tài khoản người dùng
+          <p className="mt-1 text-muted-foreground">
+            Theo dõi hồ sơ, bảo mật, hoạt động đăng nhập và trạng thái tài khoản
           </p>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            { key: "active", label: "Đang hoạt động", icon: UsersIcon, tone: "text-emerald-700 bg-emerald-500/10" },
+            { key: "unverified", label: "Chưa xác minh", icon: MailWarning, tone: "text-amber-700 bg-amber-500/10" },
+            { key: "locked", label: "Đang bị khóa", icon: Shield, tone: "text-red-700 bg-red-500/10" },
+            { key: "deleted", label: "Đã xóa", icon: UserX, tone: "text-slate-700 bg-slate-500/10" },
+          ].map((item) => (
+            <button
+              type="button"
+              key={item.key}
+              onClick={() => {
+                setStatusFilter(item.key)
+                setPage(1)
+              }}
+              className={`admin-surface flex items-center justify-between p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md ${statusFilter === item.key ? "ring-2 ring-primary/35" : ""}`}
+            >
+              <div>
+                <p className="text-xs text-muted-foreground">{item.label}</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums">{(statusTotals[item.key] || 0).toLocaleString("vi-VN")}</p>
+              </div>
+              <div className={`rounded-2xl p-3 ${item.tone}`}><item.icon className="size-5" /></div>
+            </button>
+          ))}
         </div>
 
         <Tabs
@@ -120,10 +206,11 @@ export default function AccountsPage() {
             setStatusFilter(v)
             setPage(1)
           }}
-          className="mb-4"
+          className="mb-1"
         >
-          <div className="flex items-center justify-between">
-            <TabsList>
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <div className="overflow-x-auto pb-1">
+            <TabsList className="min-w-max">
               <TabsTrigger value="active" className="gap-1.5">
                 <UsersIcon className="h-3.5 w-3.5" />
                 Hoạt động
@@ -141,22 +228,34 @@ export default function AccountsPage() {
                 Đã xóa
               </TabsTrigger>
             </TabsList>
-            <Badge variant="secondary">{total} tài khoản</Badge>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Tìm trong trang hiện tại..."
+                  className="w-full pl-9 sm:w-64"
+                />
+              </div>
+              <Badge variant="secondary">{total} tài khoản</Badge>
+            </div>
           </div>
         </Tabs>
 
-        <Card>
+        <Card className="admin-surface">
           <CardContent>
+            <div className="admin-table-wrap">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Username</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Phone</TableHead>
+                  <TableHead>Người dùng</TableHead>
+                  <TableHead>Liên hệ</TableHead>
                   <TableHead>Trạng thái</TableHead>
-                  <TableHead>Email Verified</TableHead>
-                  <TableHead>2FA</TableHead>
-                  <TableHead>Ngày tạo</TableHead>
+                  <TableHead>Bảo mật</TableHead>
+                  <TableHead>Lần đăng nhập cuối</TableHead>
+                  <TableHead>Ngày tham gia</TableHead>
                   <TableHead className="text-right">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
@@ -164,44 +263,67 @@ export default function AccountsPage() {
                 {loading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i}>
-                      {Array.from({ length: 8 }).map((_, j) => (
+                      {Array.from({ length: 7 }).map((_, j) => (
                         <TableCell key={j}>
                           <Skeleton className="h-4 w-full" />
                         </TableCell>
                       ))}
                     </TableRow>
                   ))
-                ) : accounts.length === 0 ? (
+                ) : visibleAccounts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-12">
+                    <TableCell colSpan={7} className="py-14 text-center">
                       <div className="flex flex-col items-center gap-2 text-muted-foreground">
                         <UsersIcon className="h-8 w-8" />
-                        <p>Không tìm thấy tài khoản</p>
+                        <p>{searchQuery ? "Không có tài khoản khớp tìm kiếm" : "Không tìm thấy tài khoản"}</p>
                       </div>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  accounts.map((account) => (
+                  visibleAccounts.map((account) => {
+                    const profile = profiles[account.id]
+                    return (
                     <TableRow key={account.id}>
-                      <TableCell className="font-medium">
-                        {account.username}
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-primary/10 font-bold text-primary">
+                            {profile?.avatar_url ? (
+                              <img src={profile.avatar_url} alt="" className="size-full object-cover" />
+                            ) : (
+                              (profile?.full_name || account.username).charAt(0).toUpperCase()
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="max-w-52 truncate font-semibold">{profile?.full_name || account.username}</p>
+                            <p className="max-w-52 truncate text-xs text-muted-foreground">@{account.username}</p>
+                          </div>
+                        </div>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">{account.email || "—"}</TableCell>
-                      <TableCell className="text-muted-foreground">{account.phone || "—"}</TableCell>
+                      <TableCell>
+                        <div className="space-y-1 text-xs text-muted-foreground">
+                          <p className="flex items-center gap-1.5"><Mail className="size-3" />{account.email || "Chưa có email"}</p>
+                          <p className="flex items-center gap-1.5"><Phone className="size-3" />{account.phone || "Chưa có SĐT"}</p>
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <Badge variant={statusConfig[account.status]?.variant || "secondary"}>
                           {statusConfig[account.status]?.label || account.status}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={account.email_verified ? "default" : "secondary"}>
-                          {account.email_verified ? "Yes" : "No"}
-                        </Badge>
+                        <div className="flex flex-wrap gap-1.5">
+                          <Badge variant={account.email_verified ? "default" : "secondary"} className="gap-1">
+                            <MailCheck className="size-3" /> Email
+                          </Badge>
+                          <Badge variant={account.totp_enabled ? "default" : "outline"} className="gap-1">
+                            <KeyRound className="size-3" /> 2FA
+                          </Badge>
+                        </div>
                       </TableCell>
-                      <TableCell>
-                        <Badge variant={account.totp_enabled ? "default" : "secondary"}>
-                          {account.totp_enabled ? "On" : "Off"}
-                        </Badge>
+                      <TableCell className="text-muted-foreground">
+                        {account.last_login_at
+                          ? new Date(account.last_login_at).toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" })
+                          : "Chưa đăng nhập"}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {new Date(account.created_at).toLocaleDateString("vi-VN")}
@@ -242,10 +364,11 @@ export default function AccountsPage() {
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))
+                  )})
                 )}
               </TableBody>
             </Table>
+            </div>
 
             {total > 0 && (
               <div className="flex items-center justify-between mt-4 pt-4 border-t">
@@ -280,7 +403,7 @@ export default function AccountsPage() {
         open={!!dialogAccount}
         onOpenChange={() => setDialogAccount(null)}
       >
-        <DialogContent>
+        <DialogContent className={dialogAction === "view" ? "max-h-[92vh] overflow-y-auto sm:max-w-3xl" : undefined}>
           <DialogHeader>
             <DialogTitle>
               {dialogAction === "lock" ? "Khóa tài khoản" : 
@@ -304,44 +427,83 @@ export default function AccountsPage() {
                   <Skeleton className="h-4 w-1/2" />
                   <Skeleton className="h-20 w-full" />
                 </div>
-              ) : profileData ? (
-                <div className="space-y-4 text-sm">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-muted-foreground mb-1">Họ và tên</p>
-                      <p className="font-medium">{profileData.full_name || "—"}</p>
+              ) : profileData && dialogAccount ? (
+                <div className="space-y-5 text-sm">
+                  <div className="flex flex-col gap-4 rounded-3xl border bg-gradient-to-br from-primary/10 via-background to-amber-500/5 p-5 sm:flex-row sm:items-center">
+                    <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-3xl bg-primary/10 text-2xl font-bold text-primary ring-4 ring-background">
+                      {profileData.avatar_url ? (
+                        <img src={profileData.avatar_url} alt="" className="size-full object-cover" />
+                      ) : (
+                        (profileData.full_name || dialogAccount.username).charAt(0).toUpperCase()
+                      )}
                     </div>
-                    <div>
-                      <p className="text-muted-foreground mb-1">Username</p>
-                      <p className="font-medium">@{profileData.username}</p>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="truncate text-xl font-bold">{profileData.full_name || dialogAccount.username}</h3>
+                        <Badge variant={statusConfig[dialogAccount.status]?.variant || "secondary"}>
+                          {statusConfig[dialogAccount.status]?.label || dialogAccount.status}
+                        </Badge>
+                      </div>
+                      <p className="mt-1 text-muted-foreground">@{dialogAccount.username}</p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Badge variant={dialogAccount.email_verified ? "default" : "secondary"} className="gap-1">
+                          <MailCheck className="size-3" />
+                          {dialogAccount.email_verified ? "Email đã xác minh" : "Email chưa xác minh"}
+                        </Badge>
+                        <Badge variant={dialogAccount.totp_enabled ? "default" : "outline"} className="gap-1">
+                          <KeyRound className="size-3" />
+                          {dialogAccount.totp_enabled ? "Đã bật 2FA" : "Chưa bật 2FA"}
+                        </Badge>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-muted-foreground mb-1">Điểm uy tín</p>
-                      <p className="font-medium text-emerald-600">{profileData.reputation_score}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground mb-1">Khu vực</p>
-                      <p className="font-medium">{profileData.province_code ? profileData.province_code + (profileData.district_code ? ` - ${profileData.district_code}` : "") : "—"}</p>
+                    <div className="rounded-2xl border bg-background/70 px-4 py-3 text-center">
+                      <p className="text-2xl font-bold text-emerald-600">{profileData.reputation_score || 0}</p>
+                      <p className="text-xs text-muted-foreground">Điểm uy tín</p>
                     </div>
                   </div>
-                  
-                  <div className="bg-muted p-4 rounded-lg flex items-center justify-around text-center mt-4">
-                    <div>
-                      <p className="text-2xl font-semibold">{profileData.donation_count || 0}</p>
-                      <p className="text-xs text-muted-foreground">Đã quyên góp</p>
+
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="rounded-2xl border bg-background/55 p-4">
+                      <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground"><Mail className="size-3.5" />Email</p>
+                      <p className="mt-2 break-all font-medium">{dialogAccount.email || "Chưa cập nhật"}</p>
                     </div>
-                    <div>
-                      <p className="text-2xl font-semibold">{profileData.received_count || 0}</p>
-                      <p className="text-xs text-muted-foreground">Đã nhận</p>
+                    <div className="rounded-2xl border bg-background/55 p-4">
+                      <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground"><Phone className="size-3.5" />Điện thoại</p>
+                      <p className="mt-2 font-medium">{dialogAccount.phone || "Chưa cập nhật"}</p>
+                    </div>
+                    <div className="rounded-2xl border bg-background/55 p-4">
+                      <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground"><MapPin className="size-3.5" />Khu vực</p>
+                      <p className="mt-2 font-medium">{profileData.province_code ? `${profileData.province_code}${profileData.district_code ? ` · ${profileData.district_code}` : ""}` : "Chưa cập nhật"}</p>
+                    </div>
+                    <div className="rounded-2xl border bg-background/55 p-4">
+                      <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground"><Clock3 className="size-3.5" />Đăng nhập cuối</p>
+                      <p className="mt-2 font-medium">{dialogAccount.last_login_at ? new Date(dialogAccount.last_login_at).toLocaleString("vi-VN") : "Chưa từng đăng nhập"}</p>
+                    </div>
+                    <div className="rounded-2xl border bg-background/55 p-4">
+                      <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground"><CalendarDays className="size-3.5" />Ngày tham gia</p>
+                      <p className="mt-2 font-medium">{new Date(dialogAccount.created_at).toLocaleString("vi-VN")}</p>
+                    </div>
+                    <div className="rounded-2xl border bg-background/55 p-4">
+                      <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground"><BadgeCheck className="size-3.5" />Mã tài khoản</p>
+                      <p className="mt-2 truncate font-mono text-xs" title={dialogAccount.id}>{dialogAccount.id}</p>
                     </div>
                   </div>
-                  
-                  {profileData.bio && (
-                    <div className="mt-4">
-                      <p className="text-muted-foreground mb-1">Tiểu sử</p>
-                      <p className="bg-secondary p-3 rounded text-secondary-foreground">{profileData.bio}</p>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="flex items-center gap-4 rounded-2xl border bg-emerald-500/5 p-4">
+                      <div className="rounded-2xl bg-emerald-500/10 p-3 text-emerald-700"><HeartHandshake className="size-5" /></div>
+                      <div><p className="text-2xl font-bold">{profileData.donation_count || 0}</p><p className="text-xs text-muted-foreground">Lần quyên góp</p></div>
                     </div>
-                  )}
+                    <div className="flex items-center gap-4 rounded-2xl border bg-violet-500/5 p-4">
+                      <div className="rounded-2xl bg-violet-500/10 p-3 text-violet-700"><Gift className="size-5" /></div>
+                      <div><p className="text-2xl font-bold">{profileData.received_count || 0}</p><p className="text-xs text-muted-foreground">Lần nhận hỗ trợ</p></div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border bg-muted/30 p-4">
+                    <p className="mb-2 font-medium">Giới thiệu</p>
+                    <p className="leading-6 text-muted-foreground">{profileData.bio || "Người dùng chưa cập nhật phần giới thiệu."}</p>
+                  </div>
                 </div>
               ) : (
                 <p className="text-center text-muted-foreground">Không tải được thông tin.</p>

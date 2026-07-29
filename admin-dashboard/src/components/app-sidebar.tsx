@@ -25,7 +25,8 @@ import {
   HandHeartIcon,
   LogOutIcon,
   PackageOpenIcon,
-  
+  MoonIcon,
+  SunIcon,
 } from "lucide-react"
 import { useAuth } from "@/context/auth-context"
 
@@ -74,22 +75,27 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }
 
   return (
-    <Sidebar collapsible="offcanvas" {...props}>
-      <SidebarHeader>
+    <Sidebar collapsible="offcanvas" className="border-r-0" {...props}>
+      <SidebarHeader className="px-3 py-4">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
-              className="data-[slot=sidebar-menu-button]:p-1.5!"
+              className="h-auto rounded-2xl bg-sidebar-accent/70 p-3! hover:bg-sidebar-accent"
               render={<Link href="/dashboard" />}
             >
-              <HandHeartIcon className="size-5! text-primary" />
-              <span className="text-base font-semibold">Kết nối Thiện nguyện</span>
+              <div className="flex size-10 items-center justify-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground shadow-sm">
+                <HandHeartIcon className="size-5!" />
+              </div>
+              <div className="grid text-left leading-tight">
+                <span className="text-sm font-bold">ChoSV Admin</span>
+                <span className="text-xs text-sidebar-foreground/65">Kết nối thiện nguyện</span>
+              </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="px-2">
         <SidebarGroup>
           <SidebarGroupLabel>Tổng quan</SidebarGroupLabel>
           <SidebarMenu>
@@ -98,6 +104,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <SidebarMenuButton
                   tooltip={item.title}
                   isActive={isActive(item.url)}
+                  className="h-10 rounded-xl data-[active=true]:bg-sidebar-primary data-[active=true]:font-semibold data-[active=true]:text-sidebar-primary-foreground"
                   render={<Link href={item.url} />}
                 >
                   <item.icon />
@@ -116,6 +123,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <SidebarMenuButton
                   tooltip={item.title}
                   isActive={isActive(item.url)}
+                  className="h-10 rounded-xl data-[active=true]:bg-sidebar-primary data-[active=true]:font-semibold data-[active=true]:text-sidebar-primary-foreground"
                   render={<Link href={item.url} />}
                 >
                   <item.icon />
@@ -134,6 +142,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <SidebarMenuButton
                   tooltip={item.title}
                   isActive={isActive(item.url)}
+                  className="h-10 rounded-xl data-[active=true]:bg-sidebar-primary data-[active=true]:font-semibold data-[active=true]:text-sidebar-primary-foreground"
                   render={<Link href={item.url} />}
                 >
                   <item.icon />
@@ -145,15 +154,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter>
+      <SidebarFooter className="p-3">
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger render={
-                <SidebarMenuButton size="lg" className="w-full justify-between hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" />
+                <SidebarMenuButton size="lg" className="h-auto w-full justify-between rounded-2xl bg-sidebar-accent/75 p-3 transition-colors hover:bg-sidebar-accent" />
               }>
                 <div className="flex items-center gap-2">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-md overflow-hidden bg-slate-200 dark:bg-slate-700">
+                  <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl bg-sidebar-primary/20 ring-1 ring-white/10">
                     {currentUser?.avatar_url ? (
                       <img src={currentUser.avatar_url} alt="Avatar" className="h-full w-full object-cover" />
                     ) : (
@@ -183,9 +192,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setTheme(theme === "light" ? "dark" : "light")} className="cursor-pointer">
                   {theme === "light" ? (
-                    <Settings2Icon className="mr-2 h-4 w-4 rotate-90" />
+                    <SunIcon className="mr-2 h-4 w-4" />
                   ) : (
-                    <Settings2Icon className="mr-2 h-4 w-4" />
+                    <MoonIcon className="mr-2 h-4 w-4" />
                   )}
                   <span>{theme === "light" ? "Đổi sang Tối" : "Đổi sang Sáng"}</span>
                 </DropdownMenuItem>

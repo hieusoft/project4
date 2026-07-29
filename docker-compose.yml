@@ -132,8 +132,10 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_BASE_URL: "${NEXT_PUBLIC_API_BASE_URL:-/api}"
+        API_INTERNAL_BASE_URL: "${API_INTERNAL_BASE_URL:-http://kong:8000}"
     environment:
       NODE_ENV: production
+      API_INTERNAL_BASE_URL: "${API_INTERNAL_BASE_URL:-http://kong:8000}"
     ports: ["${ADMIN_DASHBOARD_PORT:-3010}:3000"]
     depends_on: [kong]
 volumes:
