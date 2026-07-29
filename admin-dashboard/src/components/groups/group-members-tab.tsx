@@ -9,10 +9,13 @@ import {
 import { useState } from "react"
 import { communityApi } from "@/lib/api/client"
 import { toast } from "sonner"
-import { Group } from "@/types"
+import { Badge } from "@/components/ui/badge"
+import { Group, GroupMember } from "@/types"
+import { CalendarDays, ShieldCheck, Users } from "lucide-react"
+import { SafeImage } from "@/components/ui/safe-image"
 
 interface GroupMembersTabProps {
-  groupMembers: any[]
+  groupMembers: GroupMember[]
   dialogGroup: Group | null
   onRefresh?: () => void
 }
@@ -35,25 +38,29 @@ export function GroupMembersTab({ groupMembers, dialogGroup, onRefresh }: GroupM
   }
 
   if (groupMembers.length === 0) {
-    return <p className="text-sm text-muted-foreground text-center py-4">Không có thành viên nào</p>
+    return <div className="flex flex-col items-center rounded-2xl border border-dashed py-12 text-center text-muted-foreground"><Users className="mb-3 size-8" /><p className="font-medium">Chưa có thành viên</p><p className="mt-1 text-xs">Danh sách thành viên được duyệt sẽ xuất hiện tại đây.</p></div>
   }
 
   return (
-    <div className="space-y-3">
-      {groupMembers.map((m: any) => (
-        <div key={m.id} className="flex justify-between items-center text-sm border-b pb-2 last:border-0">
-          <div className="overflow-hidden mr-2">
-            <p className="font-medium truncate">
-              {m.profile ? (m.profile.full_name || `@${m.profile.username}`) : m.user_id}
-            </p>
-            <p className="text-xs text-muted-foreground">Tham gia: {new Date(m.joined_at).toLocaleDateString("vi-VN")}</p>
+    <div className="space-y-2">
+      {groupMembers.map((m) => (
+        <div key={m.id} className="flex flex-col gap-3 rounded-2xl border p-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 font-bold text-primary">
+              <SafeImage src={m.profile?.avatar_url} alt="" className="size-full object-cover" fallback={(m.profile?.full_name || m.profile?.username || "?").charAt(0).toUpperCase()} />
+            </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2"><p className="truncate font-semibold">{m.profile?.full_name || m.profile?.username || "Chưa có thông tin"}</p>{m.role === "owner" && <Badge variant="outline" className="gap-1"><ShieldCheck className="size-3" />Chủ nhóm</Badge>}</div>
+              <p className="truncate text-xs text-muted-foreground">@{m.profile?.username || m.user_id.slice(0, 8)}</p>
+              <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground"><CalendarDays className="size-3" />Tham gia {new Date(m.joined_at || m.created_at).toLocaleDateString("vi-VN")}</p>
+            </div>
           </div>
           <Select
             value={m.role}
-            onValueChange={(v) => handleRoleChange(m.user_id, v)}
+            onValueChange={(v) => v && handleRoleChange(m.user_id, v)}
             disabled={updatingUser === m.user_id}
           >
-            <SelectTrigger className="w-[140px] h-8 text-xs">
+            <SelectTrigger className="h-9 w-full text-xs sm:w-[160px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

@@ -22,6 +22,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Package, Calendar, Ban, Clock } from "lucide-react"
 import { useState, useEffect } from "react"
 import { donationApi } from "@/lib/api/client"
+import { DonationTimelineEntry, DonationWithDonor } from "@/types"
+import { SafeImage } from "@/components/ui/safe-image"
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   pending: { label: "Chờ duyệt", variant: "secondary" },
@@ -33,11 +35,27 @@ const statusConfig: Record<string, { label: string; variant: "default" | "second
   cancelled: { label: "Đã hủy", variant: "outline" },
 }
 
+const timelineLabels: Record<string, string> = {
+  created: "Đơn quyên góp được tạo",
+  reviewed_accepted: "Đơn đã được chấp nhận",
+  reviewed_rejected: "Đơn đã bị từ chối",
+  reviewed: "Đơn đã được kiểm duyệt",
+  scheduled: "Đã xác nhận lịch bàn giao",
+  received: "Nhóm đã tiếp nhận vật phẩm",
+  item_accepted: "Vật phẩm đã được duyệt",
+  item_rejected: "Vật phẩm bị từ chối",
+  inventory_in_stock: "Vật phẩm đã nhập kho",
+  inventory_listed: "Vật phẩm đã được đưa lên gian hàng",
+  inventory_reserved: "Vật phẩm đã được giữ chỗ",
+  inventory_delivered: "Vật phẩm đã được bàn giao",
+  inventory_discarded: "Vật phẩm đã được loại khỏi kho",
+}
+
 interface DonationDetailsDialogProps {
-  detailDonation: Record<string, any> | null
+  detailDonation: DonationWithDonor | null
   onClose: () => void
   onAction: (action: "accepted" | "rejected" | "schedule" | "cancel", payload?: Record<string, any>) => void
-  currentUser: Record<string, any> | null
+  currentUser: Record<string, unknown> | null
 }
 
 export function DonationDetailsDialog({
@@ -48,7 +66,7 @@ export function DonationDetailsDialog({
 }: DonationDetailsDialogProps) {
   const [scheduleDate, setScheduleDate] = useState("")
   const [showScheduleInput, setShowScheduleInput] = useState(false)
-  const [timeline, setTimeline] = useState<any[]>([])
+  const [timeline, setTimeline] = useState<DonationTimelineEntry[]>([])
   const [loadingTimeline, setLoadingTimeline] = useState(false)
 
   useEffect(() => {
@@ -98,11 +116,11 @@ export function DonationDetailsDialog({
           </TabsList>
           
           <TabsContent value="details" className="space-y-4">
-            <div className="grid grid-cols-2 gap-4 text-sm bg-muted/50 p-4 rounded-lg">
+            <div className="grid gap-4 rounded-2xl bg-muted/50 p-4 text-sm sm:grid-cols-2">
             <div>
               <span className="text-muted-foreground block mb-1">Người quyên góp:</span>
               <span className="font-medium">
-                {detailDonation.donorProfile ? (detailDonation.donorProfile.full_name || `@${detailDonation.donorProfile.username}`) : detailDonation.donor_id}
+                 {detailDonation.donorProfile ? (detailDonation.donorProfile.full_name || `@${detailDonation.donorProfile.username}`) : detailDonation.donor_id.slice(0, 8)}
               </span>
             </div>
             <div>
@@ -148,14 +166,14 @@ export function DonationDetailsDialog({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {detailDonation.items.map((item: any) => (
-                      <TableRow key={item.id}>
-                        <TableCell className="font-medium">{item.name}</TableCell>
+                     {detailDonation.items.map((item) => (
+                       <TableRow key={item.id}>
+                         <TableCell><div className="flex items-center gap-3"><div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-muted text-muted-foreground"><SafeImage src={item.images?.[0]?.image_url} alt="" className="size-full object-cover" fallback={<Package className="size-5" />} /></div><div><p className="font-medium">{item.name}</p><p className="text-xs text-muted-foreground">{item.images?.length || 0} ảnh</p></div></div></TableCell>
                         <TableCell className="tabular-nums">{item.quantity}</TableCell>
-                        <TableCell>{item.condition_declared?.toUpperCase() || 'N/A'}</TableCell>
+                         <TableCell>{item.condition_declared || "Chưa rõ"}</TableCell>
                         <TableCell>
                           <Badge variant="outline" className="mt-1">
-                            {item.status.toUpperCase()}
+                             {item.status === "accepted" ? "Đã duyệt" : item.status === "rejected" ? "Từ chối" : "Chờ xử lý"}
                           </Badge>
                         </TableCell>
                       </TableRow>
@@ -181,7 +199,7 @@ export function DonationDetailsDialog({
             ) : (
               <div className="space-y-4">
                 {timeline.map((entry, i) => (
-                  <div key={i} className="flex gap-4">
+                  <div key={`${entry.at}-${i}`} className="flex gap-4">
                     <div className="mt-1">
                       <div className="rounded-full bg-primary/10 p-2">
                         <Clock className="h-4 w-4 text-primary" />
@@ -189,14 +207,10 @@ export function DonationDetailsDialog({
                     </div>
                     <div>
                       <p className="text-sm font-medium">
-                        {entry.from_status ? (
-                          <>Đổi trạng thái: <span className="line-through text-muted-foreground mr-1">{entry.from_status}</span> &rarr; {entry.to_status}</>
-                        ) : (
-                          <>Chuyển sang: {entry.to_status}</>
-                        )}
+                        {timelineLabels[entry.event] || entry.event.replaceAll("_", " ")}
                       </p>
                       <p className="text-xs text-muted-foreground mb-1">
-                        {new Date(entry.created_at).toLocaleString("vi-VN")}
+                         {new Date(entry.at).toLocaleString("vi-VN")}
                       </p>
                       {entry.note && (
                         <p className="text-sm bg-muted/50 p-2 rounded">{entry.note}</p>
@@ -218,7 +232,7 @@ export function DonationDetailsDialog({
                     <Button variant="outline" onClick={() => onAction("rejected")} className="text-destructive hover:text-destructive">
                       Từ chối
                     </Button>
-                    <Button variant="default" onClick={() => onAction("accepted")} className="bg-emerald-600 hover:bg-emerald-700">
+                    <Button variant="default" onClick={() => onAction("accepted")}>
                       Chấp nhận
                     </Button>
                   </>

@@ -9,23 +9,25 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Eye, ShoppingBagIcon, ImageIcon } from "lucide-react"
+import { Eye, ShoppingBagIcon, ImageIcon, MapPin } from "lucide-react"
+import { ListingWithRelations } from "@/types"
+import { SafeImage } from "@/components/ui/safe-image"
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  active: { label: "ACTIVE", variant: "default" },
-  reserved: { label: "RESERVED", variant: "secondary" },
-  closed: { label: "CLOSED", variant: "outline" },
-  blocked: { label: "BLOCKED", variant: "destructive" },
+  active: { label: "Đang hiển thị", variant: "default" },
+  reserved: { label: "Đã giữ chỗ", variant: "secondary" },
+  closed: { label: "Đã hoàn tất", variant: "outline" },
+  blocked: { label: "Đã khóa", variant: "destructive" },
 }
 
 interface ListingTableProps {
-  listings: any[]
+  listings: ListingWithRelations[]
   loading: boolean
   total: number
   page: number
   limit: number
   onPageChange: (newPage: number) => void
-  onViewClick: (listing: any) => void
+  onViewClick: (listing: ListingWithRelations) => void
 }
 
 export function ListingTable({
@@ -41,6 +43,7 @@ export function ListingTable({
 
   return (
     <>
+      <div className="admin-table-wrap">
       <Table>
         <TableHeader>
           <TableRow>
@@ -48,7 +51,7 @@ export function ListingTable({
             <TableHead>Người đăng / Nhóm</TableHead>
             <TableHead>Trạng thái</TableHead>
             <TableHead>Tồn kho</TableHead>
-            <TableHead>Ảnh</TableHead>
+            <TableHead>Khu vực</TableHead>
             <TableHead>Ngày tạo</TableHead>
             <TableHead className="text-right">Thao tác</TableHead>
           </TableRow>
@@ -76,15 +79,13 @@ export function ListingTable({
           ) : (
             listings.map((listing) => (
               <TableRow key={listing.id}>
-                <TableCell className="font-medium max-w-[250px] truncate">
-                  {listing.title}
+                <TableCell><div className="flex min-w-56 items-center gap-3"><div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-muted text-muted-foreground"><SafeImage src={listing.images?.[0]?.image_url} alt="" className="size-full object-cover" fallback={<ImageIcon className="size-5" />} /></div><div className="min-w-0"><p className="max-w-52 truncate font-semibold">{listing.title}</p><p className="mt-0.5 text-xs text-muted-foreground">{listing.category?.name || "Chưa phân loại"}</p></div></div>
                 </TableCell>
                 <TableCell>
                   <span className="font-medium">
-                    {listing.ownerProfile 
-                      ? (listing.ownerProfile.full_name || listing.ownerProfile.name || `@${listing.ownerProfile.username || ''}`) 
-                      : (listing.group_id ? 'Nhóm thiện nguyện' : (listing.user_id?.substring(0, 8) + "..."))}
-                  </span>
+                     {listing.group?.name || "Nhóm thiện nguyện"}
+                   </span>
+                   <p className="mt-0.5 text-xs text-muted-foreground">Đăng bởi {listing.creatorProfile?.full_name || listing.creatorProfile?.username || listing.created_by.slice(0, 8)}</p>
                 </TableCell>
                 <TableCell>
                   <Badge variant={statusConfig[listing.status]?.variant || "secondary"}>
@@ -95,10 +96,7 @@ export function ListingTable({
                   {listing.quantity_available}/{listing.quantity_total}
                 </TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-1 text-muted-foreground">
-                    <ImageIcon className="h-4 w-4" />
-                    <span className="tabular-nums">{listing.images?.length || 0}</span>
-                  </div>
+                  <div className="flex items-center gap-1 text-muted-foreground"><MapPin className="h-4 w-4" /><span>{listing.province_code || "Chưa rõ"}</span></div>
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {new Date(listing.created_at).toLocaleDateString("vi-VN")}
@@ -118,6 +116,7 @@ export function ListingTable({
           )}
         </TableBody>
       </Table>
+      </div>
 
       {total > 0 && (
         <div className="flex items-center justify-between mt-4 pt-4 border-t">

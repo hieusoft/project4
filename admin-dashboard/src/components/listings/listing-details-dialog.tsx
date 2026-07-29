@@ -8,20 +8,22 @@ import {
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ShoppingBagIcon, Ban, EyeIcon } from "lucide-react"
+import { ShoppingBagIcon, Ban, EyeIcon, Boxes, ImageIcon, MapPin, UserRound } from "lucide-react"
+import { ListingWithRelations } from "@/types"
+import { SafeImage } from "@/components/ui/safe-image"
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  active: { label: "Active", variant: "default" },
-  reserved: { label: "Reserved", variant: "secondary" },
-  closed: { label: "Closed", variant: "outline" },
-  blocked: { label: "Blocked", variant: "destructive" },
+  active: { label: "Đang hiển thị", variant: "default" },
+  reserved: { label: "Đã giữ chỗ", variant: "secondary" },
+  closed: { label: "Đã hoàn tất", variant: "outline" },
+  blocked: { label: "Đã khóa", variant: "destructive" },
 }
 
 interface ListingDetailsDialogProps {
-  detailListing: Record<string, any> | null
+  detailListing: ListingWithRelations | null
   onClose: () => void
   onCloseListing: () => void
-  currentUser: Record<string, any> | null
+  currentUser: Record<string, unknown> | null
 }
 
 export function ListingDetailsDialog({
@@ -36,7 +38,7 @@ export function ListingDetailsDialog({
 
   return (
     <Dialog open={!!detailListing} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-5xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShoppingBagIcon className="h-5 w-5" />
@@ -46,61 +48,31 @@ export function ListingDetailsDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Main Info */}
-          <div className="grid grid-cols-2 gap-4 text-sm bg-muted/50 p-4 rounded-lg">
-            <div>
-              <span className="text-muted-foreground block mb-1">Chủ gian hàng (Người đăng):</span>
-              <span className="font-medium">
-                {detailListing.ownerProfile 
-                  ? (detailListing.ownerProfile.full_name || detailListing.ownerProfile.name || `@${detailListing.ownerProfile.username || ''}`) 
-                  : (detailListing.group_id ? 'Nhóm thiện nguyện' : (detailListing.user_id?.substring(0, 8) + "..."))}
-              </span>
+          <div className="grid gap-4 lg:grid-cols-[1.1fr_.9fr]">
+            <div className="flex min-h-72 items-center justify-center overflow-hidden rounded-3xl border bg-muted text-muted-foreground">
+              <SafeImage src={detailListing.images?.[0]?.image_url} alt={detailListing.title} className="size-full object-cover" fallback={<ImageIcon className="size-12" />} />
             </div>
-            <div>
-              <span className="text-muted-foreground block mb-1">Trạng thái:</span>
-              <Badge variant={statusConfig[detailListing.status]?.variant || "secondary"}>
-                {statusConfig[detailListing.status]?.label || detailListing.status}
-              </Badge>
-            </div>
-            <div>
-              <span className="text-muted-foreground block mb-1">Số lượng / Tồn kho:</span>
-              <span className="font-medium">{detailListing.quantity_available} / {detailListing.quantity_total}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground block mb-1">Lượt xem:</span>
-              <span className="font-medium flex items-center gap-1">
-                <EyeIcon className="h-4 w-4 text-muted-foreground" />
-                {detailListing.view_count}
-              </span>
-            </div>
-            <div className="col-span-2">
-              <span className="text-muted-foreground block mb-1">Khu vực / Địa chỉ:</span>
-              <span className="font-medium">{detailListing.district_name || 'Không rõ'}, {detailListing.province_name || 'Không rõ'}</span>
+            <div className="space-y-4 rounded-3xl border bg-muted/30 p-5">
+              <div className="flex flex-wrap items-center gap-2"><Badge variant={statusConfig[detailListing.status]?.variant || "secondary"}>{statusConfig[detailListing.status]?.label || detailListing.status}</Badge><Badge variant="outline">{detailListing.category?.name || "Chưa phân loại"}</Badge></div>
+              <div><p className="text-xs text-muted-foreground">Nhóm quản lý</p><p className="mt-1 font-semibold">{detailListing.group?.name || "Nhóm thiện nguyện"}</p></div>
+              <div><p className="flex items-center gap-1 text-xs text-muted-foreground"><UserRound className="size-3.5" />Người đăng</p><p className="mt-1 font-semibold">{detailListing.creatorProfile?.full_name || detailListing.creatorProfile?.username || detailListing.created_by.slice(0, 8)}</p></div>
+              <div className="grid grid-cols-2 gap-3"><div className="rounded-2xl border bg-card p-3"><Boxes className="size-4 text-primary" /><p className="mt-2 text-xs text-muted-foreground">Tồn kho</p><p className="font-bold tabular-nums">{detailListing.quantity_available}/{detailListing.quantity_total}</p></div><div className="rounded-2xl border bg-card p-3"><EyeIcon className="size-4 text-primary" /><p className="mt-2 text-xs text-muted-foreground">Lượt xem</p><p className="font-bold tabular-nums">{detailListing.view_count}</p></div></div>
+              <p className="flex items-center gap-2 text-sm text-muted-foreground"><MapPin className="size-4" />{[detailListing.district_code, detailListing.province_code].filter(Boolean).join(", ") || "Chưa cập nhật khu vực"}</p>
+              <p className="text-xs text-muted-foreground">Tạo ngày {new Date(detailListing.created_at).toLocaleString("vi-VN")}</p>
             </div>
           </div>
 
           {/* Description */}
-          {detailListing.description && (
-            <div>
-              <span className="text-sm font-medium">Mô tả tin đăng:</span>
-              <p className="text-sm mt-1 bg-secondary/50 p-3 rounded whitespace-pre-wrap">{detailListing.description}</p>
-            </div>
-          )}
+          <div className="rounded-2xl border p-4"><span className="text-sm font-semibold">Mô tả tin đăng</span><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{detailListing.description || "Tin đăng chưa có mô tả."}</p></div>
 
           {/* Images */}
           {detailListing.images && detailListing.images.length > 0 && (
             <div>
               <span className="text-sm font-medium mb-2 block">Hình ảnh đính kèm ({detailListing.images.length}):</span>
               <div className="flex gap-2 overflow-x-auto pb-2">
-                {detailListing.images.map((img: any) => (
-                  <div key={img.id} className="relative min-w-[150px] h-[150px] rounded-md overflow-hidden border">
-                    {/* Fallback styling for images if URLs are broken */}
-                    <img 
-                      src={img.image_url} 
-                      alt="Listing Image" 
-                      className="object-cover w-full h-full"
-                      onError={(e) => { (e.target as any).src = 'https://via.placeholder.com/150?text=No+Image' }}
-                    />
+                {detailListing.images.map((img) => (
+                  <div key={img.id} className="relative flex h-32 min-w-32 items-center justify-center overflow-hidden rounded-2xl border bg-muted text-muted-foreground">
+                    <SafeImage src={img.image_url} alt="Ảnh tin đăng" className="size-full object-cover" fallback={<ImageIcon className="size-6" />} />
                   </div>
                 ))}
               </div>

@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ServerIcon, GiftIcon, PackageCheck, ExternalLinkIcon } from "lucide-react"
+import { ServerIcon, GiftIcon, PackageCheck, ExternalLinkIcon, RadioTower } from "lucide-react"
 
 interface OverviewStats {
   totalRequests: number
@@ -37,15 +37,15 @@ function ServiceStatus({ name, slug }: { name: string; slug: string }) {
   const [status, setStatus] = useState<"loading" | "ok" | "error">("loading")
 
   useEffect(() => {
-    const base = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api"
+    const base = process.env.NEXT_PUBLIC_API_BASE_URL || "/api"
     fetch(`${base}/${slug}/health`, { signal: AbortSignal.timeout(5000) })
       .then((r) => (r.ok ? setStatus("ok") : setStatus("error")))
       .catch(() => setStatus("error"))
   }, [slug])
 
   return (
-    <div className="flex items-center justify-between">
-      <span className="text-sm">{name}</span>
+    <div className="flex items-center justify-between rounded-xl border bg-background/45 px-3 py-2">
+      <span className="text-sm font-medium">{name}</span>
       <div className="flex items-center gap-2">
         <span
           className={`h-2 w-2 rounded-full ${
@@ -53,7 +53,7 @@ function ServiceStatus({ name, slug }: { name: string; slug: string }) {
           }`}
         />
         <span className="text-xs text-muted-foreground">
-          {status === "loading" ? "Checking..." : status === "ok" ? "Healthy" : "Error"}
+          {status === "loading" ? "Đang kiểm tra" : status === "ok" ? "Ổn định" : "Lỗi"}
         </span>
       </div>
     </div>
@@ -62,15 +62,20 @@ function ServiceStatus({ name, slug }: { name: string; slug: string }) {
 
 export function SystemStatusOverview({ stats, loading }: SystemStatusProps) {
   return (
-    <div className="mt-6 grid gap-4 md:grid-cols-2">
-      <Card>
+    <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+      <Card className="admin-surface">
         <CardHeader>
           <div className="flex items-center gap-2">
-            <ServerIcon className="h-4 w-4 text-muted-foreground" />
-            <CardTitle className="text-base">Trạng thái Hệ thống</CardTitle>
+            <div className="rounded-xl bg-emerald-500/10 p-2 text-emerald-700 dark:text-emerald-300">
+              <ServerIcon className="h-4 w-4" />
+            </div>
+            <div>
+              <CardTitle className="text-base">Trạng thái hệ thống</CardTitle>
+              <p className="text-sm text-muted-foreground">Kiểm tra healthcheck qua Kong Gateway</p>
+            </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="grid gap-2 sm:grid-cols-2">
           {[
             { name: "Identity", slug: "identity" },
             { name: "Community", slug: "community" },
@@ -85,11 +90,16 @@ export function SystemStatusOverview({ stats, loading }: SystemStatusProps) {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="admin-surface">
         <CardHeader>
           <div className="flex items-center gap-2">
-            <GiftIcon className="h-4 w-4 text-muted-foreground" />
-            <CardTitle className="text-base">Thống kê nhanh</CardTitle>
+            <div className="rounded-xl bg-amber-500/10 p-2 text-amber-700 dark:text-amber-300">
+              <RadioTower className="h-4 w-4" />
+            </div>
+            <div>
+              <CardTitle className="text-base">Vận hành hôm nay</CardTitle>
+              <p className="text-sm text-muted-foreground">Theo dõi xử lý và bàn giao</p>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">

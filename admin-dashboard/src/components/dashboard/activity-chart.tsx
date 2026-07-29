@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { AlertCircle } from "lucide-react"
+import { AlertCircle, BarChart3 } from "lucide-react"
 import {
   BarChart,
   Bar,
@@ -27,10 +27,18 @@ interface ActivityChartProps {
 
 export function ActivityChart({ chartData, pendingGroups, loading }: ActivityChartProps) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
-      <Card className="lg:col-span-2">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <Card className="admin-surface lg:col-span-2">
         <CardHeader>
-          <CardTitle className="text-base">Thống kê tương tác 7 ngày qua</CardTitle>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <CardTitle className="text-base">Hoạt động 14 ngày qua</CardTitle>
+              <p className="text-sm text-muted-foreground">So sánh quyên góp, yêu cầu và vật phẩm đã trao</p>
+            </div>
+            <div className="rounded-xl bg-primary/10 p-2 text-primary">
+              <BarChart3 className="h-4 w-4" />
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {chartData.length === 0 && !loading && (
@@ -41,13 +49,14 @@ export function ActivityChart({ chartData, pendingGroups, loading }: ActivityCha
             <div style={{ width: '100%', minHeight: 300 }}>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={chartData} margin={{ top: 20, right: 0, left: -20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" opacity={0.12} />
                   <XAxis dataKey="date" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
                   <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
                   <Tooltip cursor={{ fill: 'rgba(0,0,0,0.05)' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
                   <Legend wrapperStyle={{ paddingTop: '10px' }} />
-                  <Bar dataKey="Quyên góp" fill="#ea580c" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                  <Bar dataKey="Giao dịch" fill="#9333ea" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                  <Bar dataKey="Quyên góp" fill="var(--chart-2)" radius={[8, 8, 0, 0]} maxBarSize={34} />
+                  <Bar dataKey="Yêu cầu" fill="var(--chart-3)" radius={[8, 8, 0, 0]} maxBarSize={34} />
+                  <Bar dataKey="Bàn giao" fill="var(--chart-1)" radius={[8, 8, 0, 0]} maxBarSize={34} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -55,7 +64,7 @@ export function ActivityChart({ chartData, pendingGroups, loading }: ActivityCha
         </CardContent>
       </Card>
       
-      <Card className="lg:col-span-1">
+      <Card className="admin-surface lg:col-span-1">
         <CardHeader>
           <CardTitle className="text-base text-red-600 dark:text-red-400 flex items-center gap-2">
              <AlertCircle className="h-4 w-4" /> Cần duyệt gấp

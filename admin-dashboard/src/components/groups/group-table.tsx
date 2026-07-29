@@ -9,14 +9,15 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Group } from "@/types"
-import { CheckCircle, XCircle, HeartHandshakeIcon, EyeIcon } from "lucide-react"
+import { Group, Profile } from "@/types"
+import { CheckCircle, XCircle, HeartHandshakeIcon, EyeIcon, MapPin, Users } from "lucide-react"
+import { SafeImage } from "@/components/ui/safe-image"
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  active: { label: "ACTIVE", variant: "default" },
-  pending: { label: "PENDING", variant: "secondary" },
-  suspended: { label: "SUSPENDED", variant: "destructive" },
-  closed: { label: "CLOSED", variant: "outline" },
+  active: { label: "Đang hoạt động", variant: "default" },
+  pending: { label: "Chờ duyệt", variant: "secondary" },
+  suspended: { label: "Đình chỉ", variant: "destructive" },
+  closed: { label: "Đã đóng", variant: "outline" },
 }
 
 interface GroupTableProps {
@@ -28,6 +29,7 @@ interface GroupTableProps {
   onPageChange: (newPage: number) => void
   onActionClick: (group: Group, action: "approve" | "suspend") => void
   onViewClick: (group: Group) => void
+  ownerProfiles: Record<string, Profile>
 }
 
 export function GroupTable({
@@ -39,20 +41,22 @@ export function GroupTable({
   onPageChange,
   onActionClick,
   onViewClick,
+  ownerProfiles,
 }: GroupTableProps) {
   const totalPages = Math.ceil(total / limit)
 
   return (
     <>
+      <div className="admin-table-wrap">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Tên nhóm</TableHead>
-            <TableHead>Slug</TableHead>
+            <TableHead>Nhóm thiện nguyện</TableHead>
+            <TableHead>Người phụ trách</TableHead>
             <TableHead>Trạng thái</TableHead>
             <TableHead>Thành viên</TableHead>
-            <TableHead>Đánh giá</TableHead>
-            <TableHead>Ngày tạo</TableHead>
+            <TableHead>Khu vực</TableHead>
+            <TableHead>Ngày thành lập</TableHead>
             <TableHead className="text-right">Thao tác</TableHead>
           </TableRow>
         </TableHeader>
@@ -79,17 +83,40 @@ export function GroupTable({
           ) : (
             groups.map((group) => (
               <TableRow key={group.id}>
-                <TableCell className="font-medium">{group.name}</TableCell>
-                <TableCell className="text-muted-foreground font-mono text-sm">
-                  {group.slug}
+                <TableCell>
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-primary/10 font-bold text-primary">
+                      <SafeImage src={group.avatar_url} alt="" className="size-full object-cover" fallback={group.name.charAt(0).toUpperCase()} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="max-w-52 truncate font-semibold">{group.name}</p>
+                      <p className="max-w-52 truncate font-mono text-xs text-muted-foreground">{group.slug}</p>
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex min-w-40 items-center gap-2.5">
+                    <div className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-xs font-bold text-primary">
+                      <SafeImage
+                        src={ownerProfiles[group.owner_id]?.avatar_url}
+                        alt=""
+                        className="size-full object-cover"
+                        fallback={(ownerProfiles[group.owner_id]?.full_name || ownerProfiles[group.owner_id]?.username || "?").charAt(0).toUpperCase()}
+                      />
+                    </div>
+                    <div className="min-w-0 max-w-44 truncate">
+                      <p className="truncate font-medium">{ownerProfiles[group.owner_id]?.full_name || ownerProfiles[group.owner_id]?.username || "Chưa có thông tin"}</p>
+                      <p className="truncate text-xs text-muted-foreground">@{ownerProfiles[group.owner_id]?.username || group.owner_id.slice(0, 8)}</p>
+                    </div>
+                  </div>
                 </TableCell>
                 <TableCell>
                   <Badge variant={statusConfig[group.status]?.variant || "secondary"}>
                     {statusConfig[group.status]?.label || group.status}
                   </Badge>
                 </TableCell>
-                <TableCell className="tabular-nums">{group.member_count}</TableCell>
-                <TableCell className="tabular-nums">{group.reputation_score}</TableCell>
+                <TableCell><span className="flex items-center gap-1.5 font-semibold tabular-nums"><Users className="size-3.5 text-muted-foreground" />{group.member_count}</span></TableCell>
+                <TableCell><span className="flex items-center gap-1.5 text-muted-foreground"><MapPin className="size-3.5" />{group.province_code || "Chưa rõ"}</span></TableCell>
                 <TableCell className="text-muted-foreground">
                   {new Date(group.created_at).toLocaleDateString("vi-VN")}
                 </TableCell>
@@ -130,6 +157,7 @@ export function GroupTable({
           )}
         </TableBody>
       </Table>
+      </div>
 
       {total > 0 && (
         <div className="flex items-center justify-between mt-4 pt-4 border-t">
