@@ -11,7 +11,10 @@ from app.events.publisher import EventPublisher
 from app.models.domain import InventoryItem, ItemStatusHistory
 from app.models.enums import InventoryStatus
 from app.repositories.inventory import CategoryRepository, InventoryRepository
-from app.schemas.inventory import UpdateInventoryStatusRequest
+from app.schemas.inventory import (
+    DecreaseQuantityRequest,
+    UpdateInventoryStatusRequest,
+)
 
 
 class InventoryService:
@@ -88,6 +91,33 @@ class InventoryService:
                 refType=data.refType,
                 refId=str(data.refId) if data.refId else None,
             ),
+        )
+        return updated
+
+    async def decrease_quantity(
+        self,
+        item_id: uuid.UUID,
+        data: DecreaseQuantityRequest,
+        actor_id: uuid.UUID | None = None,
+    ) -> InventoryItem:
+        """Giảm quantity inventory khi người nhận đã nhận đồ quyên góp."""
+        item = await self.get(item_id)
+        if item.quantity < data.quantity:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                f"Cannot decrease {data.quantity} from inventory with only {item.quantity} remaining",
+            )
+
+        updated = await self._inv.decrease_quantity(item_id, quantity=data.quantity)
+        assert updated is not None
+        await self._inv.add_history(
+            inventory_item_id=item_id,
+            from_status=item.status,
+            to_status=item.status,
+            actor_id=actor_id,
+            ref_type=data.refType,
+            ref_id=data.refId,
+            note=data.note or f"Decreased quantity by {data.quantity} on delivery",
         )
         return updated
 

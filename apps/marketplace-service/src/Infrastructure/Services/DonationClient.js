@@ -97,6 +97,27 @@ class DonationClient {
       throw err;
     }
   }
+
+  async decreaseItemQuantity(itemId, quantity, ref = {}, token) {
+    try {
+      const body = {
+        quantity,
+        refType: ref.refType || ref.ref_type || null,
+        refId: ref.refId || ref.ref_id || null,
+        note: ref.note || null,
+      };
+      const res = await this._request('POST', `/internal/inventory/${itemId}/decrease`, { token, body });
+      if (res.status >= 400) {
+        if (this.soft) return { id: itemId, quantity };
+        throw new Error(`Donation decrease quantity failed: ${res.status}`);
+      }
+      return this._unwrap(res.data);
+    } catch (err) {
+      console.warn('DonationClient.decreaseItemQuantity:', err.message);
+      if (this.soft) return { id: itemId, quantity };
+      throw err;
+    }
+  }
 }
 
 module.exports = DonationClient;

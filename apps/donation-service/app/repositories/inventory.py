@@ -191,6 +191,25 @@ class InventoryRepository:
         )
         return _inv(row) if row else None
 
+    async def decrease_quantity(
+        self,
+        item_id: uuid.UUID,
+        *,
+        quantity: int,
+    ) -> InventoryItem | None:
+        """Giảm quantity khi người nhận đã nhận đồ. Không cho âm."""
+        row = await self._conn.fetchrow(
+            """
+            UPDATE inventory_items
+            SET quantity = GREATEST(quantity - $2, 0), updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            """,
+            item_id,
+            quantity,
+        )
+        return _inv(row) if row else None
+
     async def history(
         self, inventory_item_id: uuid.UUID
     ) -> list[ItemStatusHistory]:

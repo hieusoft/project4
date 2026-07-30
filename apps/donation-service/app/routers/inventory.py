@@ -10,6 +10,7 @@ from app.models.enums import InventoryStatus
 from app.schemas.common import DataEnvelope, Page, PageMeta
 from app.schemas.inventory import (
     CategoryOut,
+    DecreaseQuantityRequest,
     InventoryItemOut,
     ItemHistoryOut,
     UpdateInventoryStatusRequest,
@@ -154,4 +155,21 @@ async def internal_update_status(
 ):
     actor = user.uuid if user else None
     item = await service.update_status(item_id, body, actor_id=actor)
+    return DataEnvelope(data=_inv_out(item))
+
+
+@router.post(
+    "/internal/inventory/{item_id}/decrease",
+    response_model=DataEnvelope[InventoryItemOut],
+    tags=["internal"],
+)
+async def internal_decrease_quantity(
+    item_id: uuid.UUID,
+    body: DecreaseQuantityRequest,
+    service: InventoryServiceDep,
+    user: OptionalUserDep = None,
+):
+    """Giảm quantity inventory khi người nhận đã nhận đồ (gọi từ marketplace)."""
+    actor = user.uuid if user else None
+    item = await service.decrease_quantity(item_id, body, actor_id=actor)
     return DataEnvelope(data=_inv_out(item))

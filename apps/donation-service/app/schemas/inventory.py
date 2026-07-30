@@ -43,6 +43,13 @@ class UpdateInventoryStatusRequest(BaseModel):
     note: str | None = Field(default=None, max_length=1000)
 
 
+class DecreaseQuantityRequest(BaseModel):
+    quantity: int = Field(gt=0)
+    refType: str | None = Field(default=None, max_length=30)
+    refId: uuid.UUID | None = None
+    note: str | None = Field(default=None, max_length=1000)
+
+
 class CategoryOut(BaseModel):
     id: uuid.UUID
     name: str

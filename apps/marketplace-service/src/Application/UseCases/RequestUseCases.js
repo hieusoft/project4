@@ -186,6 +186,12 @@ class RequestUseCases {
     const updatedListing = result.listing;
 
     if (this.donationClient && updatedListing.inventory_item_id) {
+      await this.donationClient.decreaseItemQuantity(
+        updatedListing.inventory_item_id,
+        request.quantity,
+        { refType: 'request', refId: request.id, note: 'Delivered to receiver' },
+        token
+      );
       await this.donationClient.updateItemStatus(
         updatedListing.inventory_item_id,
         updatedListing.status === 'closed'
