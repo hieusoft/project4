@@ -105,8 +105,8 @@ async def list_inventory(
 )
 async def get_inventory_item(
     item_id: uuid.UUID,
-    user: CurrentUserDep,
     service: InventoryServiceDep,
+    user: OptionalUserDep = None,
 ):
     item = await service.get(item_id)
     return DataEnvelope(data=_inv_out(item))
@@ -118,8 +118,8 @@ async def get_inventory_item(
 )
 async def inventory_history(
     item_id: uuid.UUID,
-    user: CurrentUserDep,
     service: InventoryServiceDep,
+    user: OptionalUserDep = None,
 ):
     hist = await service.history(item_id, user)
     return DataEnvelope(data=[_hist_out(h) for h in hist])

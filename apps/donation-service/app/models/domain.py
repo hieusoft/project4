@@ -45,6 +45,8 @@ class Donation:
     received_at: datetime | None
     rejected_reason: str | None
     reviewed_by: uuid.UUID | None
+    reviewed_at: datetime | None
+    review_action: str | None
     created_at: datetime
     updated_at: datetime
     items: list[DonationItem] = field(default_factory=list)

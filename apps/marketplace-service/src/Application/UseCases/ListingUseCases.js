@@ -51,9 +51,15 @@ class ListingUseCases {
       if (listingData.quantity_total == null && inv.quantity) {
         listingData.quantity_total = inv.quantity;
       }
+      // Attribution: the donor who originally contributed the item
+      if (inv.donor_id) {
+        listingData.created_by = inv.donor_id;
+      }
     }
 
-    listingData.created_by = actorId;
+    if (!listingData.created_by) {
+      listingData.created_by = actorId;
+    }
     listingData.quantity_available =
       listingData.quantity_available !== undefined
         ? listingData.quantity_available

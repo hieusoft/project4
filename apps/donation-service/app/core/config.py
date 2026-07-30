@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     rabbitmq_exchange: str = "charity.events"
 
     community_service_url: str = "http://community-service:3002"
+    identity_service_url: str = "http://identity-service:3001"
     # When true, skip Community HTTP if unreachable (local/dev only)
     community_check_soft: bool = False
 

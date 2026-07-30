@@ -23,6 +23,8 @@ def _donation(row: asyncpg.Record, items: list[DonationItem] | None = None) -> D
         received_at=row["received_at"],
         rejected_reason=row["rejected_reason"],
         reviewed_by=row["reviewed_by"],
+        reviewed_at=row["reviewed_at"],
+        review_action=row["review_action"],
         created_at=row["created_at"],
         updated_at=row["updated_at"],
         items=items or [],
@@ -255,6 +257,15 @@ class DonationRepository:
               rejected_reason = COALESCE($4, rejected_reason),
               scheduled_at = COALESCE($5, scheduled_at),
               received_at = COALESCE($6, received_at),
+              reviewed_at = CASE
+                WHEN $3 IS NOT NULL AND reviewed_at IS NULL THEN NOW()
+                ELSE reviewed_at
+              END,
+              review_action = CASE
+                WHEN $3 IS NOT NULL AND review_action IS NULL
+                  THEN ($2::donation_status)::text
+                ELSE review_action
+              END,
               updated_at = NOW()
             WHERE id = $1
             RETURNING *

@@ -124,8 +124,9 @@ services:
     environment:
       PORT: "${DONATION_SERVICE_PORT:-3003}"
       COMMUNITY_SERVICE_URL: "http://community-service:3002"
+      IDENTITY_SERVICE_URL: "http://identity-service:3001"
     ports: ["${DONATION_SERVICE_PORT:-3003}:${DONATION_SERVICE_PORT:-3003}"]
-    depends_on: [postgres, rabbitmq, community-service]
+    depends_on: [postgres, rabbitmq, community-service, identity-service]
   admin-dashboard:
     build:
       context: ./admin-dashboard

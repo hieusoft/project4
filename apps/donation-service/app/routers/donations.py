@@ -5,7 +5,7 @@ import uuid
 
 from fastapi import APIRouter, Query, status
 
-from app.core.deps import CurrentUserDep
+from app.core.deps import CurrentUserDep, OptionalUserDep
 from app.models.enums import DonationStatus
 from app.schemas.common import DataEnvelope, Page, PageMeta
 from app.schemas.donations import (
@@ -13,6 +13,7 @@ from app.schemas.donations import (
     CreateDonationRequest,
     DonationItemOut,
     DonationOut,
+    DonationTrackOut,
     DonationImageOut,
     ReviewDonationRequest,
     ScheduleDonationRequest,
@@ -65,6 +66,8 @@ def _donation_out(d) -> DonationOut:
         received_at=d.received_at,
         rejected_reason=d.rejected_reason,
         reviewed_by=d.reviewed_by,
+        reviewed_at=d.reviewed_at,
+        review_action=d.review_action,
         created_at=d.created_at,
         updated_at=d.updated_at,
         items=[_item_out(i) for i in d.items],
@@ -111,6 +114,21 @@ async def list_donations(
             meta=PageMeta(total=total, limit=limit, offset=offset),
         )
     )
+
+
+@router.get(
+    "/donations/track/{code}",
+    response_model=DataEnvelope[DonationTrackOut],
+    tags=["public"],
+)
+async def track_donation(
+    code: str,
+    service: DonationServiceDep,
+    _user: OptionalUserDep = None,
+):
+    """Public tracking page: donation + donor info + group info + full timeline."""
+    result = await service.track(code)
+    return DataEnvelope(data=result)
 
 
 @router.get(

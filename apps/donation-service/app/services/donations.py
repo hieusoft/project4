@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from fastapi import HTTPException, status
 
 from app.clients.community import community_client
+from app.clients.identity import identity_client
 from app.core.deps import CurrentUser
 from app.events import event_names
 from app.events.contracts import (
@@ -23,6 +24,9 @@ from app.repositories.inventory import InventoryRepository
 from app.schemas.donations import (
     CheckItemRequest,
     CreateDonationRequest,
+    DonationTrackOut,
+    DonorInfoOut,
+    GroupInfoOut,
     ReviewDonationRequest,
     ScheduleDonationRequest,
 )
@@ -407,14 +411,10 @@ class DonationService:
         if donation.reviewed_by:
             entries.append(
                 {
-                    "at": donation.updated_at,
-                    "event": f"reviewed_{donation.status}"
-                    if donation.status
-                    in (
-                        DonationStatus.accepted.value,
-                        DonationStatus.rejected.value,
-                    )
-                    else "reviewed",
+                    "at": donation.reviewed_at or donation.updated_at,
+                    "event": "reviewed_rejected"
+                    if donation.review_action == DonationStatus.rejected.value
+                    else "reviewed_accepted",
                     "note": donation.rejected_reason,
                     "actor_id": donation.reviewed_by,
                     "ref_type": "donation",
@@ -438,6 +438,253 @@ class DonationService:
                     "at": donation.received_at,
                     "event": "received",
                     "note": "Items received for inspection",
+                    "actor_id": donation.reviewed_by,
+                    "ref_type": "donation",
+                    "ref_id": donation.id,
+                }
+            )
+
+        if donation.status == DonationStatus.completed.value:
+            entries.append(
+                {
+                    "at": donation.updated_at,
+                    "event": "completed",
+                    "note": "Donation processing completed",
+                    "actor_id": donation.reviewed_by,
+                    "ref_type": "donation",
+                    "ref_id": donation.id,
+                }
+            )
+        elif donation.status == DonationStatus.cancelled.value:
+            entries.append(
+                {
+                    "at": donation.updated_at,
+                    "event": "cancelled",
+                    "note": "Donation cancelled",
+                    "actor_id": donation.donor_id,
+                    "ref_type": "donation",
+                    "ref_id": donation.id,
+                }
+            )
+        elif (
+            donation.status == DonationStatus.rejected.value
+            and donation.review_action == DonationStatus.accepted.value
+        ):
+            entries.append(
+                {
+                    "at": donation.updated_at,
+                    "event": "completed_rejected",
+                    "note": "All donated items were rejected during inspection",
+                    "actor_id": donation.reviewed_by,
+                    "ref_type": "donation",
+                    "ref_id": donation.id,
+                }
+            )
+
+        for item in donation.items:
+            if item.checked_at:
+                entries.append(
+                    {
+                        "at": item.checked_at,
+                        "event": f"item_{item.status}",
+                        "note": item.reject_reason or item.check_note or item.name,
+                        "actor_id": item.checked_by,
+                        "ref_type": "donation_item",
+                        "ref_id": item.id,
+                    }
+                )
+                inv = await self._inventory.get_by_donation_item(item.id)
+                if inv:
+                    for h in await self._inventory.history(inv.id):
+                        entries.append(
+                            {
+                                "at": h.created_at,
+                                "event": f"inventory_{h.to_status}",
+                                "note": h.note,
+                                "actor_id": h.actor_id,
+                                "ref_type": h.ref_type,
+                                "ref_id": h.ref_id,
+                            }
+                        )
+
+        entries.sort(key=lambda e: e["at"] or datetime.min.replace(tzinfo=timezone.utc))
+        return entries
+
+    async def track(self, code: str) -> DonationTrackOut:
+        """Public tracking: return donation + donor info + group info + timeline."""
+        normalized_code = code.strip().upper()
+        if not normalized_code:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Donation code required")
+
+        donation = await self._donations.get_by_code(normalized_code)
+        if donation is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Donation not found")
+
+        donor_info: DonorInfoOut | None = None
+        try:
+            donor_profile = await identity_client.get_public_profile(donation.donor_id)
+            if donor_profile:
+                donor_info = DonorInfoOut(
+                    id=donation.donor_id,
+                    full_name=donor_profile.get("full_name")
+                    or donor_profile.get("display_name")
+                    or "Người quyên góp",
+                    avatar_url=donor_profile.get("avatar_url")
+                    or donor_profile.get("avatar"),
+                )
+        except Exception:
+            pass
+
+        group_info: GroupInfoOut | None = None
+        try:
+            group = await community_client.get_group(donation.group_id)
+            if group:
+                group_info = GroupInfoOut(
+                    id=donation.group_id,
+                    name=group.get("name", "Hội nhóm"),
+                )
+        except Exception:
+            pass
+
+        timeline_entries = await self._build_timeline(donation)
+
+        return DonationTrackOut(
+            id=donation.id,
+            code=donation.code,
+            donor_id=donation.donor_id,
+            group_id=donation.group_id,
+            title=donation.title,
+            description=donation.description,
+            status=donation.status,
+            pickup_method=donation.pickup_method,
+            pickup_address=donation.pickup_address,
+            scheduled_at=donation.scheduled_at,
+            received_at=donation.received_at,
+            rejected_reason=donation.rejected_reason,
+            reviewed_at=donation.reviewed_at,
+            review_action=donation.review_action,
+            created_at=donation.created_at,
+            updated_at=donation.updated_at,
+            items=[
+                {
+                    "id": item.id,
+                    "donation_id": item.donation_id,
+                    "name": item.name,
+                    "category_id": item.category_id,
+                    "quantity": item.quantity,
+                    "condition_declared": item.condition_declared,
+                    "condition_actual": item.condition_actual,
+                    "check_note": item.check_note,
+                    "checked_by": item.checked_by,
+                    "checked_at": item.checked_at,
+                    "status": item.status,
+                    "reject_reason": item.reject_reason,
+                    "images": [
+                        {
+                            "id": image.id,
+                            "donation_item_id": image.donation_item_id,
+                            "image_url": image.image_url,
+                            "type": image.type,
+                        }
+                        for image in item.images
+                    ],
+                }
+                for item in donation.items
+            ],
+            donor=donor_info,
+            group=group_info,
+            timeline=[
+                {
+                    "at": e["at"],
+                    "event": e["event"],
+                    "note": e.get("note"),
+                    "actor_id": e.get("actor_id"),
+                    "ref_type": e.get("ref_type"),
+                    "ref_id": e.get("ref_id"),
+                }
+                for e in timeline_entries
+            ],
+        )
+
+    async def _build_timeline(self, donation: Donation) -> list[dict]:
+        """Build timeline entries without requiring a user (for public tracking)."""
+        entries: list[dict] = [
+            {
+                "at": donation.created_at,
+                "event": "created",
+                "note": f"Donation {donation.code} created",
+                "actor_id": donation.donor_id,
+                "ref_type": "donation",
+                "ref_id": donation.id,
+            }
+        ]
+        if donation.reviewed_by:
+            entries.append(
+                {
+                    "at": donation.reviewed_at or donation.updated_at,
+                    "event": "reviewed_rejected"
+                    if donation.review_action == DonationStatus.rejected.value
+                    else "reviewed_accepted",
+                    "note": donation.rejected_reason,
+                    "actor_id": donation.reviewed_by,
+                    "ref_type": "donation",
+                    "ref_id": donation.id,
+                }
+            )
+        if donation.scheduled_at:
+            entries.append(
+                {
+                    "at": donation.scheduled_at,
+                    "event": "scheduled",
+                    "note": "Pickup/drop-off scheduled",
+                    "actor_id": donation.reviewed_by,
+                    "ref_type": "donation",
+                    "ref_id": donation.id,
+                }
+            )
+        if donation.received_at:
+            entries.append(
+                {
+                    "at": donation.received_at,
+                    "event": "received",
+                    "note": "Items received for inspection",
+                    "actor_id": donation.reviewed_by,
+                    "ref_type": "donation",
+                    "ref_id": donation.id,
+                }
+            )
+
+        if donation.status == DonationStatus.completed.value:
+            entries.append(
+                {
+                    "at": donation.updated_at,
+                    "event": "completed",
+                    "note": "Donation processing completed",
+                    "actor_id": donation.reviewed_by,
+                    "ref_type": "donation",
+                    "ref_id": donation.id,
+                }
+            )
+        elif donation.status == DonationStatus.cancelled.value:
+            entries.append(
+                {
+                    "at": donation.updated_at,
+                    "event": "cancelled",
+                    "note": "Donation cancelled",
+                    "actor_id": donation.donor_id,
+                    "ref_type": "donation",
+                    "ref_id": donation.id,
+                }
+            )
+        elif (
+            donation.status == DonationStatus.rejected.value
+            and donation.review_action == DonationStatus.accepted.value
+        ):
+            entries.append(
+                {
+                    "at": donation.updated_at,
+                    "event": "completed_rejected",
+                    "note": "All donated items were rejected during inspection",
                     "actor_id": donation.reviewed_by,
                     "ref_type": "donation",
                     "ref_id": donation.id,

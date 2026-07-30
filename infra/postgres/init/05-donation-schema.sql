@@ -47,6 +47,8 @@ CREATE TABLE IF NOT EXISTS donations (
   received_at     timestamptz,
   rejected_reason text,
   reviewed_by     uuid,
+  reviewed_at     timestamptz,
+  review_action   varchar(20),
   created_at      timestamptz NOT NULL DEFAULT now(),
   updated_at      timestamptz NOT NULL DEFAULT now()
 );

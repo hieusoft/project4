@@ -90,6 +90,8 @@ class DonationOut(BaseModel):
     received_at: datetime | None = None
     rejected_reason: str | None = None
     reviewed_by: uuid.UUID | None = None
+    reviewed_at: datetime | None = None
+    review_action: str | None = None
     created_at: datetime
     updated_at: datetime
     items: list[DonationItemOut] = Field(default_factory=list)
@@ -102,3 +104,37 @@ class TimelineEntryOut(BaseModel):
     actor_id: uuid.UUID | None = None
     ref_type: str | None = None
     ref_id: uuid.UUID | None = None
+
+
+class DonorInfoOut(BaseModel):
+    id: uuid.UUID
+    full_name: str
+    avatar_url: str | None = None
+
+
+class GroupInfoOut(BaseModel):
+    id: uuid.UUID
+    name: str
+
+
+class DonationTrackOut(BaseModel):
+    id: uuid.UUID
+    code: str
+    donor_id: uuid.UUID
+    group_id: uuid.UUID
+    title: str
+    description: str | None = None
+    status: DonationStatus
+    pickup_method: PickupMethod
+    pickup_address: str | None = None
+    scheduled_at: datetime | None = None
+    received_at: datetime | None = None
+    rejected_reason: str | None = None
+    reviewed_at: datetime | None = None
+    review_action: str | None = None
+    created_at: datetime
+    updated_at: datetime
+    items: list[DonationItemOut] = Field(default_factory=list)
+    donor: DonorInfoOut | None = None
+    group: GroupInfoOut | None = None
+    timeline: list[TimelineEntryOut] = Field(default_factory=list)

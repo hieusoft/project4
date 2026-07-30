@@ -47,16 +47,11 @@ class InventoryService:
         )
 
     async def history(
-        self, item_id: uuid.UUID, user: CurrentUser
+        self, item_id: uuid.UUID, user: CurrentUser | None
     ) -> list[ItemStatusHistory]:
         item = await self.get(item_id)
         # Donor can view own item history; others (mods) also allowed for transparency
-        if (
-            item.donor_id
-            and item.donor_id != user.uuid
-            and not user.is_admin
-        ):
-            # still allow read for authenticated users tracking transparency
+        if user and item.donor_id and item.donor_id != user.uuid and not user.is_admin:
             pass
         return await self._inv.history(item_id)
 
