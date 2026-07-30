@@ -18,8 +18,10 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Donation } from "@/types"
-import { Package, Check, X, Calendar, Ban } from "lucide-react"
-import { useState } from "react"
+import { Package, Check, X, Calendar, Ban, Sparkles, Loader2 } from "lucide-react"
+import { Fragment, useState } from "react"
+import { aiApi } from "@/lib/api/client"
+import { toast } from "sonner"
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   pending: { label: "Chờ duyệt", variant: "secondary" },
@@ -44,6 +46,8 @@ export function DonationDetailsDialog({
 }: DonationDetailsDialogProps) {
   const [scheduleDate, setScheduleDate] = useState("")
   const [showScheduleInput, setShowScheduleInput] = useState(false)
+  const [aiLoading, setAiLoading] = useState<string | null>(null)
+  const [aiResults, setAiResults] = useState<Record<string, any>>({})
 
   if (!detailDonation) return null
 
@@ -60,6 +64,25 @@ export function DonationDetailsDialog({
     if (scheduleDate) {
       onAction("schedule", { scheduled_at: new Date(scheduleDate).toISOString() })
       setShowScheduleInput(false)
+    }
+  }
+
+  async function handleAIDetect(itemId: string, images: any[]) {
+    const firstImage = images?.find((img: any) => img.image_url) || images?.[0]
+    const imageUrl = firstImage?.image_url
+    if (!imageUrl) {
+      toast.error("Vật phẩm chưa có ảnh để nhận diện")
+      return
+    }
+    setAiLoading(itemId)
+    try {
+      const res = await aiApi.detectItem(imageUrl)
+      setAiResults((prev) => ({ ...prev, [itemId]: res }))
+      toast.success("AI đã nhận diện xong!")
+    } catch (err: any) {
+      toast.error("AI nhận diện thất bại: " + (err.message || "lỗi"))
+    } finally {
+      setAiLoading(null)
     }
   }
 
@@ -122,21 +145,81 @@ export function DonationDetailsDialog({
                       <TableHead>Số lượng</TableHead>
                       <TableHead>Tình trạng</TableHead>
                       <TableHead>Trạng thái</TableHead>
+                      <TableHead className="text-right">AI</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {detailDonation.items.map((item: any) => (
-                      <TableRow key={item.id}>
-                        <TableCell className="font-medium">{item.name}</TableCell>
-                        <TableCell className="tabular-nums">{item.quantity}</TableCell>
-                        <TableCell>{item.condition_declared?.toUpperCase() || 'N/A'}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="mt-1">
-                            {item.status.toUpperCase()}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {detailDonation.items.map((item: any) => {
+                      const aiRes = aiResults[item.id]
+                      const isLoading = aiLoading === item.id
+                      return (
+                        <Fragment key={item.id}>
+                          <TableRow>
+                            <TableCell className="font-medium">{item.name}</TableCell>
+                            <TableCell className="tabular-nums">{item.quantity}</TableCell>
+                            <TableCell>{item.condition_declared?.toUpperCase() || 'N/A'}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="mt-1">
+                                {item.status.toUpperCase()}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={isLoading || !item.images?.length}
+                                onClick={() => handleAIDetect(item.id, item.images)}
+                              >
+                                {isLoading ? (
+                                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                                ) : (
+                                  <Sparkles className="w-4 h-4 mr-1" />
+                                )}
+                                Nhận diện
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                          {aiRes && (
+                            <TableRow>
+                              <TableCell colSpan={5} className="bg-blue-50 dark:bg-blue-950/30">
+                                <div className="flex flex-wrap gap-3 text-xs">
+                                  {aiRes.name && (
+                                    <span className="bg-blue-100 dark:bg-blue-900/50 px-2 py-1 rounded">
+                                      <strong>Tên:</strong> {aiRes.name}
+                                    </span>
+                                  )}
+                                  {aiRes.category && (
+                                    <span className="bg-blue-100 dark:bg-blue-900/50 px-2 py-1 rounded">
+                                      <strong>Danh mục:</strong> {aiRes.category}
+                                    </span>
+                                  )}
+                                  {aiRes.condition && (
+                                    <span className="bg-blue-100 dark:bg-blue-900/50 px-2 py-1 rounded">
+                                      <strong>Tình trạng:</strong> {aiRes.condition}
+                                    </span>
+                                  )}
+                                  {aiRes.confidence != null && (
+                                    <span className="bg-blue-100 dark:bg-blue-900/50 px-2 py-1 rounded">
+                                      <strong>Độ tin cậy:</strong> {(aiRes.confidence * 100).toFixed(0)}%
+                                    </span>
+                                  )}
+                                  {aiRes.description && (
+                                    <span className="bg-blue-100 dark:bg-blue-900/50 px-2 py-1 rounded">
+                                      <strong>Mô tả:</strong> {aiRes.description}
+                                    </span>
+                                  )}
+                                  {aiRes.error && (
+                                    <span className="bg-red-100 dark:bg-red-900/50 px-2 py-1 rounded text-red-700 dark:text-red-300">
+                                      {aiRes.error}
+                                    </span>
+                                  )}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </Fragment>
+                      )
+                    })}
                   </TableBody>
                 </Table>
               </div>

@@ -18,6 +18,9 @@ import { PackageIcon } from "lucide-react"
 
 import { DonationTable } from "@/components/donations/donation-table"
 import { DonationDetailsDialog } from "@/components/donations/donation-details-dialog"
+import { CreateDonationDialog } from "@/components/donations/create-donation-dialog"
+import { Plus } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 export default function DonationsPage() {
   const [donations, setDonations] = useState<any[]>([])
@@ -26,6 +29,7 @@ export default function DonationsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [loading, setLoading] = useState(true)
   const [detailDonation, setDetailDonation] = useState<any | null>(null)
+  const [showCreate, setShowCreate] = useState(false)
   const limit = 20
 
   const fetchDonations = useCallback(async () => {
@@ -116,6 +120,9 @@ export default function DonationsPage() {
           <p className="text-muted-foreground mt-1">
             Theo dõi, xét duyệt và quản lý các đơn quyên góp
           </p>
+          <Button onClick={() => setShowCreate(true)} className="mt-3">
+            <Plus className="w-4 h-4 mr-1" /> Tạo đơn quyên góp
+          </Button>
         </div>
 
         <Card>
@@ -163,6 +170,12 @@ export default function DonationsPage() {
         detailDonation={detailDonation}
         onClose={() => setDetailDonation(null)}
         onAction={handleAction}
+      />
+
+      <CreateDonationDialog
+        open={showCreate}
+        onOpenChange={setShowCreate}
+        onCreated={fetchDonations}
       />
     </AdminLayout>
   )

@@ -292,6 +292,25 @@ export const donationApi = {
 
   listCategories: () =>
     request<DataEnvelope<any[]>>("/donation/categories"),
+
+  createDonation: (data: {
+    group_id: string;
+    title: string;
+    description?: string;
+    pickup_method?: string;
+    pickup_address?: string;
+    items: {
+      name: string;
+      category_id?: string;
+      quantity: number;
+      condition_declared: string;
+      images: { image_url: string; type: string }[];
+    }[];
+  }) =>
+    request<DataEnvelope<any>>("/donation/donations", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 };
 
 // ─── Marketplace Service ───
@@ -371,6 +390,52 @@ export const marketplaceApi = {
     const qs = searchParams.toString();
     return request<any>("/marketplace/stats/overview" + (qs ? `?${qs}` : ""));
   },
+};
+
+// ─── AI Service ───
+export const aiApi = {
+  health: () => request<{ service: string; status: string }>("/ai/health"),
+
+  detectItem: (imageUrl: string) =>
+    request<any>("/ai/detect-item", {
+      method: "POST",
+      body: JSON.stringify({ imageUrl }),
+    }),
+
+  generateDescription: (name: string, condition: string) =>
+    request<{ description: string }>("/ai/generate-description", {
+      method: "POST",
+      body: JSON.stringify({ name, condition }),
+    }),
+
+  suggestGroups: (description: string, province: string, activeGroups: any[]) =>
+    request<{ suggestions: any[] }>("/ai/suggest-groups", {
+      method: "POST",
+      body: JSON.stringify({ description, province, activeGroups }),
+    }),
+};
+
+// ─── Media Service ───
+export const mediaApi = {
+  health: () => request<{ service: string; status: string }>("/media/health"),
+
+  presign: (data: { mime_type: string; ref_type: string; file_size?: number }) =>
+    request<DataEnvelope<any>>("/media/presign", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  confirm: (mediaId: string) =>
+    request<DataEnvelope<any>>("/media/confirm", {
+      method: "POST",
+      body: JSON.stringify({ media_id: mediaId }),
+    }),
+
+  link: (data: { media_ids: string[]; ref_type: string; ref_id: string }) =>
+    request<DataEnvelope<any[]>>("/media/link", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
 };
 
 // ─── Communication Service ───
