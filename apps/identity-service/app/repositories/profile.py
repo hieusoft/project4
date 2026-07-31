@@ -119,3 +119,40 @@ class ProfileRepository:
         return (
             UserProfile.model_validate(dict(record)) if record is not None else None
         )
+
+    async def apply_counter_event(
+        self,
+        *,
+        event_type: str,
+        aggregate_id: uuid.UUID,
+        account_id: uuid.UUID,
+        counter: str,
+    ) -> bool:
+        if counter not in ("donation_count", "received_count"):
+            raise ValueError(f"Unsupported profile counter: {counter}")
+
+        inserted = await self._conn.fetchval(
+            """
+            INSERT INTO profile_counter_events (event_type, aggregate_id, account_id)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (event_type, aggregate_id) DO NOTHING
+            RETURNING true
+            """,
+            event_type,
+            aggregate_id,
+            account_id,
+        )
+        if not inserted:
+            return False
+
+        result = await self._conn.execute(
+            f"""
+            UPDATE user_profiles
+            SET {counter} = {counter} + 1, updated_at = now()
+            WHERE id = $1
+            """,
+            account_id,
+        )
+        if result != "UPDATE 1":
+            raise ValueError(f"Profile not found for counter event: {account_id}")
+        return True

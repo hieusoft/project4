@@ -81,6 +81,16 @@ CREATE TABLE IF NOT EXISTS user_profiles (
 );
 CREATE INDEX IF NOT EXISTS idx_profiles_province ON user_profiles(province_code);
 
+CREATE TABLE IF NOT EXISTS profile_counter_events (
+  event_type   varchar(50) NOT NULL,
+  aggregate_id uuid NOT NULL,
+  account_id   uuid NOT NULL,
+  processed_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (event_type, aggregate_id)
+);
+CREATE INDEX IF NOT EXISTS idx_profile_counter_events_account
+  ON profile_counter_events(account_id, processed_at DESC);
+
 CREATE TABLE IF NOT EXISTS user_activity_logs (
   id         bigserial PRIMARY KEY,
   user_id    uuid NOT NULL,

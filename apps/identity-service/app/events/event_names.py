@@ -15,3 +15,5 @@ PASSWORD_RESET_COMPLETED = "password.reset_completed"
 
 # Events consumed by this service
 REPORT_RESOLVED = "report.resolved"
+DONATION_COMPLETED = "donation.completed"
+REQUEST_COMPLETED = "request.completed"

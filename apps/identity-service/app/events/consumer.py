@@ -17,10 +17,15 @@ import aio_pika
 
 from app.core.config import settings
 from app.core.database import get_pool
-from app.events.event_names import REPORT_RESOLVED
+from app.events.event_names import (
+    DONATION_COMPLETED,
+    REPORT_RESOLVED,
+    REQUEST_COMPLETED,
+)
 from app.models.enums import AccountStatus
 from app.repositories.account import AccountRepository
 from app.repositories.refresh_token import RefreshTokenRepository
+from app.repositories.profile import ProfileRepository
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +52,8 @@ class EventConsumer:
         )
         queue = await self._channel.declare_queue(_QUEUE_NAME, durable=True)
         await queue.bind(exchange, routing_key=REPORT_RESOLVED)
+        await queue.bind(exchange, routing_key=DONATION_COMPLETED)
+        await queue.bind(exchange, routing_key=REQUEST_COMPLETED)
         await queue.consume(self._on_message)
         logger.info("EventConsumer listening on %s", _QUEUE_NAME)
 
@@ -103,6 +110,10 @@ class EventConsumer:
             routing_key = message.routing_key
             if routing_key == REPORT_RESOLVED:
                 await self._handle_report_resolved(payload)
+            elif routing_key == DONATION_COMPLETED:
+                await self._handle_donation_completed(payload)
+            elif routing_key == REQUEST_COMPLETED:
+                await self._handle_request_completed(payload)
 
     async def _handle_report_resolved(self, payload: dict) -> None:
         if payload.get("action") != "lock_account":
@@ -127,6 +138,52 @@ class EventConsumer:
         logger.info(
             "Locked account %s and revoked %d refresh tokens", account_id, revoked
         )
+
+    async def _handle_donation_completed(self, payload: dict) -> None:
+        if int(payload.get("acceptedItems") or 0) <= 0:
+            return
+        await self._apply_counter(
+            event_type=DONATION_COMPLETED,
+            aggregate_value=payload.get("donationId"),
+            account_value=payload.get("donorId"),
+            counter="donation_count",
+        )
+
+    async def _handle_request_completed(self, payload: dict) -> None:
+        await self._apply_counter(
+            event_type=REQUEST_COMPLETED,
+            aggregate_value=payload.get("requestId"),
+            account_value=payload.get("receiverId"),
+            counter="received_count",
+        )
+
+    async def _apply_counter(
+        self,
+        *,
+        event_type: str,
+        aggregate_value: object,
+        account_value: object,
+        counter: str,
+    ) -> None:
+        try:
+            aggregate_id = uuid.UUID(str(aggregate_value))
+            account_id = uuid.UUID(str(account_value))
+        except (TypeError, ValueError):
+            logger.warning("%s has invalid aggregate/account id", event_type)
+            return
+
+        pool = get_pool()
+        async with pool.acquire() as conn:
+            async with conn.transaction():
+                profiles = ProfileRepository(conn)
+                applied = await profiles.apply_counter_event(
+                    event_type=event_type,
+                    aggregate_id=aggregate_id,
+                    account_id=account_id,
+                    counter=counter,
+                )
+        if applied:
+            logger.info("Applied %s to profile %s", event_type, account_id)
 
 
 consumer = EventConsumer()
