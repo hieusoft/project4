@@ -71,7 +71,8 @@ services:
     image: rabbitmq:3-management-alpine
     <<: *app-env
     environment:
-      RABBITMQ_LOAD_DEFINITIONS: /etc/rabbitmq/definitions.json
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-charity}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
     ports:
       - "${RABBITMQ_PORT:-5672}:5672"
       - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
