@@ -31,7 +31,6 @@ def _contribution(
         status=row["status"],
         pickup_method=row["pickup_method"],
         pickup_address=row["pickup_address"],
-        pickup_address=row["pickup_address"],
         received_at=row["received_at"],
         rejected_reason=row["rejected_reason"],
         reviewed_by=row["reviewed_by"],
