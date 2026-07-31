@@ -24,11 +24,14 @@ PR / push cũng chạy workflow **CI** (build image, không push, không deploy)
 |---|---|
 | `identity-service` | `apps/identity-service/Dockerfile` |
 | `media-service` | `apps/media-service/Dockerfile` |
-| `community-service` | root `Dockerfile` + `SERVICE_PATH` |
-| `communication-service` | root `Dockerfile` + `SERVICE_PATH` |
+| `community-service` | `apps/community-service/Dockerfile` |
+| `communication-service` | `apps/communication-service/Dockerfile` |
+| `donation-service` | `apps/donation-service/Dockerfile` |
 | `ai-service` | root `Dockerfile` + `SERVICE_PATH` |
+| `admin-dashboard` | `admin-dashboard/Dockerfile` |
+| `docs-portal` | `infra/docs-portal/Dockerfile` |
 
-> `donation-service` chưa có code — route Kong vẫn khai báo sẵn (sẽ 502 cho đến khi service có). `marketplace-service` đã có skeleton + OpenAPI trên hub `/docs`.
+> `marketplace-service` đã bỏ — thay bằng luồng Campaign trong donation-service.
 
 ---
 
@@ -207,7 +210,7 @@ docs/deploy.md                # tài liệu này
 
 ---
 
-## 9. Khi thêm donation / marketplace
+## 9. Khi thêm service mới
 
 1. Tạo code + Dockerfile (hoặc dùng root `Dockerfile`)
 2. Thêm entry vào matrix trong `ci.yml` / `cd.yml`

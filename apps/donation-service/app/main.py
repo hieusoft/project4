@@ -11,7 +11,7 @@ from app.core.config import settings
 from app.core.database import close_pool, init_pool
 from app.core.exceptions import register_exception_handlers
 from app.events.publisher import publisher
-from app.routers import donations, health, inventory
+from app.routers import campaigns, contributions, health
 
 logging.basicConfig(
     level=logging.INFO if settings.node_env == "production" else logging.DEBUG,
@@ -60,5 +60,5 @@ app.add_middleware(
 register_exception_handlers(app)
 
 app.include_router(health.router)
-app.include_router(donations.router)
-app.include_router(inventory.router)
+app.include_router(campaigns.router)
+app.include_router(contributions.router)

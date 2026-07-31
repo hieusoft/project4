@@ -222,13 +222,12 @@ CREATE INDEX idx_reports_pending ON reports(status, severity) WHERE status = 'pe
 #### 3. donation_db
 
 ```sql
-CREATE TYPE donation_status AS ENUM
-  ('pending','accepted','scheduled','received','completed','rejected','cancelled');
+CREATE TYPE campaign_status AS ENUM ('active','fulfilled','closed','cancelled');
+CREATE TYPE contribution_status AS ENUM
+  ('pending','accepted','received','completed','rejected','cancelled');
+CREATE TYPE contribution_item_status AS ENUM ('pending','accepted','rejected');
 CREATE TYPE pickup_method AS ENUM ('drop_off','pickup');
 CREATE TYPE item_condition AS ENUM ('new','like_new','good','used','worn');
-CREATE TYPE donation_item_status AS ENUM ('pending','accepted','rejected');
-CREATE TYPE inventory_status AS ENUM
-  ('in_stock','listed','reserved','delivered','discarded');
 CREATE TYPE image_type AS ENUM ('declared','actual_check');
 
 CREATE TABLE categories (
@@ -241,166 +240,116 @@ CREATE TABLE categories (
   sort_order smallint NOT NULL DEFAULT 0
 );
 
-CREATE TABLE donations (
+-- Cuộc quyên góp (đợt)
+CREATE TABLE campaigns (
+  id                      uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  code                    varchar(20) UNIQUE NOT NULL,    -- CP-2026-001
+  group_id                uuid NOT NULL,
+  title                   varchar(200) NOT NULL,
+  description             text,
+  province_code           varchar(10),                    -- địa phương nhận
+  district_code           varchar(10),
+  beneficiary_description text,                           -- "bà con vùng lũ xã X"
+  status                  campaign_status NOT NULL DEFAULT 'active',
+  deadline                date,                           -- hạn chót đóng góp
+  created_by              uuid NOT NULL,
+  fulfilled_at            timestamptz,                   -- khi giao thành công
+  closed_at               timestamptz,                   -- khi đóng (hết hạn / đủ)
+  created_at              timestamptz NOT NULL DEFAULT now(),
+  updated_at              timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_campaigns_group   ON campaigns(group_id, status);
+CREATE INDEX idx_campaigns_active  ON campaigns(status, created_at DESC) WHERE status = 'active';
+CREATE INDEX idx_campaigns_province ON campaigns(province_code) WHERE status = 'active';
+CREATE INDEX idx_campaigns_search  ON campaigns USING gin(to_tsvector('simple', title));
+
+-- Mục tiêu quyên góp (target items)
+CREATE TABLE campaign_items (
+  id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  campaign_id       uuid NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+  name              varchar(200) NOT NULL,
+  category_id       uuid REFERENCES categories(id),
+  target_quantity   int NOT NULL CHECK (target_quantity > 0),
+  received_quantity int NOT NULL DEFAULT 0,             -- denormalized progress
+  unit              varchar(20),                         -- cái, bao, kg, hộp...
+  condition_required item_condition,                    -- new, good, like_new...
+  note              text,
+  UNIQUE(campaign_id, name)
+);
+CREATE INDEX idx_campaign_items ON campaign_items(campaign_id);
+
+-- Đóng góp của donor
+CREATE TABLE contributions (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  code            varchar(20) UNIQUE NOT NULL,   -- mã ngắn: DON-2026-00123
+  code            varchar(20) UNIQUE NOT NULL,           -- CTR-2026-001
+  campaign_id     uuid NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
   donor_id        uuid NOT NULL,
-  group_id        uuid NOT NULL,
-  title           varchar(200) NOT NULL,
-  description     text,
-  status          donation_status NOT NULL DEFAULT 'pending',
+  status          contribution_status NOT NULL DEFAULT 'pending',
   pickup_method   pickup_method NOT NULL DEFAULT 'drop_off',
-  pickup_address  varchar(255),                  -- nếu nhóm đến lấy
-  scheduled_at    timestamptz,
+  pickup_address  varchar(255),
   received_at     timestamptz,
   rejected_reason text,
   reviewed_by     uuid,
+  reviewed_at     timestamptz,
   created_at      timestamptz NOT NULL DEFAULT now(),
   updated_at      timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX idx_donations_donor ON donations(donor_id, created_at DESC);
-CREATE INDEX idx_donations_group ON donations(group_id, status);
+CREATE INDEX idx_contributions_campaign ON contributions(campaign_id, status);
+CREATE INDEX idx_contributions_donor   ON contributions(donor_id, created_at DESC);
 
-CREATE TABLE donation_items (
+-- Chi tiết đồ đóng góp
+CREATE TABLE contribution_items (
+  id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  contribution_id     uuid NOT NULL REFERENCES contributions(id) ON DELETE CASCADE,
+  campaign_item_id    uuid NOT NULL REFERENCES campaign_items(id),
+  name                varchar(200) NOT NULL,             -- tên thực tế
+  quantity            int NOT NULL DEFAULT 1 CHECK (quantity > 0),
+  condition_declared  item_condition NOT NULL,
+  condition_actual    item_condition,                    -- sau khi kiểm
+  check_note          text,
+  checked_by          uuid,
+  checked_at          timestamptz,
+  status              contribution_item_status NOT NULL DEFAULT 'pending',
+  reject_reason       text
+);
+CREATE INDEX idx_contrib_items        ON contribution_items(contribution_id);
+CREATE INDEX idx_contrib_items_target ON contribution_items(campaign_item_id, status);
+
+-- Ảnh đóng góp
+CREATE TABLE contribution_images (
+  id                   uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  contribution_item_id uuid NOT NULL REFERENCES contribution_items(id) ON DELETE CASCADE,
+  image_url            varchar(500) NOT NULL,
+  type                 image_type NOT NULL DEFAULT 'declared'
+);
+
+-- Xác nhận trao tặng cả đợt
+CREATE TABLE campaign_deliveries (
   id                 uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  donation_id        uuid NOT NULL REFERENCES donations(id) ON DELETE CASCADE,
-  name               varchar(200) NOT NULL,
-  category_id        uuid REFERENCES categories(id),
-  quantity           int NOT NULL DEFAULT 1 CHECK (quantity > 0),
-  condition_declared item_condition NOT NULL,
-  condition_actual   item_condition,              -- ghi khi kiểm tra thực tế
-  check_note         text,
-  checked_by         uuid,
-  checked_at         timestamptz,
-  status             donation_item_status NOT NULL DEFAULT 'pending',
-  reject_reason      text
+  campaign_id        uuid UNIQUE NOT NULL REFERENCES campaigns(id),  -- 1 campaign = 1 delivery
+  confirmed_by       uuid NOT NULL,
+  delivery_photo_url varchar(500),
+  delivery_note      text,
+  delivered_at       timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE TABLE donation_images (
-  id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  donation_item_id uuid NOT NULL REFERENCES donation_items(id) ON DELETE CASCADE,
-  image_url        varchar(500) NOT NULL,
-  type             image_type NOT NULL DEFAULT 'declared'
-);
-
-CREATE TABLE inventory_items (
-  id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  code             varchar(20) UNIQUE NOT NULL,   -- ITM-2026-00456 (in QR)
-  group_id         uuid NOT NULL,
-  donation_item_id uuid REFERENCES donation_items(id),  -- truy vết nguồn gốc
-  donor_id         uuid,                          -- denormalize cho hành trình
-  name             varchar(200) NOT NULL,
-  category_id      uuid REFERENCES categories(id),
-  quantity         int NOT NULL DEFAULT 1,
-  condition        item_condition NOT NULL,
-  status           inventory_status NOT NULL DEFAULT 'in_stock',
-  note             text,
-  imported_at      timestamptz NOT NULL DEFAULT now(),
-  updated_at       timestamptz NOT NULL DEFAULT now()
-);
-CREATE INDEX idx_inventory_group ON inventory_items(group_id, status);
-CREATE INDEX idx_inventory_donor ON inventory_items(donor_id);
-
-CREATE TABLE item_status_histories (
-  id                bigserial PRIMARY KEY,
-  inventory_item_id uuid NOT NULL REFERENCES inventory_items(id) ON DELETE CASCADE,
-  from_status       inventory_status,
-  to_status         inventory_status NOT NULL,
-  actor_id          uuid,
-  ref_type          varchar(30),                  -- listing/request gây ra thay đổi
-  ref_id            uuid,
-  note              text,
-  created_at        timestamptz NOT NULL DEFAULT now()
-);
-CREATE INDEX idx_history_item ON item_status_histories(inventory_item_id, created_at);
-```
-
-#### 4. marketplace_db
-
-```sql
-CREATE TYPE listing_status AS ENUM ('active','reserved','closed','blocked');
-CREATE TYPE request_status AS ENUM
-  ('pending','approved','rejected','scheduled','completed','cancelled','no_show');
-
-CREATE TABLE listings (
-  id                 uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  inventory_item_id  uuid NOT NULL,               -- ref donation_db (không FK)
-  group_id           uuid NOT NULL,
-  title              varchar(200) NOT NULL,
-  description        text,
-  category_id        uuid NOT NULL,               -- ref categories bên donation_db
-  condition          varchar(20) NOT NULL,
-  quantity_total     int NOT NULL DEFAULT 1,
-  quantity_available int NOT NULL DEFAULT 1 CHECK (quantity_available >= 0),
-  province_code      varchar(10),                 -- denormalize để lọc địa điểm
-  district_code      varchar(10),
-  status             listing_status NOT NULL DEFAULT 'active',
-  view_count         int NOT NULL DEFAULT 0,
-  created_by         uuid NOT NULL,
-  created_at         timestamptz NOT NULL DEFAULT now(),
-  updated_at         timestamptz NOT NULL DEFAULT now()
-);
-CREATE INDEX idx_listings_browse ON listings(status, category_id, province_code, created_at DESC);
-CREATE INDEX idx_listings_group ON listings(group_id, status);
-CREATE INDEX idx_listings_search ON listings USING gin(to_tsvector('simple', title));
-
-CREATE TABLE listing_images (
-  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  listing_id uuid NOT NULL REFERENCES listings(id) ON DELETE CASCADE,
-  image_url  varchar(500) NOT NULL,
-  sort_order smallint NOT NULL DEFAULT 0
-);
-
-CREATE TABLE item_requests (
-  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  code          varchar(20) UNIQUE NOT NULL,      -- REQ-2026-00789
-  listing_id    uuid NOT NULL REFERENCES listings(id),
-  group_id      uuid NOT NULL,                    -- denormalize cho query nhóm
-  receiver_id   uuid NOT NULL,
-  quantity      int NOT NULL DEFAULT 1 CHECK (quantity > 0),
-  reason        text,                             -- lý do cần hỗ trợ
-  status        request_status NOT NULL DEFAULT 'pending',
-  reviewed_by   uuid,
-  reviewed_at   timestamptz,
-  reject_reason text,
-  scheduled_at  timestamptz,
-  completed_at  timestamptz,
-  created_at    timestamptz NOT NULL DEFAULT now(),
-  updated_at    timestamptz NOT NULL DEFAULT now()
-);
-CREATE INDEX idx_requests_receiver ON item_requests(receiver_id, created_at DESC);
-CREATE INDEX idx_requests_group ON item_requests(group_id, status);
--- 1 người không gửi 2 request đang mở cho cùng listing:
-CREATE UNIQUE INDEX uq_request_open ON item_requests(listing_id, receiver_id)
-  WHERE status IN ('pending','approved','scheduled');
-
-CREATE TABLE delivery_confirmations (
-  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  request_id   uuid UNIQUE NOT NULL REFERENCES item_requests(id),
-  confirmed_by uuid NOT NULL,                     -- moderator xác nhận
-  qr_token     varchar(100),                      -- token trong QR người nhận đưa
-  photo_url    varchar(500),                      -- ảnh trao tặng
-  note         text,
-  confirmed_at timestamptz NOT NULL DEFAULT now()
-);
-
+-- Thống kê hàng ngày (dời từ marketplace_db)
 CREATE TABLE daily_stats (
-  id               bigserial PRIMARY KEY,
-  stat_date        date NOT NULL,
-  group_id         uuid,                          -- NULL = toàn hệ thống
-  donations_count  int NOT NULL DEFAULT 0,
-  items_received   int NOT NULL DEFAULT 0,
-  items_listed     int NOT NULL DEFAULT 0,
-  items_delivered  int NOT NULL DEFAULT 0,
-  requests_count   int NOT NULL DEFAULT 0,
-  people_helped    int NOT NULL DEFAULT 0,        -- distinct receiver completed
-  new_users        int NOT NULL DEFAULT 0,
-  new_members      int NOT NULL DEFAULT 0,
+  id                  bigserial PRIMARY KEY,
+  stat_date           date NOT NULL,
+  group_id            uuid,                              -- NULL = toàn hệ thống
+  campaigns_count     int NOT NULL DEFAULT 0,
+  contributions_count int NOT NULL DEFAULT 0,
+  items_received      int NOT NULL DEFAULT 0,
+  items_delivered     int NOT NULL DEFAULT 0,
+  donors_count        int NOT NULL DEFAULT 0,
+  new_users           int NOT NULL DEFAULT 0,
+  new_members         int NOT NULL DEFAULT 0,
   UNIQUE (stat_date, group_id)
 );
 ```
 
-#### 5. communication_db
+#### 4. communication_db
 
 ```sql
 CREATE TYPE conversation_type AS ENUM ('donor_group','receiver_group');
@@ -479,7 +428,7 @@ CREATE INDEX idx_reminders_due ON scheduled_reminders(remind_at) WHERE sent_at I
 
 *(Redis đảm nhiệm: online presence, socket mapping, unread counter cache)*
 
-#### 6. media_db
+#### 5. media_db
 
 ```sql
 CREATE TYPE media_status AS ENUM ('temp','linked','deleted');
@@ -500,7 +449,7 @@ CREATE INDEX idx_media_ref ON media_files(ref_type, ref_id);
 CREATE INDEX idx_media_temp ON media_files(created_at) WHERE status = 'temp';  -- cron cleanup
 ```
 
-#### 7. ai_db
+#### 6. ai_db
 
 ```sql
 CREATE TYPE llm_feature AS ENUM

@@ -19,12 +19,10 @@ import {
   UsersIcon,
   HeartHandshakeIcon,
   PackageIcon,
-  ShoppingBagIcon,
   BellIcon,
   Settings2Icon,
   HandHeartIcon,
   LogOutIcon,
-  PackageOpenIcon,
   MoonIcon,
   SunIcon,
 } from "lucide-react"
@@ -37,10 +35,7 @@ const navMain = [
 const navManage = [
   { title: "Tài khoản", url: "/accounts", icon: UsersIcon },
   { title: "Nhóm thiện nguyện", url: "/groups", icon: HeartHandshakeIcon },
-  { title: "Quyên góp", url: "/donations", icon: PackageIcon },
-  { title: "Kho hàng", url: "/inventory", icon: PackageOpenIcon },
-  { title: "Gian hàng 0 đồng", url: "/listings", icon: ShoppingBagIcon },
-  { title: "Yêu cầu nhận đồ", url: "/requests", icon: HandHeartIcon },
+  { title: "Đợt quyên góp", url: "/campaigns", icon: PackageIcon },
 ]
 
 const navSystem = [

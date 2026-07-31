@@ -71,10 +71,6 @@ jobs:
             dockerfile: infra/docs-portal/Dockerfile
             context: infra/docs-portal
             build_args: ""
-          - service: marketplace-service
-            dockerfile: apps/marketplace-service/Dockerfile
-            context: apps/marketplace-service
-            build_args: ""
           - service: donation-service
             dockerfile: apps/donation-service/Dockerfile
             context: .

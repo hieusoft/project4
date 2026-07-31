@@ -162,169 +162,111 @@ class EventConsumer:
                 await self._dispatch_with_db(conn, event_name, p)
 
     async def _dispatch_with_db(self, conn, event_name: str, p: dict[str, Any]) -> None:
-        if event_name == E.DONATION_CREATED:
-            donation_id = _str(p, "donationId")
-            donor_id = _str(p, "donorId")
+        if event_name == E.CAMPAIGN_CREATED:
+            campaign_id = _str(p, "campaignId")
             group_id = _str(p, "groupId")
-            code = _str(p, "code") or donation_id
-            if donation_id and donor_id and group_id:
+            title = _str(p, "title")
+            await noti_service.notify_users(
+                conn,
+                user_ids=_ids(p),
+                type_="campaign_created",
+                title="Có đợt quyên góp mới",
+                body=f'"{title}" đang nhận đóng góp.' if title else "Có đợt quyên góp mới.",
+                ref_type="campaign",
+                ref_id=campaign_id,
+            )
+            return
+
+        if event_name == E.CAMPAIGN_CLOSED:
+            await noti_service.notify_users(
+                conn,
+                user_ids=_ids(p, "donorIds"),
+                type_="campaign_closed",
+                title="Đợt quyên góp đã đóng",
+                body=_str(p, "reason") or "Đợt quyên góp đã kết thúc.",
+                ref_type="campaign",
+                ref_id=_str(p, "campaignId"),
+            )
+            return
+
+        if event_name == E.CAMPAIGN_DELIVERED:
+            await noti_service.notify_users(
+                conn,
+                user_ids=_ids(p, "donorIds"),
+                type_="campaign_delivered",
+                title="Đồ quyên góp đã đến tay người cần",
+                body=_str(p, "deliveryNote") or "Đợt quyên góp đã được trao tặng thành công.",
+                ref_type="campaign",
+                ref_id=_str(p, "campaignId"),
+            )
+            return
+
+        if event_name == E.CONTRIBUTION_CREATED:
+            contribution_id = _str(p, "contributionId")
+            campaign_id = _str(p, "campaignId")
+            donor_id = _str(p, "donorId")
+            group_id = _str(p, "groupId") or ""
+            code = _str(p, "code") or contribution_id
+            if contribution_id and donor_id and group_id:
                 await chat_service.ensure_conversation(
                     conn,
                     type_="donor_group",
                     group_id=group_id,
                     user_id=donor_id,
-                    context_type="donation",
-                    context_id=donation_id,
+                    context_type="contribution",
+                    context_id=contribution_id,
                     system_message=(
-                        f"Hội thoại quyên góp {code} đã được tạo. "
+                        f"Hội thoại đóng góp {code} đã được tạo. "
                         "Nhóm sẽ phản hồi tại đây."
                     ),
                 )
             await noti_service.notify_users(
                 conn,
                 user_ids=_ids(p),
-                type_="donation_created",
-                title="Có đơn quyên góp mới",
-                body=f"Mã {code} cần được xem xét.",
-                ref_type="donation",
-                ref_id=donation_id,
+                type_="contribution_created",
+                title="Có người đóng góp mới",
+                body=f"Mã đóng góp {code} cần được xem xét.",
+                ref_type="contribution",
+                ref_id=contribution_id,
             )
             return
 
-        if event_name == E.DONATION_REVIEWED:
+        if event_name == E.CONTRIBUTION_REVIEWED:
             action = _str(p, "action")
             accepted = action == "accepted"
             await noti_service.notify_users(
                 conn,
                 user_ids=[_str(p, "donorId")],
-                type_="donation_reviewed",
+                type_="contribution_reviewed",
                 title=(
-                    "Đơn quyên góp đã được chấp nhận"
+                    "Đóng góp đã được chấp nhận"
                     if accepted
-                    else "Đơn quyên góp bị từ chối"
+                    else "Đóng góp bị từ chối"
                 ),
                 body=(
-                    "Nhóm đã chấp nhận đơn. Vui lòng theo dõi lịch hẹn."
+                    "Nhóm đã chấp nhận đóng góp. Vui lòng theo dõi lịch hẹn."
                     if accepted
-                    else (_str(p, "reason") or "Nhóm đã từ chối đơn quyên góp.")
+                    else (_str(p, "reason") or "Nhóm đã từ chối đóng góp.")
                 ),
-                ref_type="donation",
-                ref_id=_str(p, "donationId"),
+                ref_type="contribution",
+                ref_id=_str(p, "contributionId"),
             )
             return
 
-        if event_name == E.DONATION_SCHEDULED:
-            donation_id = _str(p, "donationId")
-            scheduled_at = _str(p, "scheduledAt")
-            recipients = [_str(p, "donorId"), *_ids(p)]
-            await noti_service.notify_users(
-                conn,
-                user_ids=recipients,
-                type_="donation_scheduled",
-                title="Đã hẹn lịch nhận đồ quyên góp",
-                body=f"Thời gian: {scheduled_at}" if scheduled_at else "Kiểm tra lịch hẹn.",
-                ref_type="donation",
-                ref_id=donation_id,
-            )
-            if scheduled_at:
-                await reminder_service.schedule_for_users(
-                    conn,
-                    recipients,
-                    ref_type="donation",
-                    ref_id=donation_id,
-                    scheduled_at_iso=scheduled_at,
-                )
-            return
-
-        if event_name == E.DONATION_COMPLETED:
+        if event_name == E.CONTRIBUTION_COMPLETED:
             accepted = int(p.get("acceptedItems") or 0)
             rejected = int(p.get("rejectedItems") or 0)
-            body = f"{accepted} món đã nhập kho"
+            body = f"{accepted} món đã đạt kiểm tra"
             if rejected:
                 body += f", {rejected} món bị từ chối"
             await noti_service.notify_users(
                 conn,
                 user_ids=[_str(p, "donorId")],
-                type_="donation_completed",
-                title="Hoàn tất quyên góp",
+                type_="contribution_completed",
+                title="Hoàn tất kiểm tra đóng góp",
                 body=body,
-                ref_type="donation",
-                ref_id=_str(p, "donationId"),
-            )
-            return
-
-        if event_name == E.REQUEST_CREATED:
-            await noti_service.notify_users(
-                conn,
-                user_ids=_ids(p),
-                type_="request_created",
-                title="Yêu cầu nhận đồ mới",
-                body="Có người đăng ký nhận đồ từ gian hàng.",
-                ref_type="request",
-                ref_id=_str(p, "requestId"),
-            )
-            return
-
-        if event_name == E.REQUEST_APPROVED:
-            request_id = _str(p, "requestId")
-            receiver_id = _str(p, "receiverId")
-            group_id = _str(p, "groupId")
-            if request_id and receiver_id and group_id:
-                await chat_service.ensure_conversation(
-                    conn,
-                    type_="receiver_group",
-                    group_id=group_id,
-                    user_id=receiver_id,
-                    context_type="request",
-                    context_id=request_id,
-                    system_message=(
-                        "Yêu cầu nhận đồ đã được duyệt. "
-                        "Bạn có thể nhắn tin với nhóm tại đây."
-                    ),
-                )
-            await noti_service.notify_users(
-                conn,
-                user_ids=[receiver_id],
-                type_="request_approved",
-                title="Yêu cầu nhận đồ được duyệt",
-                body="Nhóm đã chấp nhận. Vui lòng chờ lịch hẹn trao tặng.",
-                ref_type="request",
-                ref_id=request_id,
-            )
-            return
-
-        if event_name == E.REQUEST_SCHEDULED:
-            request_id = _str(p, "requestId")
-            scheduled_at = _str(p, "scheduledAt")
-            recipients = [_str(p, "receiverId"), *_ids(p)]
-            await noti_service.notify_users(
-                conn,
-                user_ids=recipients,
-                type_="request_scheduled",
-                title="Đã hẹn lịch nhận đồ",
-                body=f"Thời gian: {scheduled_at}" if scheduled_at else "Kiểm tra lịch hẹn.",
-                ref_type="request",
-                ref_id=request_id,
-            )
-            if scheduled_at:
-                await reminder_service.schedule_for_users(
-                    conn,
-                    recipients,
-                    ref_type="request",
-                    ref_id=request_id,
-                    scheduled_at_iso=scheduled_at,
-                )
-            return
-
-        if event_name == E.REQUEST_COMPLETED:
-            await noti_service.notify_users(
-                conn,
-                user_ids=[_str(p, "receiverId"), _str(p, "donorId"), *_ids(p)],
-                type_="request_completed",
-                title="Đã trao tặng thành công",
-                body="Giao dịch hoàn tất. Hãy đánh giá trải nghiệm nếu được mời.",
-                ref_type="request",
-                ref_id=_str(p, "requestId"),
+                ref_type="contribution",
+                ref_id=_str(p, "contributionId"),
             )
             return
 
@@ -359,21 +301,9 @@ class EventConsumer:
                 user_ids=[_str(p, "userId")],
                 type_="group_member_approved",
                 title="Bạn đã được duyệt vào nhóm",
-                body="Giờ bạn có thể xem gian hàng và đăng ký nhận đồ.",
+                body="Giờ bạn có thể tham gia các đợt quyên góp của nhóm.",
                 ref_type="group",
                 ref_id=_str(p, "groupId"),
-            )
-            return
-
-        if event_name == E.LISTING_CREATED:
-            await noti_service.notify_users(
-                conn,
-                user_ids=_ids(p),
-                type_="listing_created",
-                title="Có đồ mới trên gian hàng",
-                body="Nhóm vừa đăng món đồ mới — vào xem ngay.",
-                ref_type="listing",
-                ref_id=_str(p, "listingId"),
             )
             return
 

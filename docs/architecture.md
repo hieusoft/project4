@@ -30,17 +30,15 @@ của mình từ lúc gửi đến lúc thực sự đến tay người nhận.
 ## ✨ Tính năng chính
 
 - 🔐 Đăng ký / đăng nhập, phân quyền theo vai trò (JWT)
-- 👥 Hội nhóm: bài viết, bình luận, thành viên, gian hàng riêng
-- 📦 Quy trình quyên góp: đăng ký → duyệt ảnh → hẹn lịch → kiểm tra thực tế → nhập kho
-- 🏬 Gian hàng 0 đồng: gian hàng riêng từng nhóm + gian hàng tổng toàn hệ thống,
-  tìm kiếm theo danh mục / địa điểm
-- 📋 Yêu cầu nhận đồ: xét duyệt, hẹn lịch, xác nhận trao tặng bằng QR
-- 🔍 Hành trình món đồ minh bạch từ lúc quyên góp đến lúc trao tặng
+- 👥 Hội nhóm: bài viết, bình luận, thành viên
+- 📦 Cuộc quyên góp (campaign): nhóm tạo đợt với mục tiêu cụ thể (vd: 15 áo, 15 bao gạo), donor đóng góp vào đợt
+- 📋 Quy trình đóng góp: tạo → duyệt → hẹn lịch → kiểm tra từng món → hoàn tất
+- 🎁 Trao tặng đợt: khi đủ mục tiêu hoặc hết hạn, nhóm xác nhận trao tặng cả đợt
+- 🔍 Tiến độ minh bạch: donor theo dõi "5/15 áo, 3/15 bao gạo" real-time
 - 💬 Chat realtime giữa user và hội nhóm (shared inbox cho moderator)
 - 🔔 Thông báo in-app + push (FCM), nhắc lịch hẹn tự động
 - ⭐ Đánh giá & điểm uy tín, báo cáo vi phạm
-- 🤖 AI: nhận diện loại đồ từ ảnh, gợi ý nhóm phù hợp, kiểm duyệt nội dung,
-  tự sinh mô tả sản phẩm
+- 🤖 AI: nhận diện loại đồ từ ảnh, gợi ý nhóm phù hợp, kiểm duyệt nội dung
 - 📊 Dashboard thống kê theo nhóm / toàn hệ thống
 
 ## 🏗 Kiến trúc
@@ -55,15 +53,14 @@ stack chuyên biệt khác khi cần.
 ```
 Web / Mobile App
        │
-   Kong Gateway :8000  (JWT, rate-limit, CORS, routing)
+   Kong Gateway :8000  (routing, strip /api/<service>)
        │
 ┌──────┼──────────────────────────────────────────────┐
 │ Identity      │ Auth, hồ sơ, điểm uy tín            │
 │ Community     │ Nhóm, thành viên, bài viết,          │
 │               │ đánh giá, báo cáo                    │
-│ Donation      │ Quyên góp, kiểm tra, kho, hành trình │
-│ Marketplace   │ Gian hàng, yêu cầu nhận, trao tặng,  │
-│               │ thống kê                             │
+│ Donation      │ Cuộc quyên góp (campaign), đóng góp,│
+│               │ kiểm tra, trao tặng đợt              │
 │ Communication │ Chat (Socket.IO), FCM, email (Brevo) │
 │ Media         │ Upload ảnh lên SeaweedFS (S3)        │
 │ AI            │ Tích hợp LLM                         │

@@ -61,36 +61,80 @@ export interface GroupPost {
   updated_at: string;
 }
 
-export interface Donation {
+export interface Campaign {
   id: string;
   code: string;
-  donor_id: string;
   group_id: string;
   title: string;
   description: string | null;
-  status:
-    | "pending"
-    | "accepted"
-    | "scheduled"
-    | "received"
-    | "completed"
-    | "rejected"
-    | "cancelled";
+  province_code: string | null;
+  district_code: string | null;
+  beneficiary_description: string | null;
+  status: "active" | "fulfilled" | "closed" | "cancelled";
+  deadline: string | null;
+  created_by: string;
+  fulfilled_at: string | null;
+  closed_at: string | null;
+  created_at: string;
+  updated_at: string;
+  items: CampaignItem[];
+}
+
+export interface CampaignItem {
+  id: string;
+  campaign_id: string;
+  name: string;
+  category_id: string | null;
+  target_quantity: number;
+  received_quantity: number;
+  unit: string | null;
+  condition_required: string | null;
+  note: string | null;
+}
+
+export interface CampaignProgress {
+  campaign_id: string;
+  code: string;
+  title: string;
+  status: Campaign["status"];
+  total_targets: number;
+  fulfilled_targets: number;
+  items: CampaignProgressItem[];
+}
+
+export interface CampaignProgressItem {
+  id: string;
+  name: string;
+  target_quantity: number;
+  received_quantity: number;
+  remaining: number;
+  unit: string | null;
+  fulfilled: boolean;
+}
+
+export interface Contribution {
+  id: string;
+  code: string;
+  campaign_id: string;
+  donor_id: string;
+  status: "pending" | "accepted" | "scheduled" | "received" | "completed" | "rejected" | "cancelled";
   pickup_method: "drop_off" | "pickup";
   pickup_address: string | null;
   scheduled_at: string | null;
   received_at: string | null;
   rejected_reason: string | null;
   reviewed_by: string | null;
+  reviewed_at: string | null;
   created_at: string;
   updated_at: string;
-  items: DonationItem[];
+  items: ContributionItem[];
 }
 
-export interface DonationItem {
+export interface ContributionItem {
   id: string;
+  contribution_id: string;
+  campaign_item_id: string;
   name: string;
-  category_id: string;
   quantity: number;
   condition_declared: string;
   condition_actual: string | null;
@@ -99,91 +143,14 @@ export interface DonationItem {
   checked_at: string | null;
   status: "pending" | "accepted" | "rejected";
   reject_reason: string | null;
-  images: DonationImage[];
+  images: ContributionImage[];
 }
 
-export interface DonationImage {
+export interface ContributionImage {
   id: string;
-  donation_item_id: string;
+  contribution_item_id: string;
   image_url: string;
   type: "declared" | "actual_check";
-}
-
-export interface DonationTimelineEntry {
-  at: string;
-  event: string;
-  note: string | null;
-  actor_id: string | null;
-  ref_type: string | null;
-  ref_id: string | null;
-}
-
-export interface InventoryItem {
-  id: string;
-  code: string;
-  group_id: string;
-  donation_item_id: string | null;
-  donor_id: string | null;
-  name: string;
-  category_id: string | null;
-  quantity: number;
-  condition: string;
-  status: "in_stock" | "listed" | "reserved" | "delivered" | "discarded";
-  note: string | null;
-  imported_at: string;
-  updated_at: string;
-}
-
-export interface Listing {
-  id: string;
-  inventory_item_id: string;
-  group_id: string;
-  title: string;
-  description: string | null;
-  category_id: string;
-  condition: string;
-  quantity_total: number;
-  quantity_available: number;
-  province_code: string | null;
-  district_code: string | null;
-  status: "active" | "reserved" | "closed" | "blocked";
-  view_count: number;
-  created_by: string;
-  created_at: string;
-  updated_at: string;
-  images: ListingImage[];
-}
-
-export interface ListingImage {
-  id: string;
-  listing_id: string;
-  image_url: string;
-  sort_order: number;
-}
-
-export interface ItemRequest {
-  id: string;
-  code: string;
-  listing_id: string;
-  group_id: string;
-  receiver_id: string;
-  quantity: number;
-  reason: string;
-  status:
-    | "pending"
-    | "approved"
-    | "rejected"
-    | "scheduled"
-    | "completed"
-    | "cancelled"
-    | "no_show";
-  reviewed_by: string | null;
-  reviewed_at: string | null;
-  reject_reason: string | null;
-  scheduled_at: string | null;
-  completed_at: string | null;
-  created_at: string;
-  updated_at: string;
 }
 
 export interface Profile {
@@ -204,58 +171,6 @@ export interface Profile {
   updated_at: string;
 }
 
-export interface DeliveryConfirmation {
-  id: string;
-  request_id: string;
-  confirmed_by: string;
-  qr_token: string;
-  photo_url: string | null;
-  note: string | null;
-  confirmed_at: string;
-}
-
-export interface ItemRequestWithRelations extends ItemRequest {
-  receiverProfile?: Profile;
-  group?: Group;
-  listing?: Listing;
-}
-
-export interface ListingWithRelations extends Listing {
-  group?: Group;
-  creatorProfile?: Profile;
-  category?: InventoryCategory;
-}
-
-export interface InventoryHistoryEntry {
-  id: number;
-  inventory_item_id: string;
-  from_status: InventoryItem["status"] | null;
-  to_status: InventoryItem["status"];
-  actor_id: string | null;
-  ref_type: string | null;
-  ref_id: string | null;
-  note: string | null;
-  created_at: string;
-}
-
-export interface InventoryCategory {
-  id: string;
-  name: string;
-  slug: string;
-  parent_id: string | null;
-  icon_url: string | null;
-  is_active: boolean;
-  sort_order: number;
-}
-
-export interface InventoryItemWithDonor extends InventoryItem {
-  donorProfile?: Profile;
-}
-
-export interface DonationWithDonor extends Donation {
-  donorProfile?: Profile;
-}
-
 export interface Notification {
   id: string;
   user_id: string;
@@ -268,18 +183,23 @@ export interface Notification {
   created_at: string;
 }
 
-export interface DailyStat {
+export interface Category {
   id: string;
-  stat_date: string;
-  group_id: string | null;
-  donations_count: number;
-  items_received: number;
-  items_listed: number;
-  items_delivered: number;
-  requests_count: number;
-  people_helped: number;
-  new_users: number;
-  new_members: number;
+  name: string;
+  slug: string;
+  parent_id: string | null;
+  icon_url: string | null;
+  is_active: boolean;
+  sort_order: number;
+}
+
+export interface CampaignWithGroup extends Campaign {
+  group?: Group;
+}
+
+export interface ContributionWithDonor extends Contribution {
+  donorProfile?: Profile;
+  campaign?: Campaign;
 }
 
 export interface Paginated<T> {

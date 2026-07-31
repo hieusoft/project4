@@ -227,173 +227,98 @@ export const communityApi = {
     }),
 };
 
-// ─── Donation Service ───
+// ─── Donation Service (Campaigns + Contributions) ───
 export const donationApi = {
   health: () => request<{ service: string; status: string }>("/donation/health"),
 
-  listDonations: (params?: {
-    group_id?: string;
-    donor_id?: string;
-    status?: string;
-    mine?: boolean;
-    page?: number;
-    limit?: number;
-  }) => {
-    const searchParams = new URLSearchParams();
-    if (params?.group_id) searchParams.set("group_id", params.group_id);
-    if (params?.donor_id) searchParams.set("donor_id", params.donor_id);
-    if (params?.status) searchParams.set("status", params.status);
-    if (params?.mine) searchParams.set("mine", "true");
-    if (params?.page) searchParams.set("page", String(params.page));
-    if (params?.limit) searchParams.set("limit", String(params.limit));
-    const qs = searchParams.toString();
-    return request<DataEnvelope<Paginated<any>>>("/donation/donations" + (qs ? `?${qs}` : ""));
-  },
-
-  getDonation: (id: string) =>
-    request<DataEnvelope<any>>(`/donation/donations/${id}`),
-
-  getDonationTimeline: (id: string) =>
-    request<DataEnvelope<any[]>>(`/donation/donations/${id}/timeline`),
-
-  getInventory: (params?: { page?: number; limit?: number; group_id?: string; status?: string }) => {
-    const searchParams = new URLSearchParams();
-    if (params?.page) searchParams.set("offset", String((params.page - 1) * (params.limit || 20)));
-    if (params?.limit) searchParams.set("limit", String(params.limit));
-    if (params?.group_id) searchParams.set("group_id", params.group_id);
-    if (params?.status) searchParams.set("status", params.status);
-    const qs = searchParams.toString();
-    return request<DataEnvelope<Paginated<any>>>("/donation/inventory" + (qs ? `?${qs}` : ""));
-  },
-    
-  getInventoryItem: (id: string) =>
-    request<DataEnvelope<any>>(`/donation/inventory/${id}`),
-
-  getInventoryHistory: (id: string) =>
-    request<DataEnvelope<any[]>>(`/donation/inventory/${id}/history`),
-
-  reviewDonation: (id: string, action: "accepted" | "rejected", note?: string) =>
-    request<DataEnvelope<any>>(`/donation/donations/${id}/review`, {
-      method: "PUT",
-      body: JSON.stringify({ action, review_note: note }),
-    }),
-
-  scheduleDonation: (id: string, scheduled_at: string) =>
-    request<DataEnvelope<any>>(`/donation/donations/${id}/schedule`, {
-      method: "PUT",
-      body: JSON.stringify({ scheduled_at }),
-    }),
-
-  cancelDonation: (id: string) =>
-    request<DataEnvelope<any>>(`/donation/donations/${id}/cancel`, {
-      method: "PUT",
-    }),
-
-  checkItem: (donationId: string, itemId: string, status: string, notes?: string) =>
-    request<DataEnvelope<any>>(`/donation/donations/${donationId}/items/${itemId}/check`, {
-      method: "PUT",
-      body: JSON.stringify({ status, condition_notes: notes }),
-    }),
-
-  listInventory: (params?: {
+  listCampaigns: (params?: {
     group_id?: string;
     status?: string;
-    page?: number;
-    limit?: number;
-  }) => {
-    const searchParams = new URLSearchParams();
-    if (params?.group_id) searchParams.set("group_id", params.group_id);
-    if (params?.status) searchParams.set("status", params.status);
-    if (params?.page) searchParams.set("page", String(params.page));
-    if (params?.limit) searchParams.set("limit", String(params.limit));
-    const qs = searchParams.toString();
-    return request<DataEnvelope<Paginated<any>>>("/donation/inventory" + (qs ? `?${qs}` : ""));
-  },
-
-  listCategories: () =>
-    request<DataEnvelope<any[]>>("/donation/categories"),
-};
-
-// ─── Marketplace Service ───
-export const marketplaceApi = {
-  health: () => request<{ service: string; status: string }>("/marketplace/health"),
-
-  getCatalog: (params?: {
-    category_id?: string;
     province_code?: string;
-    search?: string;
-    page?: number;
     limit?: number;
+    offset?: number;
   }) => {
     const searchParams = new URLSearchParams();
-    if (params?.category_id) searchParams.set("category_id", params.category_id);
-    if (params?.province_code) searchParams.set("province_code", params.province_code);
-    if (params?.search) searchParams.set("search", params.search);
-    if (params?.page) searchParams.set("page", String(params.page));
-    if (params?.limit) searchParams.set("limit", String(params.limit));
-    const qs = searchParams.toString();
-    return request<DataEnvelope<Paginated<any>>>("/marketplace/catalog" + (qs ? `?${qs}` : ""));
-  },
-
-  getListings: (params?: {
-    status?: string;
-    group_id?: string;
-    search?: string;
-    page?: number;
-    limit?: number;
-  }) => {
-    const searchParams = new URLSearchParams();
-    if (params?.status) searchParams.set("status", params.status);
     if (params?.group_id) searchParams.set("group_id", params.group_id);
-    if (params?.search) searchParams.set("search", params.search);
-    if (params?.page) searchParams.set("page", String(params.page));
+    if (params?.status) searchParams.set("status", params.status);
+    if (params?.province_code) searchParams.set("province_code", params.province_code);
     if (params?.limit) searchParams.set("limit", String(params.limit));
+    if (params?.offset) searchParams.set("offset", String(params.offset));
     const qs = searchParams.toString();
-    return request<DataEnvelope<Paginated<any>>>("/marketplace/listings" + (qs ? `?${qs}` : ""));
+    return request<DataEnvelope<Paginated<any>>>("/donation/campaigns" + (qs ? `?${qs}` : ""));
   },
 
-  getListing: (id: string) =>
-    request<DataEnvelope<any>>(`/marketplace/listings/${id}`),
+  getCampaign: (id: string) =>
+    request<DataEnvelope<any>>(`/donation/campaigns/${id}`),
 
-  closeListing: (id: string, reason?: string) =>
-    request<DataEnvelope<any>>(`/marketplace/listings/${id}/close`, {
+  createCampaign: (payload: any) =>
+    request<DataEnvelope<any>>("/donation/campaigns", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  updateCampaign: (id: string, payload: any) =>
+    request<DataEnvelope<any>>(`/donation/campaigns/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+
+  closeCampaign: (id: string, reason?: string) =>
+    request<DataEnvelope<any>>(`/donation/campaigns/${id}/close`, {
       method: "PUT",
       body: JSON.stringify({ reason }),
     }),
 
-  getRequests: (params?: {
+  deliverCampaign: (id: string, payload: { delivery_photo_url?: string; delivery_note?: string }) =>
+    request<DataEnvelope<any>>(`/donation/campaigns/${id}/deliver`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  getCampaignProgress: (id: string) =>
+    request<DataEnvelope<any>>(`/donation/campaigns/${id}/progress`),
+
+  listCategories: () =>
+    request<DataEnvelope<any[]>>("/donation/categories"),
+
+  listContributions: (params?: {
+    campaign_id?: string;
+    donor_id?: string;
     status?: string;
-    group_id?: string;
-    page?: number;
+    mine?: boolean;
     limit?: number;
+    offset?: number;
   }) => {
     const searchParams = new URLSearchParams();
+    if (params?.campaign_id) searchParams.set("campaign_id", params.campaign_id);
+    if (params?.donor_id) searchParams.set("donor_id", params.donor_id);
     if (params?.status) searchParams.set("status", params.status);
-    if (params?.group_id) searchParams.set("group_id", params.group_id);
-    if (params?.page) searchParams.set("page", String(params.page));
+    if (params?.mine) searchParams.set("mine", "true");
     if (params?.limit) searchParams.set("limit", String(params.limit));
+    if (params?.offset) searchParams.set("offset", String(params.offset));
     const qs = searchParams.toString();
-    return request<DataEnvelope<Paginated<any>>>("/marketplace/requests" + (qs ? `?${qs}` : ""));
+    return request<DataEnvelope<Paginated<any>>>("/donation/contributions" + (qs ? `?${qs}` : ""));
   },
 
-  getRequestConfirmation: (id: string) =>
-    request<DataEnvelope<any>>(`/marketplace/requests/${id}/confirmation`),
+  getContribution: (id: string) =>
+    request<DataEnvelope<any>>(`/donation/contributions/${id}`),
 
-  getStats: (params?: { stat_date?: string; group_id?: string; limit?: number }) => {
-    const searchParams = new URLSearchParams();
-    if (params?.stat_date) searchParams.set("stat_date", params.stat_date);
-    if (params?.group_id) searchParams.set("group_id", params.group_id);
-    if (params?.limit) searchParams.set("limit", String(params.limit));
-    const qs = searchParams.toString();
-    return request<any>("/marketplace/stats" + (qs ? `?${qs}` : ""));
-  },
+  reviewContribution: (id: string, action: "accepted" | "rejected", reason?: string) =>
+    request<DataEnvelope<any>>(`/donation/contributions/${id}/review`, {
+      method: "PUT",
+      body: JSON.stringify({ action, reason }),
+    }),
 
-  getOverview: (params?: { group_id?: string }) => {
-    const searchParams = new URLSearchParams();
-    if (params?.group_id) searchParams.set("group_id", params.group_id);
-    const qs = searchParams.toString();
-    return request<any>("/marketplace/stats/overview" + (qs ? `?${qs}` : ""));
-  },
+  cancelContribution: (id: string) =>
+    request<DataEnvelope<any>>(`/donation/contributions/${id}/cancel`, {
+      method: "PUT",
+    }),
+
+  checkContributionItem: (contributionId: string, itemId: string, payload: any) =>
+    request<DataEnvelope<any>>(`/donation/contributions/${contributionId}/items/${itemId}/check`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
 };
 
 // ─── Communication Service ───

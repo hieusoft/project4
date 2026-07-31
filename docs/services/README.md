@@ -12,15 +12,14 @@ Client (Web / Mobile)
    /api/identity      → identity-service      :3001
    /api/community     → community-service     :3002
     /api/donation      → donation-service      :3003
-   /api/marketplace   → marketplace-service   :3004
    /api/communication → communication-service :3005
    /api/media         → media-service         :3006
    /api/ai            → ai-service            :3007  (scaffold)
    /docs              → docs-portal
-        │
-        ├── PostgreSQL (1 database / service)
-        ├── Redis
-        └── RabbitMQ  (exchange: charity.events)
+         │
+         ├── PostgreSQL (1 database / service)
+         ├── Redis
+         └── RabbitMQ  (exchange: charity.events)
 ```
 
 ## Mục đích từng service (tóm tắt)
@@ -29,12 +28,12 @@ Client (Web / Mobile)
 |---|---|---|---|
 | [Identity](./identity.md) | 3001 | Định danh: đăng ký, đăng nhập, JWT, hồ sơ, 2FA | ✅ Đã có |
 | [Community](./community.md) | 3002 | Hội nhóm, thành viên, bài viết, tương tác | ✅ Đã có |
-| [Donation](./donation.md) | 3003 | Quyên góp, kiểm tra đồ, kho, hành trình món đồ | ✅ Đã có |
-| [Marketplace](./marketplace.md) | 3004 | Gian hàng 0 đồng, yêu cầu nhận, trao tặng | ✅ Đã có |
+| [Donation](./donation.md) | 3003 | Cuộc quyên góp (campaign), đóng góp, kiểm tra, trao tặng | ✅ Đã có |
 | [Communication](./communication.md) | 3005 | Email, push, chat realtime, thông báo in-app | ✅ Đã có |
 | [Media](./media.md) | 3006 | Upload ảnh (presigned SeaweedFS), lifecycle media | ✅ Đã có |
 | [AI](./ai.md) | 3007 | LLM: nhận diện đồ, gợi ý nhóm, kiểm duyệt | 🔶 Scaffold |
 | [Gateway & Infra](./gateway-infra.md) | 8000… | Kong, Postgres, Redis, RabbitMQ, Docs | ✅ |
+| ~~Marketplace~~ | ~~3004~~ | ~~Gian hàng 0 đồng~~ | ❌ Đã bỏ (thay bằng Campaign) |
 
 ## Nguyên tắc chung
 
@@ -51,9 +50,8 @@ Client (Web / Mobile)
 Đăng ký/Login (Identity)
     → Upload ảnh (Media + SeaweedFS)
     → Tạo / tham gia nhóm (Community)
-    → Quyên góp đồ (Donation) ← chưa code
-    → Nhập kho → đăng gian hàng (Marketplace)
-    → Người cần đăng ký nhận → duyệt → trao tặng
+    → Tạo cuộc quyên góp + đóng góp (Donation)
+    → Nhóm kiểm tra → trao tặng đợt
     → Chat / email / push (Communication)
     → AI hỗ trợ gợi ý / kiểm duyệt (AI)
 ```

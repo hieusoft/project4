@@ -53,7 +53,7 @@ Thiếu `BREVO_API_KEY` → dry-run (chỉ log).
 | Path qua Kong | `/api/communication/socket.io` |
 | Auth | JWT trong handshake `auth.token` |
 
-Dùng cho hội thoại donor↔group / receiver↔group (tạo conversation khi có donation/request — phụ thuộc event từ Donation/Marketplace).
+Dùng cho hội thoại donor↔group (tạo conversation khi có contribution — phụ thuộc event từ Donation).
 
 ### 4) In-app notification
 
@@ -108,8 +108,8 @@ sequenceDiagram
 ## Luồng chat (khái quát)
 
 ```text
-Donation/Marketplace tạo context
-  → event donation.created / request.approved
+Donation tạo context (contribution)
+  → event contribution.created
   → Communication ensure conversation + system message
   → User/moderator nhắn qua Socket.IO hoặc REST
   → message.sent → push recipients (optional)
@@ -126,8 +126,8 @@ Donation/Marketplace tạo context
 | `password.reset_requested` | Email OTP reset |
 | `password.reset_completed` | Email đổi pass thành công |
 | `group.approved` / `join_requested` / `member_approved` | Notify |
-| `donation.*` / `request.*` | Conversation + notify + reminder |
-| `listing.created` | Notify members |
+| `campaign.created` / `closed` / `delivered` | Notify donors + members |
+| `contribution.*` | Conversation + notify + reminder |
 | `message.sent` | Push chat |
 
 Queue: `communication.events` · bind routing key `#` trên exchange `charity.events`.

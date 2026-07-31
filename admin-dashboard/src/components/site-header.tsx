@@ -14,10 +14,7 @@ const pageMeta: Record<string, { label: string; parent?: string }> = {
   "/dashboard": { label: "Dashboard" },
   "/accounts": { label: "Tài khoản", parent: "Quản lý" },
   "/groups": { label: "Nhóm thiện nguyện", parent: "Quản lý" },
-  "/donations": { label: "Quyên góp", parent: "Quản lý" },
-  "/inventory": { label: "Kho hàng", parent: "Quản lý" },
-  "/listings": { label: "Gian hàng 0 đồng", parent: "Quản lý" },
-  "/requests": { label: "Yêu cầu nhận đồ", parent: "Quản lý" },
+  "/campaigns": { label: "Đợt quyên góp", parent: "Quản lý" },
   "/notifications": { label: "Thông báo", parent: "Hệ thống" },
   "/settings": { label: "Cài đặt", parent: "Hệ thống" },
 }
