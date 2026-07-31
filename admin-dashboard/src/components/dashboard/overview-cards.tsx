@@ -9,7 +9,7 @@ import {
   Users,
   HeartHandshake,
   Package,
-  ShoppingBag,
+  Megaphone,
   ArrowUpRight,
 } from "lucide-react"
 
@@ -44,17 +44,17 @@ export function OverviewCards({ stats, loading }: OverviewCardsProps) {
       tone: "from-primary/18 to-secondary/7 text-primary",
     },
     {
-      title: "Quyên góp",
-      hint: "Đơn quyên góp đã tạo",
+      title: "Đợt quyên góp",
+      hint: "Đợt đang hoạt động",
       value: stats.totalDonations,
       icon: Package,
       tone: "from-amber-500/18 to-orange-400/7 text-amber-700 dark:text-amber-300",
     },
     {
-      title: "Gian hàng",
-      hint: "Tin đăng đồ 0 đồng",
-      value: stats.totalListings,
-      icon: ShoppingBag,
+      title: "Đã trao tặng",
+      hint: "Đợt đã hoàn thành",
+      value: stats.totalItemsDelivered,
+      icon: Megaphone,
       tone: "from-violet-500/18 to-fuchsia-400/7 text-violet-700 dark:text-violet-300",
     },
   ]

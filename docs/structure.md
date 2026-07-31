@@ -66,7 +66,6 @@ charity-platform/
 │   ├── identity-service/
 │   ├── community-service/
 │   ├── donation-service/
-│   ├── marketplace-service/
 │   ├── communication-service/
 │   ├── media-service/
 │   └── ai-service/

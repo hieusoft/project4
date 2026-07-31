@@ -80,7 +80,6 @@ export function SystemStatusOverview({ stats, loading }: SystemStatusProps) {
             { name: "Identity", slug: "identity" },
             { name: "Community", slug: "community" },
             { name: "Donation", slug: "donation" },
-            { name: "Marketplace", slug: "marketplace" },
             { name: "Communication", slug: "communication" },
             { name: "Media", slug: "media" },
             { name: "AI", slug: "ai" },

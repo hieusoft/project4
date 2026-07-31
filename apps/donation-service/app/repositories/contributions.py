@@ -5,38 +5,49 @@ from datetime import datetime
 
 import asyncpg
 
-from app.models.domain import Donation, DonationImage, DonationItem
+from app.models.domain import Contribution, ContributionImage, ContributionItem
 
 
-def _donation(row: asyncpg.Record, items: list[DonationItem] | None = None) -> Donation:
-    return Donation(
+_CONTRIB_COLS = """
+    id, code, campaign_id, donor_id, status, pickup_method, pickup_address,
+    received_at, rejected_reason, reviewed_by, reviewed_at,
+    created_at, updated_at
+"""
+
+_ITEM_COLS = """
+    id, contribution_id, campaign_item_id, name, quantity, condition_declared,
+    condition_actual, check_note, checked_by, checked_at, status, reject_reason
+"""
+
+
+def _contribution(
+    row: asyncpg.Record, items: list[ContributionItem] | None = None
+) -> Contribution:
+    return Contribution(
         id=row["id"],
         code=row["code"],
+        campaign_id=row["campaign_id"],
         donor_id=row["donor_id"],
-        group_id=row["group_id"],
-        title=row["title"],
-        description=row["description"],
         status=row["status"],
         pickup_method=row["pickup_method"],
         pickup_address=row["pickup_address"],
-        scheduled_at=row["scheduled_at"],
+        pickup_address=row["pickup_address"],
         received_at=row["received_at"],
         rejected_reason=row["rejected_reason"],
         reviewed_by=row["reviewed_by"],
         reviewed_at=row["reviewed_at"],
-        review_action=row["review_action"],
         created_at=row["created_at"],
         updated_at=row["updated_at"],
         items=items or [],
     )
 
 
-def _item(row: asyncpg.Record, images: list[DonationImage] | None = None) -> DonationItem:
-    return DonationItem(
+def _item(row: asyncpg.Record, images: list[ContributionImage] | None = None) -> ContributionItem:
+    return ContributionItem(
         id=row["id"],
-        donation_id=row["donation_id"],
+        contribution_id=row["contribution_id"],
+        campaign_item_id=row["campaign_item_id"],
         name=row["name"],
-        category_id=row["category_id"],
         quantity=row["quantity"],
         condition_declared=row["condition_declared"],
         condition_actual=row["condition_actual"],
@@ -49,28 +60,24 @@ def _item(row: asyncpg.Record, images: list[DonationImage] | None = None) -> Don
     )
 
 
-def _image(row: asyncpg.Record) -> DonationImage:
-    return DonationImage(
+def _image(row: asyncpg.Record) -> ContributionImage:
+    return ContributionImage(
         id=row["id"],
-        donation_item_id=row["donation_item_id"],
+        contribution_item_id=row["contribution_item_id"],
         image_url=row["image_url"],
         type=row["type"],
     )
 
 
-class DonationRepository:
+class ContributionRepository:
     def __init__(self, conn: asyncpg.Connection) -> None:
         self._conn = conn
 
-    async def next_code(self, prefix: str = "DON") -> str:
+    async def next_code(self, prefix: str = "CTR") -> str:
         year = datetime.utcnow().year
         pattern = f"{prefix}-{year}-%"
         max_code = await self._conn.fetchval(
-            """
-            SELECT MAX(code) FROM donations
-            WHERE code LIKE $1
-            """,
-            pattern,
+            "SELECT MAX(code) FROM contributions WHERE code LIKE $1", pattern
         )
         n = 1
         if max_code:
@@ -84,50 +91,46 @@ class DonationRepository:
         self,
         *,
         code: str,
+        campaign_id: uuid.UUID,
         donor_id: uuid.UUID,
-        group_id: uuid.UUID,
-        title: str,
-        description: str | None,
         pickup_method: str,
         pickup_address: str | None,
-    ) -> Donation:
+    ) -> Contribution:
         row = await self._conn.fetchrow(
-            """
-            INSERT INTO donations (
-              code, donor_id, group_id, title, description,
-              pickup_method, pickup_address, status
-            ) VALUES ($1,$2,$3,$4,$5,$6,$7,'pending')
-            RETURNING *
+            f"""
+            INSERT INTO contributions (
+              code, campaign_id, donor_id, pickup_method, pickup_address, status
+            ) VALUES ($1,$2,$3,$4,$5,'pending')
+            RETURNING {_CONTRIB_COLS}
             """,
             code,
+            campaign_id,
             donor_id,
-            group_id,
-            title,
-            description,
             pickup_method,
             pickup_address,
         )
-        return _donation(row)
+        return _contribution(row)
 
     async def add_item(
         self,
         *,
-        donation_id: uuid.UUID,
+        contribution_id: uuid.UUID,
+        campaign_item_id: uuid.UUID,
         name: str,
-        category_id: uuid.UUID | None,
         quantity: int,
         condition_declared: str,
-    ) -> DonationItem:
+    ) -> ContributionItem:
         row = await self._conn.fetchrow(
-            """
-            INSERT INTO donation_items (
-              donation_id, name, category_id, quantity, condition_declared, status
+            f"""
+            INSERT INTO contribution_items (
+              contribution_id, campaign_item_id, name, quantity,
+              condition_declared, status
             ) VALUES ($1,$2,$3,$4,$5,'pending')
-            RETURNING *
+            RETURNING {_ITEM_COLS}
             """,
-            donation_id,
+            contribution_id,
+            campaign_item_id,
             name,
-            category_id,
             quantity,
             condition_declared,
         )
@@ -136,151 +139,130 @@ class DonationRepository:
     async def add_image(
         self,
         *,
-        donation_item_id: uuid.UUID,
+        contribution_item_id: uuid.UUID,
         image_url: str,
         image_type: str = "declared",
-    ) -> DonationImage:
+    ) -> ContributionImage:
         row = await self._conn.fetchrow(
             """
-            INSERT INTO donation_images (donation_item_id, image_url, type)
+            INSERT INTO contribution_images (contribution_item_id, image_url, type)
             VALUES ($1,$2,$3::image_type)
             RETURNING *
             """,
-            donation_item_id,
+            contribution_item_id,
             image_url,
             image_type,
         )
         return _image(row)
 
-    async def get(self, donation_id: uuid.UUID) -> Donation | None:
+    async def get(self, contribution_id: uuid.UUID) -> Contribution | None:
         row = await self._conn.fetchrow(
-            "SELECT * FROM donations WHERE id = $1", donation_id
+            f"SELECT {_CONTRIB_COLS} FROM contributions WHERE id = $1",
+            contribution_id,
         )
         if row is None:
             return None
-        items = await self.list_items(donation_id)
-        return _donation(row, items)
+        items = await self.list_items(contribution_id)
+        return _contribution(row, items)
 
-    async def get_by_code(self, code: str) -> Donation | None:
-        row = await self._conn.fetchrow(
-            "SELECT * FROM donations WHERE code = $1",
-            code.strip().upper(),
-        )
-        if row is None:
-            return None
-        items = await self.list_items(row["id"])
-        return _donation(row, items)
-
-    async def list_items(self, donation_id: uuid.UUID) -> list[DonationItem]:
+    async def list_items(self, contribution_id: uuid.UUID) -> list[ContributionItem]:
         rows = await self._conn.fetch(
-            "SELECT * FROM donation_items WHERE donation_id = $1 ORDER BY id",
-            donation_id,
+            f"SELECT {_ITEM_COLS} FROM contribution_items WHERE contribution_id = $1 ORDER BY id",
+            contribution_id,
         )
         if not rows:
             return []
         item_ids = [r["id"] for r in rows]
         img_rows = await self._conn.fetch(
-            "SELECT * FROM donation_images WHERE donation_item_id = ANY($1::uuid[])",
+            "SELECT * FROM contribution_images WHERE contribution_item_id = ANY($1::uuid[])",
             item_ids,
         )
-        by_item: dict[uuid.UUID, list[DonationImage]] = {i: [] for i in item_ids}
+        by_item: dict[uuid.UUID, list[ContributionImage]] = {i: [] for i in item_ids}
         for ir in img_rows:
-            by_item[ir["donation_item_id"]].append(_image(ir))
+            by_item[ir["contribution_item_id"]].append(_image(ir))
         return [_item(r, by_item.get(r["id"], [])) for r in rows]
 
-    async def get_item(self, item_id: uuid.UUID) -> DonationItem | None:
+    async def get_item(self, item_id: uuid.UUID) -> ContributionItem | None:
         row = await self._conn.fetchrow(
-            "SELECT * FROM donation_items WHERE id = $1", item_id
+            f"SELECT {_ITEM_COLS} FROM contribution_items WHERE id = $1", item_id
         )
         if row is None:
             return None
         imgs = await self._conn.fetch(
-            "SELECT * FROM donation_images WHERE donation_item_id = $1", item_id
+            "SELECT * FROM contribution_images WHERE contribution_item_id = $1", item_id
         )
         return _item(row, [_image(i) for i in imgs])
 
     async def list(
         self,
         *,
+        campaign_id: uuid.UUID | None = None,
         donor_id: uuid.UUID | None = None,
-        group_id: uuid.UUID | None = None,
         status: str | None = None,
         limit: int = 20,
         offset: int = 0,
-    ) -> tuple[list[Donation], int]:
+    ) -> tuple[list[Contribution], int]:
         clauses: list[str] = ["1=1"]
         params: list = []
+        if campaign_id is not None:
+            params.append(campaign_id)
+            clauses.append(f"campaign_id = ${len(params)}")
         if donor_id is not None:
             params.append(donor_id)
             clauses.append(f"donor_id = ${len(params)}")
-        if group_id is not None:
-            params.append(group_id)
-            clauses.append(f"group_id = ${len(params)}")
         if status is not None:
             params.append(status)
             clauses.append(f"status = ${len(params)}")
         where = " AND ".join(clauses)
         total = await self._conn.fetchval(
-            f"SELECT COUNT(*) FROM donations WHERE {where}", *params
+            f"SELECT COUNT(*) FROM contributions WHERE {where}", *params
         )
         params.extend([limit, offset])
         rows = await self._conn.fetch(
             f"""
-            SELECT * FROM donations
+            SELECT {_CONTRIB_COLS} FROM contributions
             WHERE {where}
             ORDER BY created_at DESC
             LIMIT ${len(params) - 1} OFFSET ${len(params)}
             """,
             *params,
         )
-        donations = []
-        for r in rows:
-            items = await self.list_items(r["id"])
-            donations.append(_donation(r, items))
-        return donations, int(total or 0)
+        return [_contribution(r) for r in rows], int(total or 0)
 
     async def update_status(
         self,
-        donation_id: uuid.UUID,
+        contribution_id: uuid.UUID,
         *,
         status: str,
         reviewed_by: uuid.UUID | None = None,
         rejected_reason: str | None = None,
-        scheduled_at: datetime | None = None,
         received_at: datetime | None = None,
-    ) -> Donation | None:
+    ) -> Contribution | None:
         row = await self._conn.fetchrow(
-            """
-            UPDATE donations SET
-              status = $2::donation_status,
+            f"""
+            UPDATE contributions SET
+              status = $2::contribution_status,
               reviewed_by = COALESCE($3, reviewed_by),
               rejected_reason = COALESCE($4, rejected_reason),
-              scheduled_at = COALESCE($5, scheduled_at),
-              received_at = COALESCE($6, received_at),
+              received_at = COALESCE($5, received_at),
               reviewed_at = CASE
                 WHEN $3 IS NOT NULL AND reviewed_at IS NULL THEN NOW()
                 ELSE reviewed_at
               END,
-              review_action = CASE
-                WHEN $3 IS NOT NULL AND review_action IS NULL
-                  THEN ($2::donation_status)::text
-                ELSE review_action
-              END,
               updated_at = NOW()
             WHERE id = $1
-            RETURNING *
+            RETURNING {_CONTRIB_COLS}
             """,
-            donation_id,
+            contribution_id,
             status,
             reviewed_by,
             rejected_reason,
-            scheduled_at,
             received_at,
         )
         if row is None:
             return None
-        items = await self.list_items(donation_id)
-        return _donation(row, items)
+        items = await self.list_items(contribution_id)
+        return _contribution(row, items)
 
     async def update_item_check(
         self,
@@ -291,18 +273,18 @@ class DonationRepository:
         check_note: str | None,
         checked_by: uuid.UUID,
         reject_reason: str | None,
-    ) -> DonationItem | None:
+    ) -> ContributionItem | None:
         row = await self._conn.fetchrow(
-            """
-            UPDATE donation_items SET
-              status = $2::donation_item_status,
+            f"""
+            UPDATE contribution_items SET
+              status = $2::contribution_item_status,
               condition_actual = $3::item_condition,
               check_note = $4,
               checked_by = $5,
               checked_at = NOW(),
               reject_reason = $6
             WHERE id = $1
-            RETURNING *
+            RETURNING {_ITEM_COLS}
             """,
             item_id,
             status,
@@ -314,6 +296,19 @@ class DonationRepository:
         if row is None:
             return None
         imgs = await self._conn.fetch(
-            "SELECT * FROM donation_images WHERE donation_item_id = $1", item_id
+            "SELECT * FROM contribution_images WHERE contribution_item_id = $1", item_id
         )
         return _item(row, [_image(i) for i in imgs])
+
+    async def bump_campaign_item(
+        self, campaign_item_id: uuid.UUID, quantity: int
+    ) -> None:
+        await self._conn.execute(
+            """
+            UPDATE campaign_items
+            SET received_quantity = received_quantity + $2
+            WHERE id = $1
+            """,
+            campaign_item_id,
+            quantity,
+        )

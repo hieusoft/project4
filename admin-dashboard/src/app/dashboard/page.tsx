@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { AdminLayout } from "@/components/admin-layout"
-import { marketplaceApi, communityApi, identityApi, donationApi } from "@/lib/api/client"
+import { communityApi, identityApi, donationApi } from "@/lib/api/client"
 
 import { OverviewCards } from "@/components/dashboard/overview-cards"
 import { SystemStatusOverview } from "@/components/dashboard/system-status"
@@ -29,15 +29,15 @@ export default function DashboardPage() {
   useEffect(() => {
     async function fetchStats() {
       try {
-        const [accountsRes, groupsRes, overview, donationsRes, listingsRes, chartRes, pendingGroupsRes] = await Promise.allSettled([
+        const [accountsRes, groupsRes, campaignsRes, pendingGroupsRes] = await Promise.allSettled([
           identityApi.listAccounts({ limit: 1 }),
           communityApi.listGroups({ limit: 5 }),
-          marketplaceApi.getOverview(),
-          typeof donationApi.listDonations === 'function' ? donationApi.listDonations({ limit: 5 }) : Promise.resolve({ data: { meta: { total: 0 }, items: [] } }),
-          marketplaceApi.getListings({ limit: 1 }),
-          marketplaceApi.getStats({ limit: 14 }),
+          donationApi.listCampaigns({ limit: 5 }),
           communityApi.listGroups({ status: "pending", limit: 5 })
         ])
+
+        const campaignTotal = campaignsRes.status === "fulfilled" && campaignsRes.value.data?.meta
+          ? campaignsRes.value.data.meta.total : 0
 
         setStats({
           totalAccounts:
@@ -48,37 +48,17 @@ export default function DashboardPage() {
             groupsRes.status === "fulfilled" && groupsRes.value.data?.meta
               ? groupsRes.value.data.meta.total
               : 0,
-          totalDonations: 
-            donationsRes.status === "fulfilled" && donationsRes.value.data?.meta
-              ? donationsRes.value.data.meta.total
-              : (overview.status === "fulfilled" && overview.value.data ? overview.value.data.donations_count || 0 : 0),
-          totalListings: 
-            listingsRes.status === "fulfilled" && listingsRes.value.data?.meta
-              ? listingsRes.value.data.meta.total
-              : (overview.status === "fulfilled" && overview.value.data ? overview.value.data.items_listed || 0 : 0),
-          totalRequests: overview.status === "fulfilled" && overview.value.data ? overview.value.data.requests_count || 0 : 0,
-          totalItemsDelivered: overview.status === "fulfilled" && overview.value.data ? overview.value.data.items_delivered || 0 : 0,
+          totalDonations: campaignTotal,
+          totalListings: 0,
+          totalRequests: 0,
+          totalItemsDelivered: 0,
         })
 
-        if (overview.status === "fulfilled" && overview.value.data) {
-          setOverviewData(overview.value.data as Record<string, number>)
-        }
-        
         if (groupsRes.status === "fulfilled" && groupsRes.value.data) {
           setRecentGroups(groupsRes.value.data.items || [])
         }
-        if (donationsRes.status === "fulfilled" && donationsRes.value.data) {
-          setRecentDonations(donationsRes.value.data.items || [])
-        }
-        
-        if (chartRes.status === "fulfilled" && chartRes.value.data) {
-          const data = Array.isArray(chartRes.value.data) ? chartRes.value.data : []
-          setChartData([...data].reverse().map(d => ({
-              date: new Date(d.stat_date).toLocaleDateString("vi-VN", { month: "numeric", day: "numeric" }),
-              "Quyên góp": d.donations_count || 0,
-              "Yêu cầu": d.requests_count || 0,
-              "Bàn giao": d.items_delivered || 0
-           })))
+        if (campaignsRes.status === "fulfilled" && campaignsRes.value.data) {
+          setRecentDonations(campaignsRes.value.data.items || [])
         }
 
         if (pendingGroupsRes.status === "fulfilled" && pendingGroupsRes.value.data) {
@@ -105,17 +85,17 @@ export default function DashboardPage() {
               </p>
               <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Tổng quan vận hành</h2>
               <p className="mt-3 text-sm leading-6 text-[#fff5f3]/82">
-                Theo dõi tài khoản, hội nhóm, quyên góp, gian hàng và tiến trình bàn giao trên toàn hệ thống.
+                Theo dõi tài khoản, hội nhóm, đợt quyên góp và tiến trình trao tặng trên toàn hệ thống.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-3 text-sm sm:flex">
               <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur">
-                <div className="text-2xl font-bold tabular-nums">{stats.totalRequests.toLocaleString()}</div>
-                <div className="text-[#fff5f3]/75">Yêu cầu nhận</div>
+                <div className="text-2xl font-bold tabular-nums">{stats.totalDonations.toLocaleString()}</div>
+                <div className="text-[#fff5f3]/75">Đợt quyên góp</div>
               </div>
               <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur">
-                <div className="text-2xl font-bold tabular-nums">{stats.totalItemsDelivered.toLocaleString()}</div>
-                <div className="text-[#fff5f3]/75">Đã bàn giao</div>
+                <div className="text-2xl font-bold tabular-nums">{stats.totalGroups.toLocaleString()}</div>
+                <div className="text-[#fff5f3]/75">Hội nhóm</div>
               </div>
             </div>
           </div>

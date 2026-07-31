@@ -80,32 +80,9 @@ sequenceDiagram
     Note over M: Cron mỗi giờ: DELETE file temp > 24h (cả object + DB)
 ```
 
-#### Luồng 4: Quyên góp - từ đăng ký đến nhập kho (luồng lõi 1)
+#### Luồng 4: Tạo cuộc quyên góp + đóng góp (luồng lõi 1)
 
-Donor **không cần là member** của nhóm (đã chốt).
-
-```mermaid
-sequenceDiagram
-    participant D as Donor
-    participant AI as AI Service
-    participant DON as Donation
-    participant CM as Community
-    participant COM as Communication
-    Note over D,AI: --- Bước hỗ trợ AI (optional) ---
-    D->>AI: POST /api/ai/detect-item {image_urls}
-    AI-->>D: {name, category_id, condition} gợi ý sẵn form
-    D->>AI: POST /api/ai/suggest-groups {mô tả, province}
-    AI->>CM: GET groups active theo province (sync)
-    AI-->>D: danh sách nhóm phù hợp + lý do
-    Note over D,DON: --- Tạo donation ---
-    D->>DON: POST /api/donations {group_id, title, items[], pickup_method}
-    DON->>CM: verify group tồn tại + status=active (sync)
-    DON->>DON: INSERT donations(status=pending, code=DON-xxx)<br/>+ donation_items(status=pending)<br/>+ donation_images(type=declared)
-    DON-->>COM: ⇢ donation.created
-    COM->>COM: INSERT conversations(type=donor_group,<br/>context=donation, system message đầu tiên)<br/>+ notify moderators nhóm
-```
-
-**Nhóm xử lý — 3 bước trạng thái:**
+Nhóm tạo **cuộc quyên góp** (campaign) với mục tiêu cụ thể (vd: 15 áo, 15 bao gạo cho địa phương X). Donor đóng góp vào campaign.
 
 ```mermaid
 sequenceDiagram
@@ -113,92 +90,78 @@ sequenceDiagram
     participant DON as Donation
     participant CM as Community
     participant COM as Communication
-    Note over MOD: B1. Duyệt sơ bộ qua ảnh
-    MOD->>DON: PUT /api/donations/:id/review {action}
-    DON->>CM: verify MOD là owner/moderator của group_id (sync)
+    participant D as Donor
+    Note over MOD,DON: --- Nhóm tạo cuộc quyên góp ---
+    MOD->>DON: POST /api/campaigns {group_id, title, items[], deadline, beneficiary}
+    DON->>CM: verify group active + moderator (sync)
+    DON->>DON: INSERT campaigns(status=active, code=CP-xxx)<br/>+ campaign_items(target_quantity)
+    DON-->>COM: ⇢ campaign.created → notify members nhóm
+    Note over D,DON: --- Donor đóng góp ---
+    D->>DON: POST /api/contributions {campaign_id, items[{campaign_item_id, qty, condition}]}
+    DON->>DON: verify campaign active<br/>INSERT contributions(status=pending, code=CTR-xxx)<br/>+ contribution_items + declared images
+    DON-->>COM: ⇢ contribution.created → tạo conversation(donor_group)<br/>+ notify moderators
+```
+
+**Nhóm xử lý đóng góp — 3 bước trạng thái:**
+
+```mermaid
+sequenceDiagram
+    participant MOD as Moderator
+    participant DON as Donation
+    participant CM as Community
+    participant COM as Communication
+    Note over MOD: B1. Duyệt sơ bộ
+    MOD->>DON: PUT /api/contributions/:id/review {action}
+    DON->>CM: verify MOD là owner/moderator (sync)
     alt Chấp nhận
         DON->>DON: status=accepted
     else Từ chối
         DON->>DON: status=rejected + rejected_reason
     end
-    DON-->>COM: ⇢ donation.reviewed → notify donor
-    Note over MOD: B2. Hẹn lịch (chốt qua chat trước nếu cần)
-    MOD->>DON: PUT /api/donations/:id/schedule {scheduled_at}
-    DON->>DON: status=scheduled
-    DON-->>COM: ⇢ donation.scheduled<br/>→ notify 2 bên + INSERT scheduled_reminders(remind_at = giờ hẹn - 2h)
-    Note over MOD: B3. Nhận đồ thực tế, kiểm tra TỪNG món
-    MOD->>DON: PUT /api/donations/:id/items/:itemId/check<br/>{condition_actual, ảnh actual_check, action}
-    alt Món dùng được
-        DON->>DON: item.status=accepted<br/>CÙNG TRANSACTION: INSERT inventory_items(status=in_stock,<br/>code=ITM-xxx, donor_id) + item_status_histories(null→in_stock)
+    DON-->>COM: ⇢ contribution.reviewed → notify donor
+    Note over MOD: B2. Nhận đồ, kiểm tra TỪNG món
+    MOD->>DON: PUT /api/contributions/:id/items/:itemId/check<br/>{condition_actual, ảnh actual, action}
+    alt Món đạt
+        DON->>DON: item.status=accepted<br/>CÙNG TRANSACTION: campaign_items.received_quantity += qty
     else Món hỏng
         DON->>DON: item.status=rejected + reject_reason
     end
-    Note over DON: Khi mọi item đã check:<br/>donations.status=completed (hoặc rejected nếu hỏng hết)
-    DON-->>COM: ⇢ donation.completed → notify donor<br/>"3/4 món đã nhập kho, 1 món từ chối vì..."
+    Note over DON: Khi mọi item đã check:<br/>contributions.status=completed (hoặc rejected nếu hỏng hết)
+    DON-->>COM: ⇢ contribution.completed → notify donor<br/>"3/4 món đã đạt, 1 món bị từ chối vì..."
 ```
 
-Điểm quan trọng: check → nhập kho là **một transaction nội bộ** Donation Service (Donation + Inventory chung DB), không có rủi ro mất đồng bộ.
+Điểm quan trọng: check → bump `received_quantity` là **một transaction nội bộ** Donation Service, không có rủi ro mất đồng bộ. Tiến độ campaign được update real-time.
 
-#### Luồng 5: Đăng gian hàng 0 đồng (luồng lõi 2)
+#### Luồng 5: Trao tặng đợt quyên góp (luồng lõi 2)
+
+Khi campaign đủ mục tiêu hoặc hết hạn, nhóm trao tặng toàn bộ đồ đến địa phương.
 
 ```mermaid
 sequenceDiagram
     participant MOD as Moderator
     participant DON as Donation
-    participant AI as AI Service
-    participant MKT as Marketplace
     participant COM as Communication
-    MOD->>DON: GET /api/inventory?group_id=&status=in_stock (chọn đồ)
-    MOD->>AI: POST /api/ai/generate-description {image_url, name, condition}
-    AI-->>MOD: mô tả tự sinh (sửa được)
-    MOD->>MKT: POST /api/listings {inventory_item_id, title, ...}
-    MKT->>DON: GET inventory item (sync) → verify in_stock,<br/>lấy category, condition, group_id
-    MKT->>DON: PUT item status=listed (sync) + ghi history
-    MKT->>MKT: INSERT listings(status=active,<br/>province_code copy từ group) + listing_images
-    MKT-->>AI: ⇢ listing.created → moderation async
-    MKT-->>COM: ⇢ listing.created → notify member nhóm "có đồ mới"
-    Note over AI: Nếu vi phạm:
-    AI-->>MKT: ⇢ ai.moderation_result {verdict=blocked}
-    MKT->>MKT: listings.status=blocked → notify admin
+    MOD->>DON: GET /api/campaigns/:id/progress (xem tiến độ)
+    Note over MOD: Kiểm tra: đủ target hoặc hết hạn
+    MOD->>DON: POST /api/campaigns/:id/deliver {photo, note}
+    DON->>DON: INSERT campaign_deliveries<br/>campaigns.status=fulfilled, fulfilled_at=now()
+    DON->>DON: Lấy danh sách donor_ids từ contributions
+    DON-->>COM: ⇢ campaign.delivered → notify tất cả donors<br/>"Đồ quyên góp của bạn đã đến tay người cần" ✨
 ```
 
-#### Luồng 6: Đăng ký nhận đồ → xét duyệt → trao tặng (luồng lõi 3)
+Trường hợp đóng campaign sớm (chưa đủ): `PUT /campaigns/:id/close` → status=closed, notify donors "đợt đã đóng".
 
-Receiver **bắt buộc là member approved** của nhóm.
+#### Luồng 6: Theo dõi tiến độ đợt quyên góp (public)
 
 ```mermaid
 sequenceDiagram
-    participant R as Receiver
-    participant MKT as Marketplace
-    participant CM as Community
+    participant U as User
     participant DON as Donation
-    participant COM as Communication
-    R->>MKT: GET /api/listings?category=&province=&group_id= (public, xem tự do)
-    R->>MKT: POST /api/requests {listing_id, quantity, reason}
-    MKT->>CM: verifyMembership(receiver, group) (sync)<br/>chưa là member → 403 "Tham gia nhóm để nhận"
-    MKT->>MKT: check listing active + quantity_available đủ<br/>+ unique index chặn request trùng đang mở
-    MKT->>MKT: INSERT item_requests(status=pending, code=REQ-xxx)
-    MKT-->>COM: ⇢ request.created → notify moderators
-    Note over MKT: --- Moderator xét duyệt ---
-    MKT->>MKT: PUT /api/requests/:id/review (verify role qua CM)
-    alt Approve
-        MKT->>MKT: status=approved<br/>listings.quantity_available -1<br/>hết hàng → listings.status=reserved
-        MKT->>DON: PUT item status=reserved (sync) + history
-        MKT-->>COM: ⇢ request.approved<br/>→ tạo conversation(receiver↔group) + notify receiver
-    else Reject
-        MKT->>MKT: status=rejected + reject_reason → notify
-    end
-    Note over MKT: --- Hẹn lịch nhận ---
-    MKT->>MKT: PUT /api/requests/:id/schedule → status=scheduled
-    MKT-->>COM: ⇢ request.scheduled → notify + scheduled_reminders
-    Note over R: --- Trao tặng ---
-    R->>MKT: đến điểm hẹn, mở QR (qr_token từ app)
-    MKT->>MKT: moderator quét/confirm:<br/>INSERT delivery_confirmations {qr_token, photo}<br/>status=completed + completed_at
-    MKT->>DON: PUT item status=delivered (sync) + history
-    MKT-->>COM: ⇢ request.completed → 3 notification:<br/>1. Receiver: "Nhận thành công, hãy đánh giá"<br/>2. DONOR: "Món đồ của bạn đã đến tay người cần" ✨<br/>3. Moderators: cập nhật thống kê nhóm
+    U->>DON: GET /api/campaigns?status=active (xem các đợt đang mở)
+    U->>DON: GET /api/campaigns/:id (chi tiết + items)
+    U->>DON: GET /api/campaigns/:id/progress (tiến độ: 5/15 áo, 3/15 bao gạo)
+    Note over U: Donor thấy còn thiếu gì → đóng góp tiếp
 ```
-
-Trường hợp phụ: receiver không đến (`no_show`) hoặc hủy (`cancelled`) → hoàn `quantity_available +1`, item về `in_stock`, listing về `active`.
 
 #### Luồng 7: Chat realtime (shared inbox phía nhóm)
 
@@ -295,7 +258,7 @@ sequenceDiagram
     participant MQ as RabbitMQ
     participant COM as Communication
     participant FCM as FCM
-    MQ-->>COM: consume MỌI event nghiệp vụ<br/>(donation.*, request.*, group.*, post.*, message.sent)
+    MQ-->>COM: consume MỌI event nghiệp vụ<br/>(campaign.*, contribution.*, group.*, post.*, message.sent)
     COM->>COM: map event → template tiếng Việt<br/>INSERT notifications(user_id, type, ref_type, ref_id)
     COM->>FCM: push tới device_tokens của user (nếu có)
     Note over COM: Cron mỗi 5 phút:
@@ -304,40 +267,36 @@ sequenceDiagram
     COM->>COM: UPDATE sent_at
 ```
 
-#### Luồng 12: Analytics (module trong Marketplace)
+#### Luồng 12: Analytics (trong Donation Service)
 
 ```mermaid
 sequenceDiagram
-    participant MQ as RabbitMQ
-    participant ANA as Marketplace (analytics module)
+    participant DON as Donation Service
     participant AD as Admin/Owner
-    MQ-->>ANA: consume: user.verified, donation.completed,<br/>listing.created, request.completed, group.member_approved
-    ANA->>ANA: UPSERT daily_stats(stat_date, group_id)<br/>+ dòng group_id=NULL cho toàn hệ thống
-    AD->>ANA: GET /api/stats/overview | /stats/groups/:id?from=&to= | /stats/monthly
-    ANA-->>AD: tổng quyên góp, đã trao, người được giúp, chart theo tháng
+    DON->>DON: UPSERT daily_stats trực tiếp khi:<br/>campaign.created, contribution.created,<br/>contribution.check_item (accepted), campaign.delivered
+    Note over DON: daily_stats(stat_date, group_id)<br/>+ dòng group_id=NULL cho toàn hệ thống
+    AD->>DON: GET /api/campaigns (dashboard)
+    DON-->>AD: tổng đợt, đóng góp, đồ đã nhận, đã trao
 ```
 
-#### Luồng 13: Hành trình món đồ (minh bạch cho donor)
+#### Luồng 13: Theo dõi tiến độ đóng góp (minh bạch cho donor)
 
 ```mermaid
 sequenceDiagram
     participant D as Donor
     participant DON as Donation
-    D->>DON: GET /api/inventory/:itemId/history<br/>(verify: inventory_items.donor_id = user)
-    DON-->>D: timeline từ item_status_histories + ref
-    Note over D: 05/07 Đã kiểm tra & nhập kho (ảnh thực tế)<br/>06/07 Đăng lên gian hàng (link listing)<br/>07/07 Có người đăng ký nhận<br/>08/07 ✅ Đã trao tặng (ảnh xác nhận từ delivery)
+    D->>DON: GET /api/campaigns/:id/progress
+    DON-->>D: tiến độ từng mục tiêu: 5/15 áo, 3/15 bao gạo
+    Note over D: 05/07 Tạo đóng góp CTR-001 (5 áo, 3 bao gạo)<br/>06/07 Nhóm chấp nhận đóng góp<br/>07/07 Kiểm tra: 5 áo đạt, 3 bao gạo đạt<br/>08/07 ✅ Đợt đã trao tặng đến bà con vùng lũ
 ```
 
 #### Bảng tổng hợp chuỗi trạng thái xuyên suốt
 
 ```text
-DONATION:  pending → accepted → scheduled → completed (hoặc rejected/cancelled)
-ITEM (kho): in_stock → listed → reserved → delivered (hoặc discarded)
-LISTING:   active → reserved → closed (hoặc blocked)
-REQUEST:   pending → approved → scheduled → completed (hoặc rejected/cancelled/no_show)
+CAMPAIGN:      active → fulfilled (hoặc closed/cancelled)
+CONTRIBUTION:  pending → accepted → received → completed (hoặc rejected/cancelled)
+ITEM:          pending → accepted | rejected  (accepted → bump campaign_item.received_quantity)
 
-Sync (client lib):  Marketplace→Community (membership), Marketplace→Donation (item),
-                    Donation→Community (group/role), AI→Community (groups)
-Event (RabbitMQ):   mọi thay đổi trạng thái → Communication (notify) + Analytics (stats)
-                    post/listing/message.created → AI (moderation)
+Event (RabbitMQ):   mọi thay đổi trạng thái → Communication (notify + reminder)
+                     post.created → AI (moderation)
 ```

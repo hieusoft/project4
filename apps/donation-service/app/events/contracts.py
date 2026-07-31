@@ -3,48 +3,47 @@ from __future__ import annotations
 from pydantic import BaseModel
 
 
-class DonationCreatedEvent(BaseModel):
-    donationId: str
-    donorId: str
+class CampaignCreatedEvent(BaseModel):
+    campaignId: str
     groupId: str
+    code: str
+    title: str
+    createdBy: str
+    notifyUserIds: list[str] | None = None
+
+
+class CampaignClosedEvent(BaseModel):
+    campaignId: str
+    groupId: str
+    reason: str | None = None
+
+
+class CampaignDeliveredEvent(BaseModel):
+    campaignId: str
+    groupId: str
+    donorIds: list[str]
+    deliveryNote: str | None = None
+
+
+class ContributionCreatedEvent(BaseModel):
+    contributionId: str
+    campaignId: str
+    donorId: str
     code: str
     notifyUserIds: list[str] | None = None
 
 
-class DonationReviewedEvent(BaseModel):
-    donationId: str
+class ContributionReviewedEvent(BaseModel):
+    contributionId: str
+    campaignId: str
     donorId: str
-    groupId: str
-    action: str  # accepted | rejected
+    action: str
     reason: str | None = None
 
 
-class DonationScheduledEvent(BaseModel):
-    donationId: str
+class ContributionCompletedEvent(BaseModel):
+    contributionId: str
+    campaignId: str
     donorId: str
-    groupId: str
-    scheduledAt: str
-    notifyUserIds: list[str] | None = None
-
-
-class DonationCompletedEvent(BaseModel):
-    donationId: str
-    donorId: str
-    groupId: str
     acceptedItems: int
     rejectedItems: int
-
-
-class InventoryImportedEvent(BaseModel):
-    inventoryItemId: str
-    donationItemId: str
-    groupId: str
-    donorId: str
-
-
-class ItemStatusChangedEvent(BaseModel):
-    inventoryItemId: str
-    fromStatus: str | None = None
-    toStatus: str
-    refType: str | None = None
-    refId: str | None = None

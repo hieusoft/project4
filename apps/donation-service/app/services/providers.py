@@ -6,17 +6,17 @@ from fastapi import Depends
 
 from app.core.deps import DbConn
 from app.events.publisher import publisher
-from app.services.donations import DonationService
-from app.services.inventory import InventoryService
+from app.services.campaigns import CampaignService
+from app.services.contributions import ContributionService
 
 
-def get_donation_service(conn: DbConn) -> DonationService:
-    return DonationService(conn, publisher)
+def get_campaign_service(conn: DbConn) -> CampaignService:
+    return CampaignService(conn, publisher)
 
 
-def get_inventory_service(conn: DbConn) -> InventoryService:
-    return InventoryService(conn, publisher)
+def get_contribution_service(conn: DbConn) -> ContributionService:
+    return ContributionService(conn, publisher)
 
 
-DonationServiceDep = Annotated[DonationService, Depends(get_donation_service)]
-InventoryServiceDep = Annotated[InventoryService, Depends(get_inventory_service)]
+CampaignServiceDep = Annotated[CampaignService, Depends(get_campaign_service)]
+ContributionServiceDep = Annotated[ContributionService, Depends(get_contribution_service)]

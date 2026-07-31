@@ -110,7 +110,6 @@ services:
       - communication-service
       - media-service
       - ai-service
-      - marketplace-service
       - donation-service
       - admin-dashboard
 
@@ -181,24 +180,6 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-
-  marketplace-service:
-    image: ${IMAGE_REGISTRY}/marketplace-service:${IMAGE_TAG:-latest}
-    <<: *app-env
-    environment:
-      PORT: "${MARKETPLACE_SERVICE_PORT:-3004}"
-      NODE_ENV: production
-      COMMUNITY_SERVICE_URL: "http://community-service:3002"
-      DONATION_SERVICE_URL: "http://donation-service:3003"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-      community-service:
-        condition: service_started
-      donation-service:
-        condition: service_started
 
   donation-service:
     image: ${IMAGE_REGISTRY}/donation-service:${IMAGE_TAG:-latest}

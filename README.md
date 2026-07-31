@@ -3,8 +3,7 @@
 Nền tảng kết nối **người quyên góp** với **hội nhóm thiện nguyện** theo mô hình **Gian hàng 0 đồng**.
 
 ```text
-Người quyên góp → Chọn nhóm → Tiếp nhận & kiểm tra → Nhập kho
-→ Gian hàng 0 đồng → Đăng ký nhận → Xét duyệt → Trao tặng
+Người quyên góp → Chọn đợt → Đóng góp vào đợt → Nhóm kiểm tra → Trao tặng đợt
 ```
 
 | Mục nhanh | Link |
@@ -171,7 +170,7 @@ PostgreSQL · Redis · RabbitMQ
 ### Cấu trúc repo
 
 ```text
-apps/          identity, media, community, communication, ai
+apps/          identity, media, community, communication, donation, ai
 libs/          common, events, clients (TypeScript)
 infra/         kong, docs-portal, postgres init, rabbitmq
 scripts/       server-setup.sh, deploy.sh
@@ -190,9 +189,9 @@ docker-compose.prod.yml
 | media-service | 3006 | FastAPI | Có nghiệp vụ |
 | community-service | 3002 | FastAPI | Groups, members, posts, comments |
 | communication-service | 3005 | FastAPI (Python) | Brevo email, FCM, Socket.IO chat, notifications |
+| donation-service | 3003 | FastAPI | Campaigns, contributions, kiểm tra, trao tặng |
 | ai-service | 3007 | NestJS | Scaffold |
 | docs-portal | 8080 (internal) | nginx + Swagger UI | Hub multi-spec tại `/docs` |
-| donation / marketplace | 3003 / 3004 | — | Chưa có code |
 
 ---
 
@@ -215,8 +214,7 @@ curl http://localhost:8000/api/identity/health
 | http://localhost:8000/docs | **Swagger hub** (tất cả service) |
 | http://localhost:8000/api/identity/openapi.json | OpenAPI Identity |
 | http://localhost:8000/api/media/openapi.json | OpenAPI Media |
-| http://localhost:8000/docs/specs/marketplace.openapi.json | OpenAPI Marketplace (static hub) |
-| http://localhost:8000/api/marketplace/openapi.json | OpenAPI Marketplace (live service) |
+| http://localhost:8000/api/donation/openapi.json | OpenAPI Donation |
 | http://localhost:15672 | RabbitMQ UI |
 | http://localhost:3001/docs | Swagger identity (direct) |
 | http://localhost:3005/docs | Swagger communication (direct) |
@@ -238,7 +236,7 @@ uvicorn app.main:app --reload --port 3001
 
 ```text
 Push main
-  → Build 6 image (5 apps + docs-portal)
+  → Build 8 image (6 apps + docs-portal + admin-dashboard)
   → Push ghcr.io/hieusoft/project4/<service>:<sha>
   → SSH server → compose pull && up -d
 ```
@@ -269,4 +267,4 @@ Push main
 - Không commit file `.env`
 - Đổi hết password mặc định trên production
 - Image: `ghcr.io/hieusoft/project4/<service>`
-- `donation-service` / `marketplace-service` chưa có code — route Kong có thể 502
+- `marketplace-service` đã bỏ — thay bằng luồng Campaign trong donation-service
