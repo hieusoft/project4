@@ -7,5 +7,22 @@
   "bindings": [
     { "source": "charity.events", "vhost": "/", "destination": "communication.events", "destination_type": "queue", "routing_key": "#", "arguments": {} },
     { "source": "charity.events", "vhost": "/", "destination": "ai.moderation", "destination_type": "queue", "routing_key": "*.created", "arguments": {} }
+  ],
+  "users": [
+    {
+      "name": "charity",
+      "password_hash": "Rl+FUbMjzSYOjQlStlgZOflIR8zlcB4BGba1jiEcKN0=",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": ["administrator"]
+    }
+  ],
+  "permissions": [
+    {
+      "user": "charity",
+      "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
   ]
 }
