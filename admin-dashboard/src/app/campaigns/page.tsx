@@ -40,7 +40,7 @@ const STATUS_VARIANTS: Record<string, "default" | "secondary" | "destructive" | 
 }
 
 export default function CampaignsPage() {
-  const { currentUser, isLoading } = useAuth()
+  const { currentUser, isAuthLoading } = useAuth()
   const [campaigns, setCampaigns] = useState<CampaignWithGroup[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
@@ -84,8 +84,8 @@ export default function CampaignsPage() {
   }, [statusFilter, page])
 
   useEffect(() => {
-    if (!isLoading && currentUser) fetchCampaigns()
-  }, [isLoading, currentUser, fetchCampaigns])
+    if (!isAuthLoading && currentUser) fetchCampaigns()
+  }, [isAuthLoading, currentUser, fetchCampaigns])
 
   const filtered = campaigns.filter((c) =>
     !search ||
@@ -129,7 +129,7 @@ export default function CampaignsPage() {
     }
   }
 
-  if (isLoading || !currentUser) return null
+  if (isAuthLoading || !currentUser) return null
 
   return (
     <AdminLayout>
@@ -151,7 +151,7 @@ export default function CampaignsPage() {
               className="pl-9"
             />
           </div>
-          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v === "all" ? "" : v); setPage(1) }}>
+          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(!v || v === "all" ? "" : v); setPage(1) }}>
             <SelectTrigger className="w-[160px]">
               <SelectValue placeholder="Trạng thái" />
             </SelectTrigger>
