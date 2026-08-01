@@ -144,11 +144,13 @@ class PostRepository:
         limit: int,
         offset: int,
         group_ids: list[uuid.UUID] | None = None,
+        viewer_id: uuid.UUID | None = None,
     ) -> tuple[list[tuple[Post, dict[str, Any]]], int]:
         """Feed tổng hợp bài viết từ nhiều hội nhóm, mới nhất trước.
 
-        Chỉ lấy bài `active` thuộc nhóm `active`. Trả kèm thông tin nhóm để
-        client hiển thị tên/avatar mà không phải gọi thêm request nào.
+        Chỉ lấy bài `active` thuộc nhóm `active`. Trả kèm thông tin nhóm và
+        trạng thái thành viên của người xem để client biết có được phép
+        thích/bình luận hay phải mời tham gia nhóm trước.
 
         Khác `list_for_group`: KHÔNG ưu tiên `is_pinned` — ghim chỉ có ý nghĩa
         trong phạm vi một nhóm, đưa lên feed chung sẽ gây nhiễu.
@@ -171,6 +173,30 @@ class PostRepository:
             *params,
         )
 
+        # Nạp membership + reaction của chính người xem trong cùng query để
+        # client không phải hỏi lại từng nhóm/bài.
+        if viewer_id is not None:
+            params.append(viewer_id)
+            viewer = f"${len(params)}"
+            viewer_cols = f"""
+              gm.role AS my_role,
+              gm.status AS my_status,
+              (pr.user_id IS NOT NULL) AS is_liked
+            """
+            viewer_joins = f"""
+            LEFT JOIN group_members gm
+              ON gm.group_id = p.group_id AND gm.user_id = {viewer}
+            LEFT JOIN post_reactions pr
+              ON pr.post_id = p.id AND pr.user_id = {viewer}
+            """
+        else:
+            viewer_cols = """
+              NULL::member_role AS my_role,
+              NULL::member_status AS my_status,
+              false AS is_liked
+            """
+            viewer_joins = ""
+
         params.extend([limit, offset])
         rows = await self._conn.fetch(
             f"""
@@ -179,9 +205,12 @@ class PostRepository:
               p.status, p.is_pinned, p.like_count, p.comment_count,
               p.created_at, p.updated_at,
               g.name AS group_name, g.slug AS group_slug,
-              g.avatar_url AS group_avatar_url
+              g.avatar_url AS group_avatar_url,
+              g.owner_id AS group_owner_id,
+              {viewer_cols}
             FROM posts p
             JOIN groups g ON g.id = p.group_id
+            {viewer_joins}
             WHERE {clause}
             ORDER BY p.created_at DESC
             LIMIT ${len(params) - 1} OFFSET ${len(params)}
@@ -192,11 +221,23 @@ class PostRepository:
         items: list[tuple[Post, dict[str, Any]]] = []
         for r in rows:
             data = dict(r)
+            owner_id = data.pop("group_owner_id")
+            my_role = data.pop("my_role")
+            my_status = data.pop("my_status")
+            is_liked = bool(data.pop("is_liked"))
+            # Chủ nhóm luôn là thành viên, kể cả khi thiếu bản ghi group_members.
+            if viewer_id is not None and owner_id == viewer_id:
+                my_role = my_role or "owner"
+                my_status = my_status or "approved"
             group = {
                 "id": data["group_id"],
                 "name": data.pop("group_name"),
                 "slug": data.pop("group_slug"),
                 "avatar_url": data.pop("group_avatar_url"),
+                "my_role": my_role,
+                "my_status": my_status,
+                # Cờ của bài, gom chung để service không phải trả thêm tuple.
+                "_is_liked": is_liked,
             }
             items.append((Post.model_validate(data), group))
         return items, int(total or 0)

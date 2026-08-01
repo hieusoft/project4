@@ -8,7 +8,16 @@ import pytest
 from app.repositories.posts import PostRepository
 
 
-def post_row(*, group_name="Cong dong Ha Noi", pinned=False, content="Noi dung"):
+def post_row(
+    *,
+    group_name="Cong dong Ha Noi",
+    pinned=False,
+    content="Noi dung",
+    my_role=None,
+    my_status=None,
+    is_liked=False,
+    owner_id=None,
+):
     now = datetime.now(timezone.utc)
     gid = uuid.uuid4()
     return {
@@ -27,7 +36,12 @@ def post_row(*, group_name="Cong dong Ha Noi", pinned=False, content="Noi dung")
         "group_name": group_name,
         "group_slug": "cong-dong-ha-noi",
         "group_avatar_url": None,
+        "group_owner_id": owner_id or uuid.uuid4(),
+        "my_role": my_role,
+        "my_status": my_status,
+        "is_liked": is_liked,
     }
+
 
 
 def image_row(post_id, *, order=0):
@@ -140,3 +154,88 @@ async def test_feed_route_registered_before_post_detail():
 
     paths = [r.path for r in module.router.routes]
     assert "/feed" in paths
+
+
+# ==========================================================================
+# Trang thai thanh vien cua nguoi xem
+# ==========================================================================
+@pytest.mark.asyncio
+async def test_feed_reports_membership_of_viewer():
+    conn = AsyncMock()
+    conn.fetchval.return_value = 1
+    conn.fetch.return_value = [
+        post_row(my_role="member", my_status="approved", is_liked=True)
+    ]
+
+    items, _ = await PostRepository(conn).list_feed(
+        limit=20, offset=0, viewer_id=uuid.uuid4()
+    )
+
+    _, group = items[0]
+    assert group["my_status"] == "approved"
+    assert group["_is_liked"] is True
+
+
+@pytest.mark.asyncio
+async def test_feed_marks_non_member_when_no_membership_row():
+    conn = AsyncMock()
+    conn.fetchval.return_value = 1
+    conn.fetch.return_value = [post_row()]
+
+    items, _ = await PostRepository(conn).list_feed(
+        limit=20, offset=0, viewer_id=uuid.uuid4()
+    )
+
+    _, group = items[0]
+    assert group["my_status"] is None
+    assert group["_is_liked"] is False
+
+
+@pytest.mark.asyncio
+async def test_feed_treats_group_owner_as_member():
+    """Chu nhom co the thieu ban ghi group_members nhung van la thanh vien."""
+    owner = uuid.uuid4()
+    conn = AsyncMock()
+    conn.fetchval.return_value = 1
+    conn.fetch.return_value = [post_row(owner_id=owner)]
+
+    items, _ = await PostRepository(conn).list_feed(
+        limit=20, offset=0, viewer_id=owner
+    )
+
+    _, group = items[0]
+    assert group["my_role"] == "owner"
+    assert group["my_status"] == "approved"
+
+
+@pytest.mark.asyncio
+async def test_feed_skips_membership_join_for_anonymous():
+    """Khach chua dang nhap: khong JOIN thua, luon tra false."""
+    conn = AsyncMock()
+    conn.fetchval.return_value = 1
+    conn.fetch.return_value = [post_row()]
+
+    items, _ = await PostRepository(conn).list_feed(limit=20, offset=0)
+
+    sql = conn.fetch.await_args.args[0]
+    assert "LEFT JOIN group_members" not in sql
+    assert "LEFT JOIN post_reactions" not in sql
+    _, group = items[0]
+    assert group["my_status"] is None
+    assert group["_is_liked"] is False
+
+
+@pytest.mark.asyncio
+async def test_feed_joins_membership_for_signed_in_viewer():
+    conn = AsyncMock()
+    conn.fetchval.return_value = 0
+    conn.fetch.return_value = []
+    viewer = uuid.uuid4()
+
+    await PostRepository(conn).list_feed(limit=20, offset=0, viewer_id=viewer)
+
+    sql = conn.fetch.await_args.args[0]
+    assert "LEFT JOIN group_members" in sql
+    assert "LEFT JOIN post_reactions" in sql
+    assert viewer in conn.fetch.await_args.args
+

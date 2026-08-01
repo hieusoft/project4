@@ -91,7 +91,7 @@ async def list_feed(
                 ) from None
 
     items, total = await service.list_feed(
-        limit=limit, offset=offset, group_ids=parsed
+        limit=limit, offset=offset, group_ids=parsed, user=_user
     )
     return DataEnvelope(
         data=Page(

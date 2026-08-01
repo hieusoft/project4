@@ -150,19 +150,32 @@ class PostService:
         limit: int,
         offset: int,
         group_ids: list[uuid.UUID] | None = None,
+        user: CurrentUser | None = None,
     ) -> tuple[list[FeedPostOut], int]:
         """Feed tổng hợp bài viết công khai từ các hội nhóm đang hoạt động."""
         rows, total = await self._posts.list_feed(
-            limit=limit, offset=offset, group_ids=group_ids
+            limit=limit,
+            offset=offset,
+            group_ids=group_ids,
+            viewer_id=user.uuid if user else None,
         )
         images_by_post = await self._posts.list_images_for([p.id for p, _ in rows])
-        out = [
-            FeedPostOut(
-                **self._to_out(post, images_by_post.get(post.id, [])).model_dump(),
-                group=FeedGroupOut(**group),
+
+        out: list[FeedPostOut] = []
+        for post, group in rows:
+            meta = dict(group)
+            is_liked = bool(meta.pop("_is_liked", False))
+            feed_group = FeedGroupOut(**meta)
+            # Admin nền tảng thao tác được ở mọi nhóm.
+            can_interact = feed_group.is_member or bool(user and user.is_admin)
+            out.append(
+                FeedPostOut(
+                    **self._to_out(post, images_by_post.get(post.id, [])).model_dump(),
+                    group=feed_group,
+                    is_liked=is_liked,
+                    can_interact=can_interact,
+                )
             )
-            for post, group in rows
-        ]
         return out, total
 
     async def update(

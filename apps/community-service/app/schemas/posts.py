@@ -5,7 +5,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-from app.models.enums import ContentStatus, PostType
+from app.models.enums import ContentStatus, MemberRole, MemberStatus, PostType
 
 
 class CreatePostRequest(BaseModel):
@@ -51,11 +51,26 @@ class FeedGroupOut(BaseModel):
     slug: str
     avatar_url: str | None = None
 
+    # Vai trò/trạng thái của người đang xem với nhóm này. null = chưa tham gia.
+    my_role: MemberRole | None = None
+    my_status: MemberStatus | None = None
+
+    @property
+    def is_member(self) -> bool:
+        return self.my_status == MemberStatus.approved
+
 
 class FeedPostOut(PostOut):
     """Bài viết trong feed, kèm nhóm để client không phải gọi thêm request."""
 
     group: FeedGroupOut
+
+    # Người xem đã thích bài này chưa (false khi chưa đăng nhập).
+    is_liked: bool = False
+
+    # Người xem có được thích/bình luận không. Backend yêu cầu là thành viên
+    # đã duyệt, nên client dùng cờ này để ẩn nút thay vì để bấm rồi nhận 403.
+    can_interact: bool = False
 
 
 class CreateCommentRequest(BaseModel):
