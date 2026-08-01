@@ -22,6 +22,8 @@ from app.repositories.posts import PostRepository
 from app.schemas.posts import (
     CreateCommentRequest,
     CreatePostRequest,
+    FeedGroupOut,
+    FeedPostOut,
     PostImageOut,
     PostOut,
     UpdatePostRequest,
@@ -137,10 +139,30 @@ class PostService:
         posts, total = await self._posts.list_for_group(
             group_id, limit=limit, offset=offset, include_hidden=include_hidden
         )
-        out: list[PostOut] = []
-        for p in posts:
-            imgs = await self._posts.list_images(p.id)
-            out.append(self._to_out(p, imgs))
+        images_by_post = await self._posts.list_images_for([p.id for p in posts])
+        return [
+            self._to_out(p, images_by_post.get(p.id, [])) for p in posts
+        ], total
+
+    async def list_feed(
+        self,
+        *,
+        limit: int,
+        offset: int,
+        group_ids: list[uuid.UUID] | None = None,
+    ) -> tuple[list[FeedPostOut], int]:
+        """Feed tổng hợp bài viết công khai từ các hội nhóm đang hoạt động."""
+        rows, total = await self._posts.list_feed(
+            limit=limit, offset=offset, group_ids=group_ids
+        )
+        images_by_post = await self._posts.list_images_for([p.id for p, _ in rows])
+        out = [
+            FeedPostOut(
+                **self._to_out(post, images_by_post.get(post.id, [])).model_dump(),
+                group=FeedGroupOut(**group),
+            )
+            for post, group in rows
+        ]
         return out, total
 
     async def update(

@@ -43,6 +43,21 @@ class PostOut(BaseModel):
     updated_at: datetime
 
 
+class FeedGroupOut(BaseModel):
+    """Thông tin nhóm gắn kèm mỗi bài trong feed tổng hợp."""
+
+    id: uuid.UUID
+    name: str
+    slug: str
+    avatar_url: str | None = None
+
+
+class FeedPostOut(PostOut):
+    """Bài viết trong feed, kèm nhóm để client không phải gọi thêm request."""
+
+    group: FeedGroupOut
+
+
 class CreateCommentRequest(BaseModel):
     content: str = Field(min_length=1, max_length=2000)
     parent_id: uuid.UUID | None = None

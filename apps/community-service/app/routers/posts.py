@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, HTTPException, Query, status
 
 from app.core.deps import CurrentUserDep, OptionalUserDep
 from app.schemas.common import DataEnvelope, Page, PageMeta
@@ -11,6 +11,7 @@ from app.schemas.posts import (
     CommentOut,
     CreateCommentRequest,
     CreatePostRequest,
+    FeedPostOut,
     PostOut,
     ReactionOut,
     UpdatePostRequest,
@@ -48,6 +49,49 @@ async def list_posts(
 ):
     items, total = await service.list_for_group(
         group_id, user, limit=limit, offset=offset
+    )
+    return DataEnvelope(
+        data=Page(
+            items=items,
+            meta=PageMeta(total=total, limit=limit, offset=offset),
+        )
+    )
+
+
+@router.get("/feed", response_model=DataEnvelope[Page[FeedPostOut]])
+async def list_feed(
+    service: PostServiceDep,
+    _user: OptionalUserDep = None,
+    group_ids: str | None = Query(
+        default=None,
+        alias="groupIds",
+        description="Lọc theo danh sách nhóm, phân tách bằng dấu phẩy",
+    ),
+    limit: int = Query(default=20, ge=1, le=50),
+    offset: int = Query(default=0, ge=0),
+):
+    """Feed tổng hợp bài viết công khai từ các hội nhóm đang hoạt động.
+
+    Trả kèm thông tin nhóm (tên, slug, avatar) để client dựng feed mà không
+    phải gọi thêm request cho từng bài.
+    """
+    parsed: list[uuid.UUID] | None = None
+    if group_ids is not None:
+        parsed = []
+        for raw in group_ids.split(","):
+            raw = raw.strip()
+            if not raw:
+                continue
+            try:
+                parsed.append(uuid.UUID(raw))
+            except ValueError:
+                raise HTTPException(
+                    status.HTTP_400_BAD_REQUEST,
+                    f"groupIds chứa giá trị không hợp lệ: {raw}",
+                ) from None
+
+    items, total = await service.list_feed(
+        limit=limit, offset=offset, group_ids=parsed
     )
     return DataEnvelope(
         data=Page(

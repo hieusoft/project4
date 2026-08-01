@@ -117,6 +117,90 @@ class PostRepository:
             )
         return [Post.model_validate(dict(r)) for r in rows], int(total or 0)
 
+    async def list_images_for(
+        self, post_ids: list[uuid.UUID]
+    ) -> dict[uuid.UUID, list[PostImage]]:
+        """Nạp ảnh của nhiều bài viết trong MỘT query (tránh N+1)."""
+        if not post_ids:
+            return {}
+        rows = await self._conn.fetch(
+            f"""
+            SELECT {_IMG_COLS} FROM post_images
+            WHERE post_id = ANY($1::uuid[])
+            ORDER BY post_id, sort_order ASC
+            """,
+            post_ids,
+        )
+        grouped: dict[uuid.UUID, list[PostImage]] = {pid: [] for pid in post_ids}
+        for r in rows:
+            grouped.setdefault(r["post_id"], []).append(
+                PostImage.model_validate(dict(r))
+            )
+        return grouped
+
+    async def list_feed(
+        self,
+        *,
+        limit: int,
+        offset: int,
+        group_ids: list[uuid.UUID] | None = None,
+    ) -> tuple[list[tuple[Post, dict[str, Any]]], int]:
+        """Feed tổng hợp bài viết từ nhiều hội nhóm, mới nhất trước.
+
+        Chỉ lấy bài `active` thuộc nhóm `active`. Trả kèm thông tin nhóm để
+        client hiển thị tên/avatar mà không phải gọi thêm request nào.
+
+        Khác `list_for_group`: KHÔNG ưu tiên `is_pinned` — ghim chỉ có ý nghĩa
+        trong phạm vi một nhóm, đưa lên feed chung sẽ gây nhiễu.
+        """
+        where = ["p.status = 'active'", "g.status = 'active'"]
+        params: list[Any] = []
+        if group_ids is not None:
+            if not group_ids:
+                return [], 0
+            params.append(group_ids)
+            where.append(f"p.group_id = ANY(${len(params)}::uuid[])")
+        clause = " AND ".join(where)
+
+        total = await self._conn.fetchval(
+            f"""
+            SELECT count(*) FROM posts p
+            JOIN groups g ON g.id = p.group_id
+            WHERE {clause}
+            """,
+            *params,
+        )
+
+        params.extend([limit, offset])
+        rows = await self._conn.fetch(
+            f"""
+            SELECT
+              p.id, p.group_id, p.author_id, p.content, p.type, p.ref_id,
+              p.status, p.is_pinned, p.like_count, p.comment_count,
+              p.created_at, p.updated_at,
+              g.name AS group_name, g.slug AS group_slug,
+              g.avatar_url AS group_avatar_url
+            FROM posts p
+            JOIN groups g ON g.id = p.group_id
+            WHERE {clause}
+            ORDER BY p.created_at DESC
+            LIMIT ${len(params) - 1} OFFSET ${len(params)}
+            """,
+            *params,
+        )
+
+        items: list[tuple[Post, dict[str, Any]]] = []
+        for r in rows:
+            data = dict(r)
+            group = {
+                "id": data["group_id"],
+                "name": data.pop("group_name"),
+                "slug": data.pop("group_slug"),
+                "avatar_url": data.pop("group_avatar_url"),
+            }
+            items.append((Post.model_validate(data), group))
+        return items, int(total or 0)
+
     async def update(self, post_id: uuid.UUID, fields: dict[str, Any]) -> Post | None:
         allowed = {"content", "is_pinned", "status"}
         updates = {k: v for k, v in fields.items() if k in allowed}
