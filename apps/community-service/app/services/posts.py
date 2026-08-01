@@ -11,6 +11,7 @@ from app.core.deps import (
     require_group_member,
     require_group_moderator,
 )
+from app.clients.identity import identity_client
 from app.events import event_names
 from app.events.contracts import PostCreatedEvent
 from app.events.publisher import EventPublisher
@@ -22,6 +23,7 @@ from app.repositories.posts import PostRepository
 from app.schemas.posts import (
     CreateCommentRequest,
     CreatePostRequest,
+    FeedAuthorOut,
     FeedGroupOut,
     FeedPostOut,
     PostImageOut,
@@ -160,6 +162,9 @@ class PostService:
             viewer_id=user.uuid if user else None,
         )
         images_by_post = await self._posts.list_images_for([p.id for p, _ in rows])
+        # Nạp tên/avatar tác giả trong một lượt; identity lỗi thì bỏ qua chứ
+        # không làm hỏng feed.
+        profiles = await identity_client.get_profiles([p.author_id for p, _ in rows])
 
         out: list[FeedPostOut] = []
         for post, group in rows:
@@ -168,10 +173,24 @@ class PostService:
             feed_group = FeedGroupOut(**meta)
             # Admin nền tảng thao tác được ở mọi nhóm.
             can_interact = feed_group.is_member or bool(user and user.is_admin)
+
+            profile = profiles.get(str(post.author_id))
+            author = (
+                FeedAuthorOut(
+                    id=post.author_id,
+                    full_name=profile.get("full_name"),
+                    username=profile.get("username"),
+                    avatar_url=profile.get("avatar_url"),
+                )
+                if profile
+                else None
+            )
+
             out.append(
                 FeedPostOut(
                     **self._to_out(post, images_by_post.get(post.id, [])).model_dump(),
                     group=feed_group,
+                    author=author,
                     is_liked=is_liked,
                     can_interact=can_interact,
                 )

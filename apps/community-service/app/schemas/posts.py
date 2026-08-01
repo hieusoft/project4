@@ -60,10 +60,22 @@ class FeedGroupOut(BaseModel):
         return self.my_status == MemberStatus.approved
 
 
+class FeedAuthorOut(BaseModel):
+    """Người viết bài, nạp từ identity-service."""
+
+    id: uuid.UUID
+    full_name: str | None = None
+    username: str | None = None
+    avatar_url: str | None = None
+
+
 class FeedPostOut(PostOut):
     """Bài viết trong feed, kèm nhóm để client không phải gọi thêm request."""
 
     group: FeedGroupOut
+
+    # null khi identity-service không phản hồi — client vẫn hiển thị được bài.
+    author: FeedAuthorOut | None = None
 
     # Người xem đã thích bài này chưa (false khi chưa đăng nhập).
     is_liked: bool = False

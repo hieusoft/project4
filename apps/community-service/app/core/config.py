@@ -29,6 +29,13 @@ class Settings(BaseSettings):
     rabbitmq_url: str = "amqp://guest:guest@rabbitmq:5672"
     rabbitmq_exchange: str = "charity.events"
 
+    # Dùng để nạp tên/avatar tác giả cho feed.
+    identity_service_url: str = "http://identity-service:3001"
+
+    # Mất identity-service không được làm hỏng feed: bài viết vẫn hiển thị,
+    # chỉ thiếu tên tác giả.
+    identity_timeout_seconds: float = 5.0
+
     @property
     def database_dsn(self) -> str:
         return (
