@@ -12,6 +12,11 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
+# Khoa danh dau ban ghi group duoc tong hop khi community-service khong tra loi
+# duoc (che do COMMUNITY_CHECK_SOFT). Nho no ma cac ham kiem tra quyen phan biet
+# duoc "khong phai thanh vien" voi "khong xac minh duoc".
+_DEGRADED = "_degraded"
+
 
 class CommunityClient:
     def __init__(self, base_url: str | None = None) -> None:
@@ -31,7 +36,7 @@ class CommunityClient:
         except httpx.HTTPError as e:
             logger.warning("Community unreachable: %s", e)
             if settings.community_check_soft:
-                return {"id": str(group_id), "status": "active"}
+                return {"id": str(group_id), "status": "active", _DEGRADED: True}
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Community service unavailable",
@@ -42,7 +47,7 @@ class CommunityClient:
         if res.status_code >= 400:
             logger.warning("Community get_group %s: %s", res.status_code, res.text[:200])
             if settings.community_check_soft:
-                return {"id": str(group_id), "status": "active"}
+                return {"id": str(group_id), "status": "active", _DEGRADED: True}
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail="Failed to verify group with community-service",
@@ -65,6 +70,29 @@ class CommunityClient:
                 detail=f"Group is not active (status={gstatus})",
             )
         return group
+
+    async def is_group_member(
+        self, group_id: uuid.UUID, token: str | None = None
+    ) -> bool:
+        """Người gọi có phải thành viên đã được duyệt của nhóm?
+
+        Dùng `my_status` mà `GET /groups/{id}` trả về cho chính người gọi, thay
+        vì liệt kê members: chính xác tuyệt đối và không bị chặn bởi giới hạn
+        phân trang (is_group_moderator chỉ đọc 100 thành viên đầu).
+
+        Khi community-service không phản hồi và COMMUNITY_CHECK_SOFT bật, trả
+        True để không chặn nghiệp vụ vì lỗi hạ tầng (fail-open, giống các hàm
+        kiểm tra khác trong client này).
+        """
+        group = await self.get_group(group_id, token)
+        if group is None:
+            return False
+        if group.get(_DEGRADED):
+            return True
+        # Chủ nhóm luôn là thành viên, kể cả khi my_status chưa được điền.
+        if group.get("my_status") == "approved":
+            return True
+        return bool(group.get("my_role") == "owner")
 
     async def is_group_moderator(
         self, group_id: uuid.UUID, user_id: uuid.UUID, token: str | None = None
