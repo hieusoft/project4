@@ -25,13 +25,16 @@ async def list_notifications(
     user: CurrentUserDep,
     conn: DbConn,
     unread_only: bool = Query(False, alias="unreadOnly"),
+    # Nhận thêm dạng snake_case: client cũ gửi `unread_only` sẽ bị bỏ qua âm
+    # thầm nếu chỉ khai báo alias camelCase.
+    unread_only_snake: bool | None = Query(None, alias="unread_only"),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
     rows = await noti_service.list_notifications(
         conn,
         user.id,
-        unread_only=unread_only,
+        unread_only=unread_only or bool(unread_only_snake),
         limit=limit,
         offset=offset,
     )

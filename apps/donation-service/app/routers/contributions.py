@@ -115,7 +115,7 @@ async def get_contribution(
     user: CurrentUserDep,
     service: ContributionServiceDep,
 ):
-    c = await service.get(contribution_id)
+    c = await service.get(contribution_id, user)
     return DataEnvelope(data=_contribution_out(c))
 
 

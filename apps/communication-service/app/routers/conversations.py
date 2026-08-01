@@ -20,6 +20,14 @@ class SendMessageBody(BaseModel):
     model_config = {"populate_by_name": True}
 
 
+class OpenConversationBody(BaseModel):
+    group_id: str = Field(alias="groupId")
+    context_type: str = Field("direct", alias="contextType")
+    context_id: str | None = Field(None, alias="contextId")
+
+    model_config = {"populate_by_name": True}
+
+
 def _serialize(row: dict[str, Any]) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for k, v in row.items():
@@ -46,6 +54,23 @@ async def list_conversations(
         conn, user.id, group_id, ids
     )
     return [_serialize(r) for r in rows]
+
+
+@router.post("", status_code=201)
+async def open_conversation(
+    body: OpenConversationBody,
+    user: CurrentUserDep,
+    conn: DbConn,
+):
+    """Mở hội thoại với hội nhóm. Idempotent: gọi lại trả về hội thoại cũ."""
+    conv = await chat_service.open_conversation(
+        conn,
+        group_id=body.group_id,
+        user_id=user.id,
+        context_type=body.context_type,
+        context_id=body.context_id,
+    )
+    return _serialize(conv)
 
 
 @router.get("/{conversation_id}/messages")

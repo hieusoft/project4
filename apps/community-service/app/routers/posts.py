@@ -6,12 +6,13 @@ import uuid
 from fastapi import APIRouter, Query, status
 
 from app.core.deps import CurrentUserDep, OptionalUserDep
-from app.schemas.common import DataEnvelope, MessageResponse, Page, PageMeta
+from app.schemas.common import DataEnvelope, Page, PageMeta
 from app.schemas.posts import (
     CommentOut,
     CreateCommentRequest,
     CreatePostRequest,
     PostOut,
+    ReactionOut,
     UpdatePostRequest,
 )
 from app.services.providers import PostServiceDep
@@ -111,27 +112,47 @@ async def list_comments(
     )
 
 
+@router.delete("/posts/{post_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_post(
+    post_id: uuid.UUID,
+    user: CurrentUserDep,
+    service: PostServiceDep,
+):
+    await service.delete(post_id, user)
+    return None
+
+
 @router.post(
     "/posts/{post_id}/reactions",
-    response_model=DataEnvelope[MessageResponse],
+    response_model=DataEnvelope[ReactionOut],
 )
 async def like_post(
     post_id: uuid.UUID, user: CurrentUserDep, service: PostServiceDep
 ):
-    post = await service.like(post_id, user)
+    post, changed = await service.like(post_id, user)
     return DataEnvelope(
-        data=MessageResponse(message=f"liked; like_count={post.like_count}")
+        data=ReactionOut(
+            post_id=post.id,
+            liked=True,
+            like_count=post.like_count,
+            changed=changed,
+        )
     )
 
 
 @router.delete(
     "/posts/{post_id}/reactions",
-    response_model=DataEnvelope[MessageResponse],
+    response_model=DataEnvelope[ReactionOut],
 )
 async def unlike_post(
     post_id: uuid.UUID, user: CurrentUserDep, service: PostServiceDep
 ):
-    post = await service.unlike(post_id, user)
+    post, changed = await service.unlike(post_id, user)
     return DataEnvelope(
-        data=MessageResponse(message=f"unliked; like_count={post.like_count}")
+        data=ReactionOut(
+            post_id=post.id,
+            liked=False,
+            like_count=post.like_count,
+            changed=changed,
+        )
     )

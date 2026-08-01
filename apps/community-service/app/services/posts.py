@@ -185,27 +185,45 @@ class PostService:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Post not found")
         return await self._posts.list_comments(post_id, limit=limit, offset=offset)
 
-    async def like(self, post_id: uuid.UUID, user: CurrentUser) -> Post:
+    async def like(self, post_id: uuid.UUID, user: CurrentUser) -> tuple[Post, bool]:
+        """Trả (post sau cập nhật, có thay đổi hay không). Idempotent."""
         post = await self._posts.get(post_id)
         if post is None or post.status != ContentStatus.active:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Post not found")
         await require_group_member(self._conn, group_id=post.group_id, user=user)
-        await self._posts.add_reaction(
+        changed = await self._posts.add_reaction(
             post_id=post_id, user_id=user.uuid, type_="like"
         )
         updated = await self._posts.get(post_id)
         assert updated is not None
-        return updated
+        return updated, changed
 
-    async def unlike(self, post_id: uuid.UUID, user: CurrentUser) -> Post:
+    async def unlike(self, post_id: uuid.UUID, user: CurrentUser) -> tuple[Post, bool]:
+        """Trả (post sau cập nhật, có thay đổi hay không). Idempotent."""
         post = await self._posts.get(post_id)
         if post is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Post not found")
         await require_group_member(self._conn, group_id=post.group_id, user=user)
-        await self._posts.remove_reaction(post_id=post_id, user_id=user.uuid)
+        changed = await self._posts.remove_reaction(
+            post_id=post_id, user_id=user.uuid
+        )
         updated = await self._posts.get(post_id)
         assert updated is not None
-        return updated
+        return updated, changed
+
+    async def delete(self, post_id: uuid.UUID, user: CurrentUser) -> None:
+        """Xoá mềm bài viết (chuyển status sang hidden).
+
+        Tác giả tự xoá được; moderator/owner của nhóm xoá được bài bất kỳ.
+        """
+        post = await self._posts.get(post_id)
+        if post is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Post not found")
+        if post.author_id != user.uuid and not user.is_admin:
+            await require_group_moderator(
+                self._conn, group_id=post.group_id, user=user
+            )
+        await self._posts.update(post_id, {"status": ContentStatus.hidden})
 
     @staticmethod
     def _to_out(post: Post, images) -> PostOut:

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 import asyncpg
 
@@ -73,42 +73,55 @@ class ContributionRepository:
         self._conn = conn
 
     async def next_code(self, prefix: str = "CTR") -> str:
-        year = datetime.utcnow().year
+        """Sinh mã kế tiếp dạng CTR-<year>-00001. Xem CampaignRepository.next_code."""
+        year = datetime.now(timezone.utc).year
         pattern = f"{prefix}-{year}-%"
-        max_code = await self._conn.fetchval(
-            "SELECT MAX(code) FROM contributions WHERE code LIKE $1", pattern
+        n = await self._conn.fetchval(
+            """
+            SELECT COALESCE(MAX(NULLIF(regexp_replace(
+                split_part(code, '-', 3), '\\D', '', 'g'
+            ), '')::bigint), 0) + 1
+            FROM contributions
+            WHERE code LIKE $1
+            """,
+            pattern,
         )
-        n = 1
-        if max_code:
-            try:
-                n = int(str(max_code).rsplit("-", 1)[-1]) + 1
-            except ValueError:
-                n = 1
-        return f"{prefix}-{year}-{n:05d}"
+        return f"{prefix}-{year}-{int(n or 1):05d}"
 
     async def create(
         self,
         *,
-        code: str,
+        code: str | None = None,
         campaign_id: uuid.UUID,
         donor_id: uuid.UUID,
         pickup_method: str,
         pickup_address: str | None,
     ) -> Contribution:
-        row = await self._conn.fetchrow(
-            f"""
-            INSERT INTO contributions (
-              code, campaign_id, donor_id, pickup_method, pickup_address, status
-            ) VALUES ($1,$2,$3,$4,$5,'pending')
-            RETURNING {_CONTRIB_COLS}
-            """,
-            code,
-            campaign_id,
-            donor_id,
-            pickup_method,
-            pickup_address,
-        )
-        return _contribution(row)
+        """Tạo contribution. Nếu `code` là None thì tự sinh và thử lại khi trùng."""
+        attempts = 5 if code is None else 1
+        last_error: Exception | None = None
+        for _ in range(attempts):
+            candidate = code or await self.next_code()
+            try:
+                row = await self._conn.fetchrow(
+                    f"""
+                    INSERT INTO contributions (
+                      code, campaign_id, donor_id, pickup_method, pickup_address, status
+                    ) VALUES ($1,$2,$3,$4,$5,'pending')
+                    RETURNING {_CONTRIB_COLS}
+                    """,
+                    candidate,
+                    campaign_id,
+                    donor_id,
+                    pickup_method,
+                    pickup_address,
+                )
+                return _contribution(row)
+            except asyncpg.UniqueViolationError as exc:
+                last_error = exc
+                if code is not None:
+                    raise
+        raise last_error  # type: ignore[misc]
 
     async def add_item(
         self,
@@ -181,6 +194,41 @@ class ContributionRepository:
             by_item[ir["contribution_item_id"]].append(_image(ir))
         return [_item(r, by_item.get(r["id"], [])) for r in rows]
 
+    async def list_items_for(
+        self, contribution_ids: list[uuid.UUID]
+    ) -> dict[uuid.UUID, list[ContributionItem]]:
+        """Nạp items + ảnh của nhiều contribution trong 2 query (tránh N+1)."""
+        if not contribution_ids:
+            return {}
+        rows = await self._conn.fetch(
+            f"""
+            SELECT {_ITEM_COLS} FROM contribution_items
+            WHERE contribution_id = ANY($1::uuid[])
+            ORDER BY contribution_id, id
+            """,
+            contribution_ids,
+        )
+        grouped: dict[uuid.UUID, list[ContributionItem]] = {
+            cid: [] for cid in contribution_ids
+        }
+        if not rows:
+            return grouped
+
+        item_ids = [r["id"] for r in rows]
+        img_rows = await self._conn.fetch(
+            "SELECT * FROM contribution_images WHERE contribution_item_id = ANY($1::uuid[])",
+            item_ids,
+        )
+        by_item: dict[uuid.UUID, list[ContributionImage]] = {i: [] for i in item_ids}
+        for ir in img_rows:
+            by_item[ir["contribution_item_id"]].append(_image(ir))
+
+        for r in rows:
+            grouped.setdefault(r["contribution_id"], []).append(
+                _item(r, by_item.get(r["id"], []))
+            )
+        return grouped
+
     async def get_item(self, item_id: uuid.UUID) -> ContributionItem | None:
         row = await self._conn.fetchrow(
             f"SELECT {_ITEM_COLS} FROM contribution_items WHERE id = $1", item_id
@@ -226,7 +274,16 @@ class ContributionRepository:
             """,
             *params,
         )
-        return [_contribution(r) for r in rows], int(total or 0)
+        # Trả kèm items để client không phải gọi thêm /contributions/{id} cho
+        # từng dòng (màn "Đóng góp của tôi" và màn duyệt của hội nhóm).
+        items_by_contribution = await self.list_items_for([r["id"] for r in rows])
+        return (
+            [
+                _contribution(r, items_by_contribution.get(r["id"], []))
+                for r in rows
+            ],
+            int(total or 0),
+        )
 
     async def update_status(
         self,

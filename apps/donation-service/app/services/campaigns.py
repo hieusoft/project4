@@ -40,9 +40,8 @@ class CampaignService:
         await community_client.ensure_group_active(data.group_id, user.raw_token)
         await self._require_moderator(data.group_id, user)
 
-        code = await self._campaigns.next_code()
         campaign = await self._campaigns.create(
-            code=code,
+            code=None,  # repository tự sinh + retry khi trùng
             group_id=data.group_id,
             title=data.title,
             description=data.description,

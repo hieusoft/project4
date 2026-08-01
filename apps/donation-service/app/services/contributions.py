@@ -53,9 +53,8 @@ class ContributionService:
                     f"campaign_item_id {ci.campaign_item_id} does not belong to this campaign",
                 )
 
-        code = await self._contribs.next_code()
         contribution = await self._contribs.create(
-            code=code,
+            code=None,  # repository tự sinh + retry khi trùng
             campaign_id=data.campaign_id,
             donor_id=user.uuid,
             pickup_method=data.pickup_method.value,
@@ -99,10 +98,14 @@ class ContributionService:
         )
         return contribution
 
-    async def get(self, contribution_id: uuid.UUID) -> Contribution:
+    async def get(
+        self, contribution_id: uuid.UUID, user: CurrentUser | None = None
+    ) -> Contribution:
         contribution = await self._contribs.get(contribution_id)
         if contribution is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Contribution not found")
+        if user is not None:
+            await self._require_visibility(contribution, user)
         return contribution
 
     async def list(
@@ -116,14 +119,55 @@ class ContributionService:
         limit: int = 20,
         offset: int = 0,
     ) -> tuple[list[Contribution], int]:
+        """Chỉ trả về những đóng góp người gọi được phép xem.
+
+        - PLATFORM_ADMIN: xem tất cả.
+        - Moderator/owner của nhóm: xem mọi đóng góp thuộc campaign của nhóm đó
+          (bắt buộc truyền `campaign_id`).
+        - Còn lại: chỉ xem đóng góp của chính mình.
+        """
         if mine:
             donor_id = user.uuid
+
+        if not user.is_admin:
+            can_moderate = False
+            if campaign_id is not None and donor_id != user.uuid:
+                campaign = await self._campaigns.get(campaign_id)
+                if campaign is None:
+                    raise HTTPException(
+                        status.HTTP_404_NOT_FOUND, "Campaign not found"
+                    )
+                can_moderate = await community_client.is_group_moderator(
+                    campaign.group_id, user.uuid, user.raw_token
+                )
+            if not can_moderate:
+                # Ép về chính chủ, kể cả khi client cố truyền donor_id khác.
+                donor_id = user.uuid
+
         return await self._contribs.list(
             campaign_id=campaign_id,
             donor_id=donor_id,
             status=status_filter,
             limit=limit,
             offset=offset,
+        )
+
+    async def _require_visibility(
+        self, contribution: Contribution, user: CurrentUser
+    ) -> None:
+        """Người xem phải là admin, chính chủ, hoặc moderator của nhóm."""
+        if user.is_admin or contribution.donor_id == user.uuid:
+            return
+        campaign = await self._campaigns.get(contribution.campaign_id)
+        if campaign is not None:
+            ok = await community_client.is_group_moderator(
+                campaign.group_id, user.uuid, user.raw_token
+            )
+            if ok:
+                return
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "You do not have permission to view this contribution",
         )
 
     async def review(

@@ -39,6 +39,35 @@ async def ensure_conversation(
     return conv
 
 
+async def open_conversation(
+    conn: asyncpg.Connection,
+    *,
+    group_id: str,
+    user_id: str,
+    context_type: str = "direct",
+    context_id: str | None = None,
+) -> dict[str, Any]:
+    """Mở (hoặc lấy lại) hội thoại giữa một người dùng và một hội nhóm.
+
+    Trước đây hội thoại chỉ được tạo bởi consumer của event
+    `contribution.created`, nên người dùng không có cách nào chủ động nhắn tin
+    cho hội nhóm. `find_or_create_conversation` là idempotent theo
+    UNIQUE(group_id, user_id) nên gọi lại sẽ trả về đúng hội thoại cũ.
+    """
+    group_id = (group_id or "").strip()
+    if not group_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="group_id is required"
+        )
+    return await ChatRepository(conn).find_or_create_conversation(
+        type_="donor_group",
+        group_id=group_id,
+        user_id=user_id,
+        context_type=context_type,
+        context_id=context_id or group_id,
+    )
+
+
 async def list_conversations(
     conn: asyncpg.Connection,
     user_id: str,

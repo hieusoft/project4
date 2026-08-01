@@ -60,3 +60,17 @@ class CommentOut(BaseModel):
 
 class ReactionRequest(BaseModel):
     type: str = Field(default="like", max_length=10)
+
+
+class ReactionOut(BaseModel):
+    """Kết quả like/unlike.
+
+    Trả `like_count` dưới dạng số để client không phải parse chuỗi
+    ("liked; like_count=3"). `changed` = False nghĩa là thao tác không đổi gì
+    (like lại bài đã like, hoặc unlike bài chưa like).
+    """
+
+    post_id: uuid.UUID
+    liked: bool
+    like_count: int
+    changed: bool

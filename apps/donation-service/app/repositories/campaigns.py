@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 import asyncpg
 
@@ -71,23 +71,31 @@ class CampaignRepository:
         self._conn = conn
 
     async def next_code(self, prefix: str = "CP") -> str:
-        year = datetime.utcnow().year
+        """Sinh mã kế tiếp dạng CP-<year>-00001.
+
+        So sánh theo SỐ, không theo chuỗi: `MAX(code)` trả 'CP-2026-002' thay vì
+        'CP-2026-00003' (ký tự thứ 9: '2' > '0'), khiến số thứ tự bị lùi và sinh
+        ra mã đã tồn tại -> vi phạm UNIQUE -> 500. Dữ liệu cũ có thể lẫn 3 và 5
+        chữ số nên phải ép kiểu phần số rồi mới lấy max.
+        """
+        year = datetime.now(timezone.utc).year
         pattern = f"{prefix}-{year}-%"
-        max_code = await self._conn.fetchval(
-            "SELECT MAX(code) FROM campaigns WHERE code LIKE $1", pattern
+        n = await self._conn.fetchval(
+            """
+            SELECT COALESCE(MAX(NULLIF(regexp_replace(
+                split_part(code, '-', 3), '\\D', '', 'g'
+            ), '')::bigint), 0) + 1
+            FROM campaigns
+            WHERE code LIKE $1
+            """,
+            pattern,
         )
-        n = 1
-        if max_code:
-            try:
-                n = int(str(max_code).rsplit("-", 1)[-1]) + 1
-            except ValueError:
-                n = 1
-        return f"{prefix}-{year}-{n:05d}"
+        return f"{prefix}-{year}-{int(n or 1):05d}"
 
     async def create(
         self,
         *,
-        code: str,
+        code: str | None = None,
         group_id: uuid.UUID,
         title: str,
         description: str | None,
@@ -97,25 +105,40 @@ class CampaignRepository:
         deadline: date | None,
         created_by: uuid.UUID,
     ) -> Campaign:
-        row = await self._conn.fetchrow(
-            f"""
-            INSERT INTO campaigns (
-              code, group_id, title, description, province_code, district_code,
-              beneficiary_description, deadline, created_by, status
-            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'active')
-            RETURNING {_CAMPAIGN_COLS}
-            """,
-            code,
-            group_id,
-            title,
-            description,
-            province_code,
-            district_code,
-            beneficiary_description,
-            deadline,
-            created_by,
-        )
-        return _campaign(row)
+        """Tạo campaign. Nếu `code` là None thì tự sinh và thử lại khi trùng.
+
+        Hai request đồng thời có thể cùng đọc ra một số thứ tự; UNIQUE sẽ chặn
+        request thứ hai, nên bắt UniqueViolation rồi sinh lại thay vì trả 500.
+        """
+        attempts = 5 if code is None else 1
+        last_error: Exception | None = None
+        for _ in range(attempts):
+            candidate = code or await self.next_code()
+            try:
+                row = await self._conn.fetchrow(
+                    f"""
+                    INSERT INTO campaigns (
+                      code, group_id, title, description, province_code, district_code,
+                      beneficiary_description, deadline, created_by, status
+                    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'active')
+                    RETURNING {_CAMPAIGN_COLS}
+                    """,
+                    candidate,
+                    group_id,
+                    title,
+                    description,
+                    province_code,
+                    district_code,
+                    beneficiary_description,
+                    deadline,
+                    created_by,
+                )
+                return _campaign(row)
+            except asyncpg.UniqueViolationError as exc:
+                last_error = exc
+                if code is not None:
+                    raise
+        raise last_error  # type: ignore[misc]
 
     async def add_item(
         self,
@@ -162,6 +185,27 @@ class CampaignRepository:
         )
         return [_item(r) for r in rows]
 
+    async def list_items_for(
+        self, campaign_ids: list[uuid.UUID]
+    ) -> dict[uuid.UUID, list[CampaignItem]]:
+        """Nạp items của nhiều campaign trong MỘT query (tránh N+1)."""
+        if not campaign_ids:
+            return {}
+        rows = await self._conn.fetch(
+            f"""
+            SELECT {_ITEM_COLS} FROM campaign_items
+            WHERE campaign_id = ANY($1::uuid[])
+            ORDER BY campaign_id, id
+            """,
+            campaign_ids,
+        )
+        grouped: dict[uuid.UUID, list[CampaignItem]] = {
+            cid: [] for cid in campaign_ids
+        }
+        for r in rows:
+            grouped.setdefault(r["campaign_id"], []).append(_item(r))
+        return grouped
+
     async def list(
         self,
         *,
@@ -196,7 +240,14 @@ class CampaignRepository:
             """,
             *params,
         )
-        return [_campaign(r) for r in rows], int(total or 0)
+        # Trả kèm items: client cần danh sách vật phẩm ngay ở màn danh sách
+        # (chọn vật phẩm để quyên góp, hiển thị tiến độ) mà không phải gọi
+        # thêm /campaigns/{id} cho từng đợt.
+        items_by_campaign = await self.list_items_for([r["id"] for r in rows])
+        return (
+            [_campaign(r, items_by_campaign.get(r["id"], [])) for r in rows],
+            int(total or 0),
+        )
 
     async def update(
         self,
