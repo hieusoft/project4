@@ -21,11 +21,12 @@ from app.repositories.groups import GroupRepository
 from app.repositories.members import MemberRepository
 from app.repositories.posts import PostRepository
 from app.schemas.posts import (
+    CommentOut,
     CreateCommentRequest,
     CreatePostRequest,
-    FeedAuthorOut,
     FeedGroupOut,
     FeedPostOut,
+    PostAuthorOut,
     PostImageOut,
     PostOut,
     UpdatePostRequest,
@@ -117,7 +118,10 @@ class PostService:
                 ):
                     raise HTTPException(status.HTTP_404_NOT_FOUND, "Post not found")
         images = await self._posts.list_images(post_id)
-        return self._to_out(post, images)
+        profiles = await identity_client.get_profiles([post.author_id])
+        out = self._to_out(post, images)
+        out.author = self._author_out(post.author_id, profiles)
+        return out
 
     async def list_for_group(
         self,
@@ -178,23 +182,15 @@ class PostService:
             # mới thích/bình luận được.
             can_interact = feed_group.is_member
 
-            profile = profiles.get(str(post.author_id))
-            author = (
-                FeedAuthorOut(
-                    id=post.author_id,
-                    full_name=profile.get("full_name"),
-                    username=profile.get("username"),
-                    avatar_url=profile.get("avatar_url"),
-                )
-                if profile
-                else None
-            )
+            base = self._to_out(post, images_by_post.get(post.id, []))
+            # `author` đã nằm trong PostOut nên bỏ khỏi dump để không truyền hai lần.
+            payload = base.model_dump(exclude={"author"})
 
             out.append(
                 FeedPostOut(
-                    **self._to_out(post, images_by_post.get(post.id, [])).model_dump(),
+                    **payload,
                     group=feed_group,
-                    author=author,
+                    author=self._author_out(post.author_id, profiles),
                     is_liked=is_liked,
                     can_interact=can_interact,
                 )
@@ -223,25 +219,35 @@ class PostService:
 
     async def add_comment(
         self, post_id: uuid.UUID, user: CurrentUser, data: CreateCommentRequest
-    ) -> PostComment:
+    ) -> CommentOut:
         post = await self._posts.get(post_id)
         if post is None or post.status != ContentStatus.active:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Post not found")
         await require_group_member(self._conn, group_id=post.group_id, user=user)
-        return await self._posts.add_comment(
+        comment = await self._posts.add_comment(
             post_id=post_id,
             author_id=user.uuid,
             content=data.content,
             parent_id=data.parent_id,
         )
+        # Trả kèm tác giả để client hiển thị ngay, không phải tải lại danh sách.
+        profiles = await identity_client.get_profiles([comment.author_id])
+        return self._comment_out(comment, profiles)
 
     async def list_comments(
         self, post_id: uuid.UUID, *, limit: int, offset: int
-    ) -> tuple[list[PostComment], int]:
+    ) -> tuple[list[CommentOut], int]:
         post = await self._posts.get(post_id)
         if post is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Post not found")
-        return await self._posts.list_comments(post_id, limit=limit, offset=offset)
+        comments, total = await self._posts.list_comments(
+            post_id, limit=limit, offset=offset
+        )
+        # Nạp tên/avatar người bình luận trong một lượt.
+        profiles = await identity_client.get_profiles(
+            [c.author_id for c in comments]
+        )
+        return [self._comment_out(c, profiles) for c in comments], total
 
     async def like(self, post_id: uuid.UUID, user: CurrentUser) -> tuple[Post, bool]:
         """Trả (post sau cập nhật, có thay đổi hay không). Idempotent."""
@@ -304,4 +310,34 @@ class PostService:
             ],
             created_at=post.created_at,
             updated_at=post.updated_at,
+        )
+
+    @staticmethod
+    def _author_out(
+        author_id: uuid.UUID, profiles: dict[str, dict]
+    ) -> PostAuthorOut | None:
+        """Dựng khối author từ map hồ sơ đã nạp; None nếu identity không trả."""
+        profile = profiles.get(str(author_id))
+        if not profile:
+            return None
+        return PostAuthorOut(
+            id=author_id,
+            full_name=profile.get("full_name"),
+            username=profile.get("username"),
+            avatar_url=profile.get("avatar_url"),
+        )
+
+    @staticmethod
+    def _comment_out(
+        comment: PostComment, profiles: dict[str, dict]
+    ) -> CommentOut:
+        return CommentOut(
+            id=comment.id,
+            post_id=comment.post_id,
+            author_id=comment.author_id,
+            parent_id=comment.parent_id,
+            content=comment.content,
+            status=comment.status,
+            created_at=comment.created_at,
+            author=PostService._author_out(comment.author_id, profiles),
         )

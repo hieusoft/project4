@@ -132,7 +132,7 @@ async def add_comment(
     service: PostServiceDep,
 ):
     c = await service.add_comment(post_id, user, body)
-    return DataEnvelope(data=CommentOut.model_validate(c, from_attributes=True))
+    return DataEnvelope(data=c)
 
 
 @router.get(
@@ -148,9 +148,7 @@ async def list_comments(
     items, total = await service.list_comments(post_id, limit=limit, offset=offset)
     return DataEnvelope(
         data=Page(
-            items=[
-                CommentOut.model_validate(i, from_attributes=True) for i in items
-            ],
+            items=items,
             meta=PageMeta(total=total, limit=limit, offset=offset),
         )
     )

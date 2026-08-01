@@ -27,6 +27,18 @@ class PostImageOut(BaseModel):
     sort_order: int
 
 
+class PostAuthorOut(BaseModel):
+    """Người viết bài/bình luận, nạp từ identity-service.
+
+    Đặt trước PostOut vì cả bài viết lẫn bình luận đều dùng.
+    """
+
+    id: uuid.UUID
+    full_name: str | None = None
+    username: str | None = None
+    avatar_url: str | None = None
+
+
 class PostOut(BaseModel):
     id: uuid.UUID
     group_id: uuid.UUID
@@ -41,6 +53,9 @@ class PostOut(BaseModel):
     images: list[PostImageOut] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
+
+    # null khi identity-service không phản hồi — bài viết vẫn hiển thị được.
+    author: PostAuthorOut | None = None
 
 
 class FeedGroupOut(BaseModel):
@@ -60,22 +75,10 @@ class FeedGroupOut(BaseModel):
         return self.my_status == MemberStatus.approved
 
 
-class FeedAuthorOut(BaseModel):
-    """Người viết bài, nạp từ identity-service."""
-
-    id: uuid.UUID
-    full_name: str | None = None
-    username: str | None = None
-    avatar_url: str | None = None
-
-
 class FeedPostOut(PostOut):
     """Bài viết trong feed, kèm nhóm để client không phải gọi thêm request."""
 
     group: FeedGroupOut
-
-    # null khi identity-service không phản hồi — client vẫn hiển thị được bài.
-    author: FeedAuthorOut | None = None
 
     # Người xem đã thích bài này chưa (false khi chưa đăng nhập).
     is_liked: bool = False
@@ -98,6 +101,9 @@ class CommentOut(BaseModel):
     content: str
     status: ContentStatus
     created_at: datetime
+
+    # null khi identity-service không phản hồi — bình luận vẫn hiển thị được.
+    author: PostAuthorOut | None = None
 
 
 class ReactionRequest(BaseModel):
