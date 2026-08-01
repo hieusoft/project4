@@ -47,15 +47,18 @@ class ContributionService:
 
         # Chỉ thành viên đã được duyệt của hội nhóm mới được đóng góp. Trước đây
         # bất kỳ ai có token đều gửi được đơn vào đợt của nhóm mình không tham gia.
-        if not user.is_admin:
-            is_member = await community_client.is_group_member(
-                campaign.group_id, user.raw_token
+        #
+        # PLATFORM_ADMIN cũng không được miễn trừ: quyên góp là hành vi tham gia
+        # cộng đồng, không phải kiểm duyệt. Quyền quản trị (duyệt đơn, kiểm
+        # vật phẩm) vẫn miễn trừ ở `_require_moderator`.
+        is_member = await community_client.is_group_member(
+            campaign.group_id, user.raw_token
+        )
+        if not is_member:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                "You must join this group before contributing",
             )
-            if not is_member:
-                raise HTTPException(
-                    status.HTTP_403_FORBIDDEN,
-                    "You must join this group before contributing",
-                )
 
         campaign_item_ids = {it.id for it in campaign.items}
         for ci in data.items:

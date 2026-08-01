@@ -53,21 +53,24 @@ class PostService:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Group not found")
 
         member = await self._members.get(group_id, user.uuid)
-        is_mod = (
-            member is not None
-            and member.status == MemberStatus.approved
-            and member.role in (MemberRole.owner, MemberRole.moderator)
-        ) or user.is_admin
+        is_approved = (
+            member is not None and member.status == MemberStatus.approved
+        )
+        is_mod = is_approved and member.role in (
+            MemberRole.owner,
+            MemberRole.moderator,
+        )
 
-        if not user.is_admin:
-            if member is None or member.status != MemberStatus.approved:
-                raise HTTPException(
-                    status.HTTP_403_FORBIDDEN, "Group membership required"
-                )
-            if not group.allow_member_post and not is_mod:
-                raise HTTPException(
-                    status.HTTP_403_FORBIDDEN, "Only moderators can post"
-                )
+        # Đăng bài là hành vi tham gia cộng đồng: PLATFORM_ADMIN cũng phải là
+        # thành viên đã duyệt, không được miễn trừ như với thao tác kiểm duyệt.
+        if not is_approved:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN, "Group membership required"
+            )
+        if not group.allow_member_post and not is_mod:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN, "Only moderators can post"
+            )
 
         post_status = ContentStatus.active
         if group.require_post_review and not is_mod:
@@ -171,8 +174,9 @@ class PostService:
             meta = dict(group)
             is_liked = bool(meta.pop("_is_liked", False))
             feed_group = FeedGroupOut(**meta)
-            # Admin nền tảng thao tác được ở mọi nhóm.
-            can_interact = feed_group.is_member or bool(user and user.is_admin)
+            # Khớp với require_group_member: admin cũng phải là thành viên
+            # mới thích/bình luận được.
+            can_interact = feed_group.is_member
 
             profile = profiles.get(str(post.author_id))
             author = (

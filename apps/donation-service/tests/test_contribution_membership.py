@@ -124,16 +124,35 @@ async def test_approved_member_can_contribute(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_platform_admin_bypasses_membership(monkeypatch):
-    """Admin ho tro nguoi dung nen khong bi rang buoc thanh vien."""
+async def test_platform_admin_also_needs_membership(monkeypatch):
+    """Quyen gop la hanh vi tham gia: admin cung phai vao nhom.
+
+    Quyen KIEM DUYET (duyet don, kiem vat pham) van duoc mien tru rieng
+    trong `_require_moderator`.
+    """
     campaign = make_campaign()
     service, module = build_service(campaign)
     guard = AsyncMock(return_value=False)
     monkeypatch.setattr(module.community_client, "is_group_member", guard)
 
+    with pytest.raises(HTTPException) as exc:
+        await service.create(FakeUser(is_admin=True), make_request(campaign))
+
+    assert exc.value.status_code == 403
+    guard.assert_awaited_once()
+    service._contribs.create.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_platform_admin_can_contribute_after_joining(monkeypatch):
+    campaign = make_campaign()
+    service, module = build_service(campaign)
+    monkeypatch.setattr(
+        module.community_client, "is_group_member", AsyncMock(return_value=True)
+    )
+
     await service.create(FakeUser(is_admin=True), make_request(campaign))
 
-    guard.assert_not_awaited()
     service._contribs.create.assert_awaited_once()
 
 

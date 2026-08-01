@@ -137,8 +137,14 @@ async def require_group_member(
     group_id: uuid.UUID,
     user: CurrentUser,
 ) -> None:
-    if user.is_admin:
-        return
+    """Chặn nếu người gọi không phải thành viên đã được duyệt của nhóm.
+
+    KHÔNG miễn trừ cho PLATFORM_ADMIN. Đăng bài, thích và bình luận là hành vi
+    tham gia cộng đồng, không phải kiểm duyệt — admin muốn tham gia thì phải
+    vào nhóm như mọi người. Quyền quản trị (ẩn bài, xoá bài, cấm thành viên,
+    duyệt nhóm) vẫn được miễn trừ ở `require_group_moderator` /
+    `require_group_owner`.
+    """
     members = MemberRepository(conn)
     m = await members.get(group_id, user.uuid)
     if m is None or m.status != MemberStatus.approved:
