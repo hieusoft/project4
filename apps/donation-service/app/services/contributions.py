@@ -11,7 +11,6 @@ from app.events import event_names
 from app.events.contracts import (
     ContributionCompletedEvent,
     ContributionCreatedEvent,
-    ContributionReceivedEvent,
     ContributionReviewedEvent,
 )
 from app.events.publisher import EventPublisher
@@ -229,42 +228,6 @@ class ContributionService:
         )
         return updated
 
-    async def receive(
-        self, contribution_id: uuid.UUID, user: CurrentUser
-    ) -> Contribution:
-        """Moderator xác nhận đã nhận đồ vật lý từ donor.
-
-        Tách biệt với check chất lượng: bước này chỉ ghi nhận "đã nhận",
-        sau đó moderator mới check từng món (accepted/rejected).
-        """
-        contribution = await self.get(contribution_id)
-        await self._require_moderator(contribution, user)
-
-        if contribution.status != ContributionStatus.accepted.value:
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
-                f"Can only receive accepted contributions (status={contribution.status})",
-            )
-
-        now = datetime.now(timezone.utc)
-        updated = await self._contribs.update_status(
-            contribution_id,
-            status=ContributionStatus.received.value,
-            received_at=now,
-        )
-        if updated is None:
-            raise RuntimeError("Failed to mark contribution as received")
-        await self._publisher.publish(
-            event_names.CONTRIBUTION_RECEIVED,
-            ContributionReceivedEvent(
-                contributionId=str(updated.id),
-                campaignId=str(updated.campaign_id),
-                donorId=str(updated.donor_id),
-                receivedAt=now.isoformat(),
-            ),
-        )
-        return updated
-
     async def cancel(
         self, contribution_id: uuid.UUID, user: CurrentUser
     ) -> Contribution:
@@ -299,10 +262,13 @@ class ContributionService:
         contribution = await self.get(contribution_id)
         await self._require_moderator(contribution, user)
 
-        if contribution.status != ContributionStatus.received.value:
+        if contribution.status not in (
+            ContributionStatus.accepted.value,
+            ContributionStatus.received.value,
+        ):
             raise HTTPException(
                 status.HTTP_400_BAD_REQUEST,
-                f"Cannot check items in status={contribution.status} (must be received)",
+                f"Cannot check items in status={contribution.status}",
             )
 
         item = await self._contribs.get_item(item_id)
@@ -354,6 +320,13 @@ class ContributionService:
                 contribution_item_id=item_id,
                 image_url=img.image_url,
                 image_type=img.type.value if img.type else "actual_check",
+            )
+
+        if contribution.status == ContributionStatus.accepted.value:
+            await self._contribs.update_status(
+                contribution_id,
+                status=ContributionStatus.received.value,
+                received_at=datetime.now(timezone.utc),
             )
 
         contribution = await self.get(contribution_id)

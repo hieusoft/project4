@@ -201,15 +201,8 @@ def main() -> int:
     record("review accept", code == 200,
            f"status={data_of(resp).get('status')}")
 
-    # -- 9. Owner receives items --
-    log("\n-- Step 9: Receive contribution --")
-    code, resp = http(base, "POST", f"/api/donation/contributions/{contribution_id}/receive",
-                      token=owner_token)
-    record("receive", code == 200,
-           f"status={data_of(resp).get('status')} received_at={data_of(resp).get('received_at')}")
-
-    # -- 10. Check items (accept each) --
-    log("\n-- Step 10: Check items --")
+    # -- 9. Check items (review with photos) --
+    log("\n-- Step 9: Check items --")
     for ci in contrib_items:
         ci_id = ci.get("id")
         ci_name = ci.get("name", "")
@@ -225,8 +218,8 @@ def main() -> int:
         record(f"check item '{ci_name}'", code == 200,
                f"contrib_status={c.get('status')}")
 
-    # -- 11. Check campaign progress --
-    log("\n-- Step 11: Campaign progress --")
+    # -- 10. Check campaign progress --
+    log("\n-- Step 10: Campaign progress --")
     code, resp = http(base, "GET", f"/api/donation/campaigns/{campaign_id}/progress",
                       token=owner_token)
     progress = data_of(resp)
@@ -236,8 +229,8 @@ def main() -> int:
     for pi in prog_items:
         log(f"    {pi.get('name')}: {pi.get('received_quantity')}/{pi.get('target_quantity')} {pi.get('unit', '')} (remaining={pi.get('remaining')})")
 
-    # -- 12. Deliver campaign --
-    log("\n-- Step 12: Deliver campaign --")
+    # -- 11. Deliver campaign --
+    log("\n-- Step 11: Deliver campaign --")
     code, resp = http(base, "POST", f"/api/donation/campaigns/{campaign_id}/deliver",
                       token=owner_token, body={
                           "delivery_photo_url": "https://example.com/delivery.jpg",
@@ -246,8 +239,8 @@ def main() -> int:
     record("deliver campaign", code == 200,
            f"status={data_of(resp).get('status')} fulfilled_at={data_of(resp).get('fulfilled_at')}")
 
-    # -- 13. Verify campaign status = fulfilled --
-    log("\n-- Step 13: Verify fulfilled --")
+    # -- 12. Verify campaign status = fulfilled --
+    log("\n-- Step 12: Verify fulfilled --")
     code, resp = http(base, "GET", f"/api/donation/campaigns/{campaign_id}",
                       token=owner_token)
     final = data_of(resp)

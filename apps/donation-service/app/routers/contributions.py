@@ -133,19 +133,6 @@ async def review_contribution(
     return DataEnvelope(data=_contribution_out(c))
 
 
-@router.post(
-    "/contributions/{contribution_id}/receive",
-    response_model=DataEnvelope[ContributionOut],
-)
-async def receive_contribution(
-    contribution_id: uuid.UUID,
-    user: CurrentUserDep,
-    service: ContributionServiceDep,
-):
-    c = await service.receive(contribution_id, user)
-    return DataEnvelope(data=_contribution_out(c))
-
-
 @router.put(
     "/contributions/{contribution_id}/cancel",
     response_model=DataEnvelope[ContributionOut],
