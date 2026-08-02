@@ -60,6 +60,7 @@ ITEM:         pending → accepted | rejected  (accepted → bump received_quant
 | GET | `/contributions` | JWT | List (`campaign_id`, `donor_id`, `status`, `mine`) |
 | GET | `/contributions/{id}` | JWT | Chi tiết + items |
 | PUT | `/contributions/{id}/review` | JWT mod | Duyệt / từ chối |
+| POST | `/contributions/{id}/receive` | JWT mod | Xác nhận đã nhận đồ vật lý |
 | PUT | `/contributions/{id}/cancel` | JWT | Donor hủy |
 | PUT | `/contributions/{id}/items/{itemId}/check` | JWT mod | Kiểm tra món + bump tiến độ |
 
@@ -80,6 +81,7 @@ ITEM:         pending → accepted | rejected  (accepted → bump received_quant
 | `campaign.delivered` | Trao tặng thành công |
 | `contribution.created` | Donor đóng góp |
 | `contribution.reviewed` | Duyệt / từ chối đóng góp |
+| `contribution.received` | Moderator xác nhận đã nhận đồ |
 | `contribution.completed` | Mọi item đã check |
 
 ---

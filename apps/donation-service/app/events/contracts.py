@@ -41,6 +41,13 @@ class ContributionReviewedEvent(BaseModel):
     reason: str | None = None
 
 
+class ContributionReceivedEvent(BaseModel):
+    contributionId: str
+    campaignId: str
+    donorId: str
+    receivedAt: str
+
+
 class ContributionCompletedEvent(BaseModel):
     contributionId: str
     campaignId: str
