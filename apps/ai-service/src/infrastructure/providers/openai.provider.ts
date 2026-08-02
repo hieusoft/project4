@@ -6,6 +6,8 @@ import { ModerationResult } from '../../domain/models/moderation-result.model';
 
 @Injectable()
 export class OpenAiProvider implements IAiProvider {
+  private readonly logger = new Logger(OpenAiProvider.name);
+  private openai!: OpenAI;
   private readonly modelName = process.env.LLM_MODEL || '';
 
   constructor() {
