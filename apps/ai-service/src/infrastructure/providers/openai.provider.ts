@@ -7,20 +7,23 @@ import { ModerationResult } from '../../domain/models/moderation-result.model';
 @Injectable()
 export class OpenAiProvider implements IAiProvider {
   private readonly logger = new Logger(OpenAiProvider.name);
-  private openai!: OpenAI;
+  private _openai: OpenAI | null = null;
   private readonly modelName = process.env.LLM_MODEL || '';
 
-  constructor() {
-    const apiKey = process.env.LLM_API_KEY;
-    if (!apiKey) {
-      throw new Error(
-        'LLM_API_KEY is not set. Provide it via .env (see .env.example).',
-      );
+  private get openai(): OpenAI {
+    if (!this._openai) {
+      const apiKey = process.env.LLM_API_KEY;
+      if (!apiKey) {
+        throw new Error(
+          'LLM_API_KEY is not set. Provide it via .env (see .env.example).',
+        );
+      }
+      this._openai = new OpenAI({
+        apiKey,
+        baseURL: process.env.LLM_BASE_URL || 'https://api.openai.com/v1',
+      });
     }
-    this.openai = new OpenAI({
-      apiKey,
-      baseURL: process.env.LLM_BASE_URL || 'https://api.openai.com/v1',
-    });
+    return this._openai;
   }
 
   private parseJson<T>(text: string): T {
