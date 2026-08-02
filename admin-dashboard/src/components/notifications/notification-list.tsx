@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Bell, Check, CheckCheck, Package, Users, ShoppingBag } from "lucide-react"
+import { Bell, Check, CheckCheck, Package, Users } from "lucide-react"
 
 interface NotificationListProps {
   notifications: any[]
@@ -19,8 +19,7 @@ export function NotificationList({
 }: NotificationListProps) {
   const getIcon = (type: string) => {
     if (type?.includes("group")) return <Users className="h-4 w-4 text-emerald-500" />
-    if (type?.includes("donation")) return <Package className="h-4 w-4 text-orange-500" />
-    if (type?.includes("marketplace") || type?.includes("listing")) return <ShoppingBag className="h-4 w-4 text-purple-500" />
+    if (type?.includes("donation") || type?.includes("contribution")) return <Package className="h-4 w-4 text-orange-500" />
     return <Bell className="h-4 w-4 text-blue-500" />
   }
 

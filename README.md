@@ -1,6 +1,6 @@
 # Nền tảng Kết nối Quyên góp Thiện nguyện
 
-Nền tảng kết nối **người quyên góp** với **hội nhóm thiện nguyện** theo mô hình **Gian hàng 0 đồng**.
+Nền tảng kết nối **người quyên góp** với **hội nhóm thiện nguyện** theo mô hình **cuộc quyên góp (campaign) theo đợt**.
 
 ```text
 Người quyên góp → Chọn đợt → Đóng góp vào đợt → Nhóm kiểm tra → Trao tặng đợt
@@ -153,7 +153,7 @@ Web / Mobile
      │
 Kong Gateway :8000
      │
- Identity · Community · Donation · Marketplace · Communication · Media · AI
+ Identity · Community · Donation · Communication · Media · AI
      │
 PostgreSQL · Redis · RabbitMQ
 ```
@@ -267,4 +267,3 @@ Push main
 - Không commit file `.env`
 - Đổi hết password mặc định trên production
 - Image: `ghcr.io/hieusoft/project4/<service>`
-- `marketplace-service` đã bỏ — thay bằng luồng Campaign trong donation-service

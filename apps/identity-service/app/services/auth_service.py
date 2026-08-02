@@ -292,7 +292,8 @@ class AuthService:
         await self._accounts.mark_verified(account.id)
 
         account = await self._accounts.get_by_id(account.id)
-        assert account is not None
+        if account is None:
+            raise RuntimeError("Account disappeared after verification")
         await self._publisher.publish(
             event_names.EMAIL_VERIFIED,
             EmailVerifiedEvent(userId=str(account.id), email=account.email),
@@ -443,7 +444,11 @@ class AuthService:
         if data.reset_token:
             account, otp = await self._load_reset_from_session_token(data.reset_token)
         else:
-            assert data.email and data.code
+            if not data.email or not data.code:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Either reset_token or email+code is required",
+                )
             account, otp = await self._load_valid_reset_otp(
                 email=data.email, code=data.code
             )

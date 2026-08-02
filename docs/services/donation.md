@@ -14,7 +14,7 @@
 
 ## Service này làm gì?
 
-Donation là **luồng nghiệp vụ lõi** của nền tảng — thay thế cả donation + marketplace cũ.
+Donation là **luồng nghiệp vụ lõi** của nền tảng.
 
 | Có trách nhiệm | Không làm |
 |---|---|

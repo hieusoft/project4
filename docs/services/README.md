@@ -33,7 +33,6 @@ Client (Web / Mobile)
 | [Media](./media.md) | 3006 | Upload ảnh (presigned SeaweedFS), lifecycle media | ✅ Đã có |
 | [AI](./ai.md) | 3007 | LLM: nhận diện đồ, gợi ý nhóm, kiểm duyệt | 🔶 Scaffold |
 | [Gateway & Infra](./gateway-infra.md) | 8000… | Kong, Postgres, Redis, RabbitMQ, Docs | ✅ |
-| ~~Marketplace~~ | ~~3004~~ | ~~Gian hàng 0 đồng~~ | ❌ Đã bỏ (thay bằng Campaign) |
 
 ## Nguyên tắc chung
 

@@ -22,6 +22,5 @@
 | [services/media.md](./services/media.md) | Presign SeaweedFS, link media |
 | [services/communication.md](./services/communication.md) | Email, FCM, chat, notify |
 | [services/donation.md](./services/donation.md) | Cuộc quyên góp (campaign), đóng góp, kiểm tra, trao tặng |
-| [services/marketplace.md](./services/marketplace.md) | Đã bỏ (thay bằng Campaign) |
 | [services/ai.md](./services/ai.md) | LLM hỗ trợ (scaffold) |
 | [services/gateway-infra.md](./services/gateway-infra.md) | Kong, Postgres, Redis, RabbitMQ |

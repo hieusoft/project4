@@ -31,8 +31,6 @@ PR / push cũng chạy workflow **CI** (build image, không push, không deploy)
 | `admin-dashboard` | `admin-dashboard/Dockerfile` |
 | `docs-portal` | `infra/docs-portal/Dockerfile` |
 
-> `marketplace-service` đã bỏ — thay bằng luồng Campaign trong donation-service.
-
 ---
 
 ## 1. Chuẩn bị server (một lần)

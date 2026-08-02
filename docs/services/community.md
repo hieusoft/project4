@@ -14,14 +14,14 @@
 
 ## Service này làm gì?
 
-Community quản lý **hội nhóm thiện nguyện** như “tổ chức trung gian” trong mô hình Gian hàng 0 đồng.
+Community quản lý **hội nhóm thiện nguyện** như "tổ chức trung gian" kết nối người quyên góp với người cần hỗ trợ.
 
 | Có trách nhiệm | Không làm |
 |---|---|
 | CRUD nhóm (tạo active ngay; admin vẫn suspend được) | Auth / JWT cấp phát (→ Identity) |
 | Thành viên + join request | Upload ảnh (client → Media, chỉ lưu URL) |
-| Bài viết, ảnh bài viết, comment, reaction | Quyên góp / kho (→ Donation) |
-| Phân quyền **trong nhóm**: owner / moderator / member | Gian hàng 0 đồng (→ Marketplace) |
+| Bài viết, ảnh bài viết, comment, reaction | Quyên góp / đóng góp (→ Donation) |
+| Phân quyền **trong nhóm**: owner / moderator / member | Trao tặng đợt (→ Donation) |
 | Publish event cho Communication thông báo | Gửi email/push trực tiếp |
 
 ---

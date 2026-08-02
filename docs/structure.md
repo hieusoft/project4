@@ -58,7 +58,6 @@ charity-platform/
 │           ├── index.ts
 │           ├── http-client.base.ts
 │           ├── community.client.ts
-│           ├── marketplace.client.ts
 │           ├── donation.client.ts
 │           └── media.client.ts
 │

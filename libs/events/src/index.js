@@ -19,7 +19,6 @@ __exportStar(require("./rabbitmq.module"), exports);
 __exportStar(require("./contracts/user.events"), exports);
 __exportStar(require("./contracts/donation.events"), exports);
 __exportStar(require("./contracts/inventory.events"), exports);
-__exportStar(require("./contracts/marketplace.events"), exports);
 __exportStar(require("./contracts/community.events"), exports);
 __exportStar(require("./contracts/chat.events"), exports);
 //# sourceMappingURL=index.js.map

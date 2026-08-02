@@ -98,7 +98,7 @@ CREATE TYPE post_type AS ENUM ('normal','call_for_donation','thank_you','announc
 CREATE TYPE content_status AS ENUM ('active','pending_review','hidden','blocked');
 CREATE TYPE report_status AS ENUM ('pending','in_review','resolved','dismissed');
 CREATE TYPE rating_target AS ENUM ('user','group');
-CREATE TYPE report_target AS ENUM ('user','group','post','listing','message');
+CREATE TYPE report_target AS ENUM ('user','group','post','message');
 
 CREATE TABLE groups (
   id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -333,7 +333,7 @@ CREATE TABLE campaign_deliveries (
   delivered_at       timestamptz NOT NULL DEFAULT now()
 );
 
--- Thống kê hàng ngày (dời từ marketplace_db)
+-- Thống kê hàng ngày
 CREATE TABLE daily_stats (
   id                  bigserial PRIMARY KEY,
   stat_date           date NOT NULL,
@@ -440,7 +440,7 @@ CREATE TABLE media_files (
   public_url varchar(500) NOT NULL,
   mime_type  varchar(100) NOT NULL,
   size_bytes bigint NOT NULL,
-  ref_type   varchar(30),                         -- donation/listing/post/avatar/chat/delivery
+  ref_type   varchar(30),                         -- donation/post/avatar/chat/delivery
   ref_id     uuid,
   status     media_status NOT NULL DEFAULT 'temp',
   created_at timestamptz NOT NULL DEFAULT now()
@@ -485,7 +485,7 @@ CREATE INDEX idx_llm_user_day ON llm_requests(user_id, created_at);  -- rate lim
 
 CREATE TABLE moderation_results (
   id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  ref_type   varchar(30) NOT NULL,                -- post / listing / message / report
+  ref_type   varchar(30) NOT NULL,                -- post / message / report
   ref_id     uuid NOT NULL,
   verdict    moderation_verdict NOT NULL,
   categories jsonb,                               -- {spam: 0.1, toxic: 0.8...}

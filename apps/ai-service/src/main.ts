@@ -11,10 +11,17 @@ async function bootstrap() {
 
   // Setup RabbitMQ Microservice for moderation (only if ENABLE_RMQ=true)
   if (process.env.ENABLE_RMQ === 'true') {
+    const rabbitmqUrl = process.env.RABBITMQ_URL;
+    if (!rabbitmqUrl) {
+      logger.error(
+        'ENABLE_RMQ=true but RABBITMQ_URL is not set. Set it via .env (see .env.example).',
+      );
+      process.exit(1);
+    }
     app.connectMicroservice<MicroserviceOptions>({
       transport: Transport.RMQ,
       options: {
-        urls: [process.env.RABBITMQ_URL || 'amqp://admin:admin123@localhost:5672'],
+        urls: [rabbitmqUrl],
         queue: 'ai_moderation_queue',
         queueOptions: {
           durable: true,
@@ -41,8 +48,15 @@ async function bootstrap() {
     jsonDocumentUrl: 'openapi.json',
   });
 
-  // Enable CORS
-  app.enableCors({ origin: '*' });
+  // Enable CORS — comma-separated origins via CORS_ORIGINS (default * for dev).
+  // When specific origins are set, credentials are allowed; with "*" they are not
+  // (browsers reject the "*" + credentials combination).
+  const corsOrigins = process.env.CORS_ORIGINS || '*';
+  const corsOptions =
+    corsOrigins === '*'
+      ? { origin: true, credentials: false }
+      : { origin: corsOrigins.split(',').map((o) => o.trim()), credentials: true };
+  app.enableCors(corsOptions);
 
   // Increase payload limit to prevent 413 Payload Too Large for base64 images
   app.use(json({ limit: '50mb' }));

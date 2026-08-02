@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import re
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _DURATION_RE = re.compile(r"^\s*(\d+)\s*([smhd])?\s*$")
@@ -40,6 +41,9 @@ class Settings(BaseSettings):
     # Auth / tokens
     jwt_secret: str = "change-me"
     jwt_issuer: str = "charity-auth"
+
+    # CORS — comma-separated origins ("*" allows all, but disables credentials)
+    cors_origins: str = "*"
     access_token_ttl: str = "15m"
     refresh_token_ttl: str = "7d"
     two_factor_challenge_ttl: str = "5m"
@@ -86,6 +90,23 @@ class Settings(BaseSettings):
     @property
     def password_reset_session_ttl_seconds(self) -> int:
         return parse_duration_seconds(self.password_reset_session_ttl, default_unit="m")
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def cors_allow_credentials(self) -> bool:
+        return "*" not in self.cors_origins_list
+
+    @model_validator(mode="after")
+    def _validate_production_secrets(self) -> "Settings":
+        if self.node_env == "production" and self.jwt_secret in ("change-me", ""):
+            raise ValueError(
+                "JWT_SECRET must be set to a strong value in production "
+                "(run: openssl rand -hex 32)."
+            )
+        return self
 
 
 settings = Settings()

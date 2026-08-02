@@ -63,11 +63,12 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Permissive CORS to match the NestJS services' app.enableCors().
+# CORS — origins from env. With "*" credentials are disabled (browsers reject
+# the "*" + credentials combo); with specific origins credentials are allowed.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=settings.cors_origins_list,
+    allow_credentials=settings.cors_allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )

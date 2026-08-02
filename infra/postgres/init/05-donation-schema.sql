@@ -128,7 +128,7 @@ CREATE TABLE IF NOT EXISTS campaign_deliveries (
   delivered_at       timestamptz NOT NULL DEFAULT now()
 );
 
--- ── Daily stats (moved from marketplace_db) ────────────────────
+-- ── Daily stats ────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS daily_stats (
   id                  bigserial PRIMARY KEY,
   stat_date           date NOT NULL,

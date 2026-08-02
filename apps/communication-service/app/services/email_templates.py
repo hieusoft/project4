@@ -294,7 +294,7 @@ def render_verification_success_email(
 {_btn(href=login_url, label="Đăng nhập")}
 {_p(
     "Từ đây bạn có thể tham gia hội nhóm thiện nguyện, quyên góp đồ dùng, "
-    "và theo dõi hành trình món đồ trên gian hàng 0 đồng."
+    "và theo dõi hành trình món đồ đến tay người nhận."
 )}
 {_p(
     f'Cần hỗ trợ? Phản hồi email này hoặc truy cập '

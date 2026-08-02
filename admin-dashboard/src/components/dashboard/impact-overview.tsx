@@ -97,7 +97,7 @@ export function ImpactOverview({ overview, loading }: ImpactOverviewProps) {
       <Card className="admin-surface">
         <CardHeader>
           <CardTitle className="text-base">Phân bổ dòng vật phẩm</CardTitle>
-          <p className="text-sm text-muted-foreground">Kho → gian hàng → bàn giao</p>
+          <p className="text-sm text-muted-foreground">Đóng góp → kiểm tra → trao tặng</p>
         </CardHeader>
         <CardContent>
           {loading ? (

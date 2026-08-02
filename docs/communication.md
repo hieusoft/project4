@@ -143,10 +143,8 @@ const socket = io("http://localhost:3005", {
 | `password.reset_completed` | Brevo thông báo đổi mật khẩu thành công |
 | `password.reset_requested` | Brevo reset link |
 | `donation.created` | Conversation `donor_group` + notify `notifyUserIds` |
-| `donation.reviewed` / `scheduled` / `completed` | Notify (+ reminder) |
-| `request.created` / `approved` / `scheduled` / `completed` | Notify + conversation khi approved |
+| `donation.reviewed` / `completed` | Notify (+ reminder) |
 | `group.approved` / `join_requested` / `member_approved` | Notify |
-| `listing.created` | Notify members (`notifyUserIds`) |
 | `message.sent` | FCM recipients |
 
 ---

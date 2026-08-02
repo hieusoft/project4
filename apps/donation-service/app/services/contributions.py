@@ -91,7 +91,8 @@ class ContributionService:
                 )
 
         contribution = await self._contribs.get(contribution.id)
-        assert contribution is not None
+        if contribution is None:
+            raise RuntimeError("Failed to reload contribution after create")
 
         await self._campaigns.upsert_daily_stat(
             stat_date=date.today(),
@@ -213,7 +214,8 @@ class ContributionService:
                 reviewed_by=user.uuid,
                 rejected_reason=data.reason or "Rejected",
             )
-        assert updated is not None
+        if updated is None:
+            raise RuntimeError("Failed to update contribution status")
         await self._publisher.publish(
             event_names.CONTRIBUTION_REVIEWED,
             ContributionReviewedEvent(
@@ -246,7 +248,8 @@ class ContributionService:
         updated = await self._contribs.update_status(
             contribution_id, status=ContributionStatus.cancelled.value
         )
-        assert updated is not None
+        if updated is None:
+            raise RuntimeError("Failed to cancel contribution")
         return updated
 
     async def check_item(
@@ -348,7 +351,8 @@ class ContributionService:
             contribution = await self._contribs.update_status(
                 contribution_id, status=final
             )
-            assert contribution is not None
+            if contribution is None:
+                raise RuntimeError("Failed to finalize contribution status")
             await self._publisher.publish(
                 event_names.CONTRIBUTION_COMPLETED,
                 ContributionCompletedEvent(

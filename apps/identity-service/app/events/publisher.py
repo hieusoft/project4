@@ -106,7 +106,8 @@ class EventPublisher:
             )
             return
         try:
-            assert self._exchange is not None
+            if self._exchange is None:
+                raise RuntimeError("EventPublisher exchange is not initialized")
             await self._exchange.publish(
                 aio_pika.Message(
                     body=body.encode("utf-8"),

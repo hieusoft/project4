@@ -21,7 +21,7 @@ Identity là **nguồn sự thật duy nhất** về “ai đang đăng nhập�
 | Cấp access + refresh JWT | Upload file (→ Media) |
 | Quên mật khẩu (OTP 6 số) | Gửi email trực tiếp (publish event → Communication) |
 | Hồ sơ user (profile) | Chat, push |
-| 2FA TOTP | Quyên góp / gian hàng |
+| 2FA TOTP | Quyên góp / đóng góp |
 | Role hệ thống: `USER`, `PLATFORM_ADMIN` | Role trong nhóm (`owner/moderator/member`) |
 
 ---

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Mục đích** | Tích hợp LLM/vision hỗ trợ: nhận diện loại đồ từ ảnh, gợi ý nhóm phù hợp, kiểm duyệt nội dung, sinh mô tả listing |
+| **Mục đích** | Tích hợp LLM/vision hỗ trợ: nhận diện loại đồ từ ảnh, gợi ý nhóm phù hợp, kiểm duyệt nội dung, sinh mô tả đóng góp |
 | **Stack hiện tại** | NestJS scaffold (Node) |
 | **Port** | `3007` |
 | **Gateway** | `/api/ai` |
@@ -20,7 +20,7 @@ AI **không** thay quyết định cuối của hội nhóm; chỉ **gợi ý** 
 | Detect item | Ảnh đồ | Tên, category, tình trạng |
 | Suggest groups | Mô tả + province | Danh sách group_id + lý do |
 | Moderate content | Text/ảnh post | flag spam/inappropriate |
-| Generate description | Ảnh + meta | Mô tả listing |
+| Generate description | Ảnh + meta | Mô tả đóng góp |
 
 ---
 

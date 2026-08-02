@@ -1,8 +1,8 @@
 # 🎁 Nền tảng Kết nối Quyên góp Thiện nguyện
 
 > Nền tảng kết nối **người quyên góp** với các **hội nhóm thiện nguyện** — nơi hội nhóm
-> đóng vai trò trung gian tiếp nhận, kiểm tra, quản lý kho và phân phối đồ dùng đến
-> những người thực sự cần hỗ trợ, thông qua mô hình **"Gian hàng 0 đồng"**.
+> đóng vai trò trung gian tiếp nhận, kiểm tra và phân phối đồ dùng đến
+> những người thực sự cần hỗ trợ thông qua **cuộc quyên góp (campaign)** theo đợt.
 
 ## 📌 Bài toán
 
@@ -11,20 +11,20 @@ và người cho không bao giờ biết món đồ của mình đi về đâu. 
 mô hình hội nhóm trung gian có quy trình rõ ràng:
 
 ```
-Người quyên góp → Chọn hội nhóm → Nhóm tiếp nhận & kiểm tra → Nhập kho & phân loại
-→ Đăng lên Gian hàng 0 đồng → Người cần đăng ký nhận → Nhóm xét duyệt → Trao tặng ✅
+Người quyên góp → Chọn hội nhóm → Nhóm tạo cuộc quyên góp (campaign) với mục tiêu cụ thể
+→ Donor đóng góp vào đợt → Nhóm kiểm tra từng món → Trao tặng cả đợt ✅
 ```
 
 Điểm khác biệt: **minh bạch hành trình món đồ** — người quyên góp theo dõi được món đồ
-của mình từ lúc gửi đến lúc thực sự đến tay người nhận.
+của mình từ lúc đóng góp đến lúc thực sự đến tay người nhận.
 
 ## 👥 Vai trò trong hệ thống
 
 | Vai trò | Mô tả |
 |---|---|
 | **Người quyên góp** | Chọn nhóm, đăng ký quyên góp, theo dõi hành trình món đồ. Không cần tham gia nhóm. |
-| **Hội nhóm thiện nguyện** | Duyệt thành viên, tiếp nhận & kiểm tra đồ, quản lý kho, đăng gian hàng, xét duyệt trao tặng. |
-| **Người cần hỗ trợ** | Tham gia nhóm (được duyệt), xem gian hàng, đăng ký nhận đồ, đánh giá. |
+| **Hội nhóm thiện nguyện** | Duyệt thành viên, tạo cuộc quyên góp, tiếp nhận & kiểm tra đồ, trao tặng đợt. |
+| **Người cần hỗ trợ** | Tham gia nhóm (được duyệt), xem các đợt quyên góp đang mở, đóng góp, đánh giá. |
 | **Quản trị viên** | Duyệt hội nhóm, xử lý báo cáo vi phạm, thống kê toàn hệ thống. |
 
 ## ✨ Tính năng chính
@@ -32,7 +32,7 @@ của mình từ lúc gửi đến lúc thực sự đến tay người nhận.
 - 🔐 Đăng ký / đăng nhập, phân quyền theo vai trò (JWT)
 - 👥 Hội nhóm: bài viết, bình luận, thành viên
 - 📦 Cuộc quyên góp (campaign): nhóm tạo đợt với mục tiêu cụ thể (vd: 15 áo, 15 bao gạo), donor đóng góp vào đợt
-- 📋 Quy trình đóng góp: tạo → duyệt → hẹn lịch → kiểm tra từng món → hoàn tất
+- 📋 Quy trình đóng góp: tạo → duyệt → kiểm tra từng món → hoàn tất
 - 🎁 Trao tặng đợt: khi đủ mục tiêu hoặc hết hạn, nhóm xác nhận trao tặng cả đợt
 - 🔍 Tiến độ minh bạch: donor theo dõi "5/15 áo, 3/15 bao gạo" real-time
 - 💬 Chat realtime giữa user và hội nhóm (shared inbox cho moderator)

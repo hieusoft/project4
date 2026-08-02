@@ -20,7 +20,6 @@ Tài liệu các thành phần **không phải business domain** nhưng bắt bu
 | `/api/identity` | identity-service:3001 |
 | `/api/community` | community-service:3002 |
 | `/api/donation` | donation-service:3003 |
-| `/api/marketplace` | marketplace-service:3004 |
 | `/api/communication` | communication-service:3005 |
 | `/api/media` | media-service:3006 |
 | `/api/ai` | ai-service:3007 |

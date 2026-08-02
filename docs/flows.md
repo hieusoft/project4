@@ -74,7 +74,7 @@ sequenceDiagram
     M-->>C: {media_id, presigned_url, public_url}
     C->>S: PUT file lên presigned_url (không qua backend)
     C->>M: POST /api/media/confirm {media_id}
-    Note over C,X: Client tạo entity (donation/post/listing...)<br/>gửi kèm public_url + media_id
+    Note over C,X: Client tạo entity (donation/post...)<br/>gửi kèm public_url + media_id
     X->>M: PUT /media/link {media_ids, ref_type, ref_id} (sync, sau khi tạo entity)
     M->>M: UPDATE status=linked, gắn ref_id
     Note over M: Cron mỗi giờ: DELETE file temp > 24h (cả object + DB)
@@ -194,16 +194,14 @@ sequenceDiagram
 sequenceDiagram
     participant R as Receiver/Donor
     participant CM as Community
-    participant MKT as Marketplace
     participant ID as Identity
-    Note over R: Sau request.completed / donation.completed,<br/>notification kèm deep-link mời đánh giá
-    R->>CM: POST /api/ratings {target_type=group, target_id, context_ref=request_id, score}
-    CM->>MKT: verify request completed + receiver đúng người (sync)
+    Note over R: Sau contribution.completed / campaign.delivered,<br/>notification kèm deep-link mời đánh giá
+    R->>CM: POST /api/ratings {target_type=group, target_id, context_ref=contribution_id, score}
     CM->>CM: INSERT ratings (unique rater+context+target chặn rate 2 lần)<br/>tính lại groups.reputation_score (avg)
     CM-->>ID: ⇢ rating.created → user_profiles.reputation_score (nếu target=user)
 ```
 
-Chiều ngược lại: nhóm đánh giá donor (đồ đúng mô tả không) với `context_ref=donation_id`.
+Chiều ngược lại: nhóm đánh giá donor (đồ đúng mô tả không) với `context_ref=contribution_id`.
 
 #### Luồng 9: Báo cáo vi phạm → xử lý
 

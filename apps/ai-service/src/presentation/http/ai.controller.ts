@@ -35,7 +35,7 @@ export class AiController {
 
   @Post('generate-description')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Tự động sinh mô tả cho tin đăng gian hàng' })
+  @ApiOperation({ summary: 'Tự động sinh mô tả cho đóng góp' })
   @ApiBody({ schema: { type: 'object', properties: { name: { type: 'string' }, condition: { type: 'string' } } } })
   async generateDescription(@Body() body: { name: string; condition: string }) {
     if (!body.name || !body.condition) {

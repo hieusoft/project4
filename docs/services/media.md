@@ -41,7 +41,7 @@ Media hỗ trợ 2 cách upload:
 
 ```text
 {folder}/{YYYY}/{MM}/{DD}/{HH}/{mm}/{uuid}.{ext}
-# folder theo ref_type: avatars, posts, donations, listings, chat, delivery
+# folder theo ref_type: avatars, posts, donations, chat, delivery
 ```
 
 **Public URL:**
@@ -70,7 +70,7 @@ Media hỗ trợ 2 cách upload:
 
 ### `ref_type` cho phép
 
-`donation` · `listing` · `post` · `avatar` · `chat` · `delivery`
+`donation` · `post` · `avatar` · `chat` · `delivery`
 
 ---
 

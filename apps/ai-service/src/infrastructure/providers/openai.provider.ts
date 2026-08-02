@@ -6,18 +6,18 @@ import { ModerationResult } from '../../domain/models/moderation-result.model';
 
 @Injectable()
 export class OpenAiProvider implements IAiProvider {
-  private readonly logger = new Logger(OpenAiProvider.name);
-  private openai: OpenAI;
-  private readonly modelName = process.env.OPENAI_MODEL_NAME || 'gpt-5.5';
+  private readonly modelName = process.env.LLM_MODEL || '';
 
   constructor() {
-    const apiKey = process.env.OPENAI_API_KEY || 'mk-live-DdVkkTIa0XAswaSbJTOiEDQcMVlLwU5NOBMYe7ZqPyw';
+    const apiKey = process.env.LLM_API_KEY;
+    if (!apiKey) {
+      throw new Error(
+        'LLM_API_KEY is not set. Provide it via .env (see .env.example).',
+      );
+    }
     this.openai = new OpenAI({
       apiKey,
-      baseURL: process.env.OPENAI_BASE_URL || 'https://htmustc.id.vn/v1',
-      defaultHeaders: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      },
+      baseURL: process.env.LLM_BASE_URL || 'https://api.openai.com/v1',
     });
   }
 
@@ -38,17 +38,13 @@ export class OpenAiProvider implements IAiProvider {
 - condition: Chọn 1 trong các trạng thái sau: (New, Good, Fair, Poor)
 - suggestedDescription: Viết một đoạn mô tả chi tiết, tự nhiên và sinh động bằng TIẾNG VIỆT CÓ DẤU ĐẦY ĐỦ (từ 3 đến 5 câu) về kiểu dáng, màu sắc, chi tiết nổi bật và tình trạng món đồ quan sát được trong ảnh.`;
 
-    const modelsToTry = [this.modelName, 'gpt-5.6-sol', 'gpt-4o', 'gpt-4o-mini'];
+    const modelsToTry = [this.modelName];
 
     const imageCandidates: string[] = [imageUrl];
 
     if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
       try {
-        const imageRes = await fetch(imageUrl, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          },
-        });
+        const imageRes = await fetch(imageUrl);
         if (imageRes.ok) {
           const arrayBuffer = await imageRes.arrayBuffer();
           const buffer = Buffer.from(arrayBuffer);
@@ -161,7 +157,7 @@ Trả về mảng JSON (không có khối mã markdown) định dạng:
   async generateImage(prompt: string): Promise<string> {
     this.logger.log(`Generating image for prompt: ${prompt}`);
     const response = await this.openai.images.generate({
-      model: 'gpt-image-2',
+      model: process.env.LLM_IMAGE_MODEL || 'dall-e-3',
       prompt: prompt,
       n: 1,
       size: '1024x1024',

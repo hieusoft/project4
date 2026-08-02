@@ -5,6 +5,7 @@ is SeaweedFS (S3-compatible gateway) running in Docker — not cloud R2.
 """
 from __future__ import annotations
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -26,6 +27,9 @@ class Settings(BaseSettings):
     # Auth (shared with identity-service — same secret/issuer signs the JWT)
     jwt_secret: str = "change-me"
     jwt_issuer: str = "charity-auth"
+
+    # CORS — comma-separated origins ("*" allows all, but disables credentials)
+    cors_origins: str = "*"
 
     # PostgreSQL
     postgres_user: str = "charity"
@@ -65,6 +69,23 @@ class Settings(BaseSettings):
     def seaweed_public_base(self) -> str:
         """Public object URL base with any trailing slash stripped."""
         return self.seaweed_public_base_url.rstrip("/")
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def cors_allow_credentials(self) -> bool:
+        return "*" not in self.cors_origins_list
+
+    @model_validator(mode="after")
+    def _validate_production_secrets(self) -> "Settings":
+        if self.node_env == "production" and self.jwt_secret in ("change-me", ""):
+            raise ValueError(
+                "JWT_SECRET must be set to a strong value in production "
+                "(run: openssl rand -hex 32)."
+            )
+        return self
 
 
 settings = Settings()
