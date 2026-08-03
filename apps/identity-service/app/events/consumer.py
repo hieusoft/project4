@@ -18,7 +18,7 @@ import aio_pika
 from app.core.config import settings
 from app.core.database import get_pool
 from app.events.event_names import (
-    DONATION_COMPLETED,
+    CONTRIBUTION_COMPLETED,
     REPORT_RESOLVED,
     REQUEST_COMPLETED,
 )
@@ -52,7 +52,7 @@ class EventConsumer:
         )
         queue = await self._channel.declare_queue(_QUEUE_NAME, durable=True)
         await queue.bind(exchange, routing_key=REPORT_RESOLVED)
-        await queue.bind(exchange, routing_key=DONATION_COMPLETED)
+        await queue.bind(exchange, routing_key=CONTRIBUTION_COMPLETED)
         await queue.bind(exchange, routing_key=REQUEST_COMPLETED)
         await queue.consume(self._on_message)
         logger.info("EventConsumer listening on %s", _QUEUE_NAME)
@@ -110,8 +110,8 @@ class EventConsumer:
             routing_key = message.routing_key
             if routing_key == REPORT_RESOLVED:
                 await self._handle_report_resolved(payload)
-            elif routing_key == DONATION_COMPLETED:
-                await self._handle_donation_completed(payload)
+            elif routing_key == CONTRIBUTION_COMPLETED:
+                await self._handle_contribution_completed(payload)
             elif routing_key == REQUEST_COMPLETED:
                 await self._handle_request_completed(payload)
 
@@ -139,14 +139,15 @@ class EventConsumer:
             "Locked account %s and revoked %d refresh tokens", account_id, revoked
         )
 
-    async def _handle_donation_completed(self, payload: dict) -> None:
-        if int(payload.get("acceptedItems") or 0) <= 0:
+    async def _handle_contribution_completed(self, payload: dict) -> None:
+        accepted_items = int(payload.get("acceptedItems") or 0)
+        if accepted_items <= 0:
             return
-        await self._apply_counter(
-            event_type=DONATION_COMPLETED,
-            aggregate_value=payload.get("donationId"),
+        await self._apply_contribution(
+            event_type=CONTRIBUTION_COMPLETED,
+            aggregate_value=payload.get("contributionId"),
             account_value=payload.get("donorId"),
-            counter="donation_count",
+            accepted_items=accepted_items,
         )
 
     async def _handle_request_completed(self, payload: dict) -> None:
@@ -184,6 +185,45 @@ class EventConsumer:
                 )
         if applied:
             logger.info("Applied %s to profile %s", event_type, account_id)
+
+    async def _apply_contribution(
+        self,
+        *,
+        event_type: str,
+        aggregate_value: object,
+        account_value: object,
+        accepted_items: int,
+    ) -> None:
+        """Cộng donation_count + reputation_score cho donor.
+
+        Cơ chế điểm uy tín:
+        - +1 donation_count (số lần đóng góp hoàn tất)
+        - +1 reputation_score cho mỗi món đạt (acceptedItems)
+        - +2 reputation_score bonus cho một đợt đóng góp thành công
+        """
+        try:
+            aggregate_id = uuid.UUID(str(aggregate_value))
+            account_id = uuid.UUID(str(account_value))
+        except (TypeError, ValueError):
+            logger.warning("%s has invalid aggregate/account id", event_type)
+            return
+
+        reputation_gain = accepted_items + 2
+        pool = get_pool()
+        async with pool.acquire() as conn:
+            async with conn.transaction():
+                profiles = ProfileRepository(conn)
+                applied = await profiles.apply_contribution_event(
+                    event_type=event_type,
+                    aggregate_id=aggregate_id,
+                    account_id=account_id,
+                    reputation_gain=reputation_gain,
+                )
+        if applied:
+            logger.info(
+                "Applied %s to profile %s: +%d reputation",
+                event_type, account_id, reputation_gain,
+            )
 
 
 consumer = EventConsumer()
