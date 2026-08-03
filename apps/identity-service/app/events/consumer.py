@@ -143,12 +143,26 @@ class EventConsumer:
         accepted_items = int(payload.get("acceptedItems") or 0)
         if accepted_items <= 0:
             return
+
+        # Donor: +1 per accepted item + 2 bonus
         await self._apply_contribution(
             event_type=CONTRIBUTION_COMPLETED,
             aggregate_value=payload.get("contributionId"),
             account_value=payload.get("donorId"),
             accepted_items=accepted_items,
         )
+
+        # Moderator: +1 per accepted item (no bonus, no donation_count)
+        moderator_id = payload.get("moderatorId")
+        if moderator_id:
+            await self._apply_contribution(
+                event_type="contribution.completed.moderator",
+                aggregate_value=payload.get("contributionId"),
+                account_value=moderator_id,
+                accepted_items=accepted_items,
+                bonus=0,
+                increment_donation_count=False,
+            )
 
     async def _handle_request_completed(self, payload: dict) -> None:
         await self._apply_counter(
@@ -193,13 +207,14 @@ class EventConsumer:
         aggregate_value: object,
         account_value: object,
         accepted_items: int,
+        bonus: int = 2,
+        increment_donation_count: bool = True,
     ) -> None:
-        """Cộng donation_count + reputation_score cho donor.
+        """Cộng donation_count + reputation_score.
 
         Cơ chế điểm uy tín:
-        - +1 donation_count (số lần đóng góp hoàn tất)
-        - +1 reputation_score cho mỗi món đạt (acceptedItems)
-        - +2 reputation_score bonus cho một đợt đóng góp thành công
+        - Donor:  +1 per accepted item + 2 bonus (hoàn tất đợt đóng góp)
+        - Moderator: +1 per accepted item (no bonus — đây là nhiệm vụ duyệt)
         """
         try:
             aggregate_id = uuid.UUID(str(aggregate_value))
@@ -208,7 +223,7 @@ class EventConsumer:
             logger.warning("%s has invalid aggregate/account id", event_type)
             return
 
-        reputation_gain = accepted_items + 2
+        reputation_gain = accepted_items + bonus
         pool = get_pool()
         async with pool.acquire() as conn:
             async with conn.transaction():
@@ -218,6 +233,7 @@ class EventConsumer:
                     aggregate_id=aggregate_id,
                     account_id=account_id,
                     reputation_gain=reputation_gain,
+                    increment_donation_count=increment_donation_count,
                 )
         if applied:
             logger.info(

@@ -359,6 +359,7 @@ class ContributionService:
                     contributionId=str(contribution.id),
                     campaignId=str(contribution.campaign_id),
                     donorId=str(contribution.donor_id),
+                    moderatorId=str(user.uuid),
                     acceptedItems=accepted,
                     rejectedItems=rejected,
                 ),

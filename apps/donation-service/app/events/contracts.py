@@ -45,5 +45,6 @@ class ContributionCompletedEvent(BaseModel):
     contributionId: str
     campaignId: str
     donorId: str
+    moderatorId: str | None = None
     acceptedItems: int
     rejectedItems: int
