@@ -144,15 +144,16 @@ class EventConsumer:
         if accepted_items <= 0:
             return
 
-        # Donor: +1 per accepted item + 2 bonus
+        # Donor: +5 per accepted item
         await self._apply_contribution(
             event_type=CONTRIBUTION_COMPLETED,
             aggregate_value=payload.get("contributionId"),
             account_value=payload.get("donorId"),
             accepted_items=accepted_items,
+            per_item=5,
         )
 
-        # Moderator: +1 per accepted item (no bonus, no donation_count)
+        # Moderator: +2 per accepted item (no donation_count)
         moderator_id = payload.get("moderatorId")
         if moderator_id:
             await self._apply_contribution(
@@ -160,7 +161,7 @@ class EventConsumer:
                 aggregate_value=payload.get("contributionId"),
                 account_value=moderator_id,
                 accepted_items=accepted_items,
-                bonus=0,
+                per_item=2,
                 increment_donation_count=False,
             )
 
@@ -207,14 +208,14 @@ class EventConsumer:
         aggregate_value: object,
         account_value: object,
         accepted_items: int,
-        bonus: int = 2,
+        per_item: int = 5,
         increment_donation_count: bool = True,
     ) -> None:
         """Cộng donation_count + reputation_score.
 
         Cơ chế điểm uy tín:
-        - Donor:  +1 per accepted item + 2 bonus (hoàn tất đợt đóng góp)
-        - Moderator: +1 per accepted item (no bonus — đây là nhiệm vụ duyệt)
+        - Donor:     +5 per accepted item
+        - Moderator: +2 per accepted item (no donation_count)
         """
         try:
             aggregate_id = uuid.UUID(str(aggregate_value))
@@ -223,7 +224,7 @@ class EventConsumer:
             logger.warning("%s has invalid aggregate/account id", event_type)
             return
 
-        reputation_gain = accepted_items + bonus
+        reputation_gain = accepted_items * per_item
         pool = get_pool()
         async with pool.acquire() as conn:
             async with conn.transaction():
