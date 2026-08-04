@@ -101,6 +101,7 @@ export default function CampaignsPage() {
       toast.success("Đã đóng đợt quyên góp")
       setCloseDialog(false)
       setCloseReason("")
+      setSelected(null)
       fetchCampaigns()
     } catch (e: any) {
       toast.error(e.message)
@@ -121,6 +122,7 @@ export default function CampaignsPage() {
       setDeliverDialog(false)
       setDeliverNote("")
       setDeliverPhoto("")
+      setSelected(null)
       fetchCampaigns()
     } catch (e: any) {
       toast.error(e.message)
